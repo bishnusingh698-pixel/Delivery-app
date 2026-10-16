@@ -12,7 +12,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | P4 Functions, webhooks, extensions | ✅ Done | Validation Function (backstop) and delivery customization Function (checkout matching); orders webhook (idempotent, out-of-order safe, counts, tags, order metafield); billing webhook; Flow triggers; thank-you and order status block with calendar links; order page block, "Change delivery date" order action and draft order action. |
 | P5 Orders, production, notifications, jobs | ✅ Done | Orders page (list with filters and search, month calendar with counts and capacity bars, order detail with change history and "Change date", bulk move with capacity preview, CSV export, day sheet and route sheet printing); Production list (print, CSV, per-slot split, prep-day offset); Notifications page (daily summary email, 5 copy-paste snippets with steps, secret calendar feed, Flow toggle); hourly and daily jobs (republish, digest, pruning, app embed check). |
 | P6 Locations, areas, product rules, surcharges | ✅ Done | Pickup locations (import from Shopify, own hours and limits, instructions per language); delivery areas by postcode, named area or region, zones with their own days and limits, "Test an address"; product rules (no date needed, extra preparation time, available days, daily limits per product, method-only) with Shopify product and collection pickers; surcharges with an automatically managed hidden fee product. |
-| P7 Billing, import/export, help, polish | ⏳ | |
+| P7 Billing, import/export, help, polish | ✅ Done | Plans page with Shopify billing (14-day trials, test mode, downgrade), usage bar and catch-up tagging after upgrade; Home (welcome questions with presets, 6-step checklist with app embed detection, overview, alerts, first-order celebration, quick actions); Help (5-step guide, 17 questions with search, diagnostics, debug mode, support email); Import/Export (file or one-time share code, product remapping by handle, recent changes); Widget & text (live preview, per-language text editor); admin in 8 languages; README, PRIVACY, ROADMAP, App Store listing draft. |
 
 ## How to test P1 (needs a live store)
 
@@ -75,6 +75,16 @@ Updated after every phase. "Needs a live store" means the step can only be check
 4. **Product rules** (Pro): under **Products that don't need a date**, pick a product. A cart with only that product shows no picker and checkout isn't blocked. Under **Needs extra preparation time**, pick another product with 2 days: with it in the cart the first date moves 2 days later.
 5. **Available days:** add a rule "Only on Saturdays" for a product: with it in the cart only Saturdays can be picked.
 6. **Surcharges** (Pro): add "Saturday delivery", weekday Saturday, 5.00, save. In Shopify **Products**, a "Delivery fee" product exists (tag `pickday-hidden`). On the storefront pick a Saturday: a "Delivery fee" line with "Fee: Saturday delivery" appears in the cart; pick a Friday: it goes away. Check out: the fee is charged.
+
+## How to test P7 (needs a live store)
+
+1. Install on a fresh development store. Home shows **Welcome to Pickday**: choose "Bakery or cakes" and your country, click **Set it up for me**. The checklist appears with step 1 open.
+2. Click **Open theme editor**: the theme editor opens with the Pickday embed selected. Switch it on, click **Save**, come back and click **Check again**: step 1 turns green.
+3. **Plans**: on a development store everything is free (a blue banner says so). On a real store, click **Upgrade to Starter**: Shopify's approval page shows $7.99 with a 14-day trial.
+4. **Help**: search "drawer": one question is shown. Click **Fix and resend settings**: a green banner confirms. Click **Turn on for 24 hours** under Debug mode, open your storefront with the browser console open: Pickday notes appear.
+5. **Import / Export**: click **Create share code** and copy it. In a second development store, open Import / Export, paste the code, click **Use code**: a preview lists the sections that will change. Click **Import and replace**. Try the same code again: "That code doesn't exist or has expired."
+6. **Widget & text**: change the accent colour and roundness: the preview updates. Choose Deutsch, change "Choose a date" text, save, and open the German storefront: your text is shown.
+7. Change your Shopify admin language (your profile → Language) to Español: Pickday's admin is in Spanish.
 
 ## Acceptance tests
 

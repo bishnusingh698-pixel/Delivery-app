@@ -53,7 +53,7 @@ Strings use a small ICU MessageFormat subset (`core/i18n/format.ts`, no dependen
 - renders every language and fails if anything overflows;
 - checks Arabic and Hebrew render right-to-left with the calendar mirrored, and saves screenshots to `tests/browser/screenshots/` for a human to look at.
 
-Admin languages are checked by `tests/admin-i18n.test.ts` (every key the code uses exists in English, and each other language has every English key).
+Admin languages are checked by `tests/admin-i18n.test.ts` (every key the code uses exists in English, and each other language has every English key with the same placeholders). All 7 admin languages are complete; reviewer notes are at the end of `TRANSLATION_REVIEW.md`. To add an admin language: copy `app/i18n/admin/en.json` to `<lang>.json`, translate, add the code to the admin language list, and add `extensions/pickday-admin/locales/<lang>.json`.
 
 ## Adding or changing a string
 

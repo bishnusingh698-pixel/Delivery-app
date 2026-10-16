@@ -545,3 +545,305 @@ Plural imperative ("בחרו", "הזמינו") for CTAs, and impersonal "יש ל
 - product.earliest.dispatch: "יציאה למשלוח החל מ: {date}" is awkward because a prefix can't attach to a placeholder.
 - slot.left: the two branch uses "# מקומות". Native style might prefer "נותרו שני מקומות".
 - thankyou.google: kept as "Google Calendar" per the brief. Google's Hebrew name is "יומן Google".
+
+
+# Admin translations (es, fr, de, pt, it, nl, ja)
+
+The merchant admin (`app/i18n/admin/*.json`) and the order-page extension (`extensions/pickday-admin/locales/*.json`) were translated by hand from the English source. `tests/admin-i18n.test.ts` checks every language has every key with the same placeholders. Items for a native reviewer, per language, are below. In every language, check the Shopify admin page names used in instructions (Settings > Notifications, Shipping and delivery, Local pickup, Packing slips, theme editor, App embeds) against the live Shopify admin in that language.
+
+## Admin: es
+
+### Pickday admin — Spanish (es) translation notes
+
+Register: informal "tú" (as Shopify's Spanish admin), neutral/Latin-American-leaning vocabulary following Shopify es ("Agregar", "Retiro en tienda", "tienda online").
+
+#### Glossary
+| English | Spanish |
+|---|---|
+| Local delivery | Entrega local |
+| Store pickup / Local pickup | Retiro en tienda |
+| Shipping | Envío |
+| Pickup location | Ubicación de retiro |
+| Checkout (page / step) | Pantalla de pago / el pago |
+| Checkout matching | Coincidencia en el pago |
+| Check out (verb) | Finalizar la compra |
+| Time slot | Franja horaria |
+| Cutoff time | Hora límite |
+| Preparation time (lead) | Tiempo de preparación |
+| Closures / Public holidays | Cierres / Festivos |
+| Surcharge / Fee | Recargo / Cargo |
+| App embed(s) | Incrustación de la aplicación / Incrustaciones de aplicaciones |
+| Theme editor | Editor de temas |
+| Cart drawer | Carrito lateral |
+| Date picker / picker | Selector de fecha / selector |
+| Snippet | Fragmento |
+| Route sheet / Day sheet | Hoja de ruta / Hoja del día |
+| Fulfilled | Preparado |
+| Upgrade | Mejorar plan |
+| Settings > Notifications > Customer notifications | Configuración > Notificaciones > Notificaciones al cliente |
+| Settings > Shipping and delivery | Configuración > Envío y entrega |
+| Flow triggers | Desencadenadores de Flow |
+
+#### Least sure
+1. snippet.packingSlip.step1 / .title — "Albaranes"/"Albarán" for Packing slips; Shopify es may label it differently (e.g. "Comprobantes de preparación").
+2. help.faq.pickupMatch.a — "Retiro en tienda" as the Local pickup settings label under Envío y entrega; verify exact Shopify es label.
+3. checkout.title, home.alert.checkoutMismatchAction, help.diag.delivery — "Coincidencia en el pago" is a coined feature name.
+4. help.faq.fees.a, surcharges.howLine, surcharges.productHelp — kept "Delivery fee" in English because it is the literal title of the product Pickday creates (fee-product.server.ts).
+5. help.faq.notShowing.a, widget.setup.blockText — kept block name "Pickday date picker" in English (theme extension has no es schema locale, so the editor shows it in English).
+6. help.faq.checkoutBlocked.a, help.faq.expressButtons.* — "Comprar ahora" for Buy it now; verify Shopify es wording.
+7. orders.status.fulfilled / ext statusFulfilled — "Preparado" (Shopify es order status); some regions may expect "Completado".
+8. surcharges.productNotLive — "canal de ventas Tienda online" for Online Store sales channel.
+9. methods.meaningDispatch — "Fecha de despacho" (LatAm); Spain would prefer "Fecha de envío", which clashes with Shipping.
+10. snippet.orderConfirmation.step1 — "panel de control de Shopify" for "Shopify admin".
+11. transfer.productMapped / productMissing — "identificador" for product handle.
+12. notifications.feedHeading — "Feed de calendario" (anglicism, common in Shopify es).
+13. help.diag.embed — "tema publicado" for "live theme".
+14. home.alert.usage — "{pct}%" kept without space (Spanish typography prefers "{pct} %").
+15. Length — many strings are 30–40% longer than English (inherent to Spanish); the longest were shortened, a few labels (e.g. widget.setup.embedTitle, areas.zonePostcodes) remain above 130%.
+
+## Admin: fr
+
+### Pickday admin: French (fr) translation notes
+
+Register: "vous" throughout, the same as the Shopify admin in French. Imperatives use the vous form ("Ajoutez", "Choisissez"). Quoted UI labels use « … ». Apostrophes are straight single quotes, which are safe with the formatter. There are no doubled '' anywhere.
+
+#### Glossary
+| English | French |
+|---|---|
+| Local delivery | Livraison locale |
+| Store pickup / Local pickup | Retrait en magasin |
+| Shipping | Expédition |
+| Method (delivery method) | Mode (mode de livraison) |
+| Checkout | Paiement (e.g. "au paiement", "Correspondance au paiement") |
+| Time slot | Créneau horaire / créneau |
+| Cutoff time | Heure limite |
+| Preparation time (lead time) | Délai de préparation |
+| Capacity / limit | Capacité / limite |
+| Pickup location | Point de retrait (a Shopify location is "emplacement") |
+| Area (list entry) / Zone (group) | Zone / Secteur |
+| Closure / public holiday | Fermeture / jour férié |
+| Special open day | Ouverture exceptionnelle |
+| Vacation mode | Mode vacances |
+| Surcharge / fee | Supplément / frais |
+| Plan / Upgrade | Forfait / Mettre à niveau |
+| Tag / Note | Balise / Remarque |
+| Fulfilled / Scheduled / Cancelled | Traitée / Planifiée / Annulée |
+| Theme editor / App embeds | Éditeur de thème / Intégrations d'applications |
+| Cart drawer | Tiroir de panier |
+| Snippet | Extrait |
+| Daily summary (digest) | Récapitulatif quotidien |
+| Schedule (page) | Calendrier |
+| Route sheet / Day sheet | Feuille de route / Feuille du jour |
+
+Shopify admin paths used: Paramètres > Notifications > Notifications aux clients > Confirmation de commande / Confirmation d'expédition; Notifications au personnel > Nouvelle commande; Paramètres > Expédition et livraison > Retrait en magasin; Paramètres > Expédition et livraison > Bordereaux de marchandises; the "Boutique en ligne" sales channel.
+
+#### Strings I'm least sure about
+1. `snippet.packingSlip.step1` / `.title`: I used "Bordereaux de marchandises" for Packing slips. I'm fairly sure this is Shopify's French label, but it could also be "Bordereaux d'expédition". Please check it in a French admin.
+2. `areas.*` (area vs zone): English uses both "area" and "zone". I translated area as "Zone" and zone as "Secteur" so they stay distinct. As a result, "Delivery zone" (`orders.zone`) became "Secteur de livraison".
+3. `checkout.title` / `home.alert.checkoutMismatchAction`: "Correspondance au paiement" for "Checkout matching". It's understandable but stiff.
+4. `locations.emptyMethodsLink` / `locations.emptyText`: "Modes de livraison" for "Delivery methods". The actual page is titled "Modes et pays".
+5. `help.faq.notShowing.a`, `widget.setup.blockText`: I left the block name "Pickday date picker" in English. If the theme extension localizes the block name, it should match that name instead.
+6. `help.faq.changeDate.a` uses « Ignorer les limites ». It assumes `orders.ignoreLimits` ("Ignorer les limites pour cette modification") is the visible label.
+7. `help.faq.checkoutBlocked.a` / `help.faq.expressButtons.*`: "Acheter maintenant" for "Buy it now". I believe Shopify FR themes use this; some use "Acheter".
+8. `digest.subject`: rewritten as "Pickday : commandes du {date} ({count})" to avoid needing plurals.
+9. `methods.offer`: "Proposer : {method}". I used the label style because the method name's article and gender vary.
+10. `schedule.forMethod`: "Calendrier : {method}". This was reworded for the same reason.
+11. `home.alert.vacationText`: "du {start} jusqu'à la fin, le {end}". This assumes the dates render without an article; it may read awkwardly depending on the date format.
+12. `transfer.productMapped` / `transfer.productMissing`: "identifiant" for handle. Shopify FR sometimes shows "handle" or "Identifiant" in SEO settings.
+13. `common.discard`: "Ignorer" (Polaris contextual save bar wording). Shopify sometimes uses "Supprimer".
+14. `preview.rightNow`: "Il est actuellement {now} ({zone})." I put the zone in parentheses instead of "in {zone}".
+15. Extension `changed`: "Modifications : {{count}}. Dernière : {{from}} → {{to}}". I restructured it to avoid "fois" plural handling.
+
+## Admin: de
+
+### Pickday admin – German (de) translation notes
+
+**Register:** informal "du" (as in Shopify's German admin), imperative "Aktiviere…", "Füge … hinzu".
+
+#### Glossary
+| English | German |
+|---|---|
+| Local delivery / Store pickup / Shipping | Lokale Zustellung / Abholung im Geschäft / Versand |
+| Pickup location | Abholstandort |
+| Time slot | Zeitfenster |
+| Preparation time (lead time) | Vorlaufzeit |
+| Cutoff time | Bestellschluss |
+| Booking window | Buchungszeitraum |
+| Closures / Closed day | Schließtage / Schließtag |
+| Public holidays | Gesetzliche Feiertage |
+| Vacation mode | Urlaubsmodus |
+| Surcharge / fee / Delivery fee | Zuschlag / Gebühr / Liefergebühr |
+| Capacity / limit | Kapazität / Limit |
+| Delivery area / zone | Liefergebiet / Zone |
+| Postcode | Postleitzahl (PLZ) |
+| Route sheet / Day sheet | Tourenliste / Tagesliste |
+| Production list | Produktionsliste |
+| Plan | Tarif |
+| Date picker | Datumsauswahl |
+| Cart / Cart drawer | Warenkorb / Warenkorb-Drawer |
+| Theme editor / App embed | Theme-Editor / App-Einbettung |
+| Checkout matching | Checkout-Abgleich |
+| Share code | Freigabecode |
+| Fulfilled / Cancelled / Scheduled | Ausgeführt / Storniert / Geplant |
+| Settings > Notifications > Customer notifications | Einstellungen > Benachrichtigungen > Kundenbenachrichtigungen |
+| Settings > Shipping and delivery > Local pickup / Packing slips | Einstellungen > Versand und Zustellung > Lokale Abholung / Packzettel |
+
+#### Least-sure strings
+1. `snippet.packingSlip.step1` / `.title` – "Packzettel" vs "Lieferscheine"; verify against current Shopify DE admin label.
+2. `snippet.staffNotification.step1` – "Mitarbeiterbenachrichtigungen" (Shopify DE may say "Benachrichtigungen für Mitarbeiter").
+3. `method.pickup` – "Abholung im Geschäft" (Shopify DE checkout); Shopify settings page itself says "Lokale Abholung".
+4. `plans.free.name`, `common.upgrade`, `plans.downgrade` – kept "Free"/"Upgrade" as product/plan names; could be "Kostenlos".
+5. Cart drawer → "Warenkorb-Drawer" – common in German themes but anglicism; Dawn DE may use "Warenkorb-Schublade".
+6. `help.faq.expressButtons.*` – "Jetzt kaufen" assumed as Shopify DE label of the "Buy it now" button.
+7. `widget.setup.blockText`, `help.faq.notShowing.a` – block name "Pickday date picker" left in English (it's the theme block's name); change if the theme extension block is localized.
+8. `home.alert.vacationText` – "vom {start} bis zum Ende am {end}" depends on date format of {start}/{end}.
+9. `schedule.cutoffFor` – "Bestellschluss am {day}" assumes {day} is a weekday name.
+10. `order.schedule` / `orderDetail.subtitle` – "Schedule" in order context rendered "Termin" (vs "Zeitplan" for the settings page).
+11. `reason.notYetOpen` / `schedule.notBefore` – "Noch nicht freigegeben" / "Keine Daten freigeben vor" (booking not open yet).
+12. `products.picker.tagPlaceholder` – example tag localized to "auf-bestellung".
+13. `areas.testDelivered` – "Wird beliefert:" (yes/no follows).
+14. Extension `changed` – rewritten as "Änderungen: {{count}}. Letzte Änderung: …" to avoid "time(s)".
+15. `common.availableOn` – "Verfügbar im {plan}-Tarif" assumes {plan} is a plan name.
+
+## Admin: pt
+
+### Pickday admin – pt (Brazilian Portuguese) translator notes
+
+Register: "você" (Shopify pt-BR admin style), imperative for actions ("Adicione", "Escolha"), short and neutral.
+
+#### Glossary
+- Local delivery → Entrega local
+- Store pickup → Retirada na loja (Shopify page "Local pickup" → Retirada no local)
+- Shipping (method) → Frete; Shipping and delivery → Frete e entrega
+- Checkout → checkout (as in Shopify pt-BR)
+- Time slot → Faixa de horário (short form "horário" in tight labels)
+- Capacity / limit → Capacidade / limite
+- Cutoff time → Horário limite
+- Preparation time (lead time) → Prazo de preparo
+- Schedule (settings page) → Programação; order schedule → Agendamento; Scheduled → Agendado
+- Closures → Fechamentos; Vacation mode → Modo férias; Public holidays → Feriados
+- Surcharges / fee → Taxas extras / taxa
+- Postcode → CEP
+- Shoppers / customers → clientes
+- Fulfilled → Processado (Shopify pt-BR)
+- App embed(s) → Incorporação do app / Incorporações de apps; Theme editor → editor de temas
+- Packing slips → Guias de remessa; Settings > Notifications → Configurações > Notificações
+- Upgrade → Fazer upgrade; plan names Free/Starter/Pro kept
+- Route sheet / Day sheet → Folha de rota / Folha do dia
+- Cart drawer → gaveta do carrinho; tag → tag; snippet → snippet
+
+#### Least-sure strings
+1. method.pickup "Retirada na loja" – Shopify's own label is "Retirada no local"; chose "na loja" to mirror "Store pickup"; may want "Retirada no local" for consistency with checkout.
+2. method.shipping "Frete" – Shopify pt-BR uses "Frete"; "Envio" may read more naturally as a method name.
+3. snippet.*.step1 – exact Shopify pt-BR notification names ("Notificações ao cliente", "Notificações para funcionários", "Confirmação de frete") not verified against live admin.
+4. snippet.packingSlip.step1 – "Guias de remessa" assumed for Packing slips.
+5. help.faq.fees.a / surcharges.howLine / productHelp – kept product title "Delivery fee" in English because the code creates the product with that literal title.
+6. help.faq.notShowing.a / widget.setup.blockText – kept theme block name "Pickday date picker" (only an English theme schema locale exists).
+7. help.faq.checkoutBlocked.a – "Data obrigatória em Programação" mirrors English, though the toggle lives on Methods page.
+8. help.faq.changeDate.a – "Ignorar limites" refers to orders.ignoreLimits ("Ignorar limites nesta alteração"); the order-page extension says "Ignorar capacidade e regras".
+9. orders.status.fulfilled / statusFulfilled "Processado" – Shopify pt-BR term; "Concluído" also possible.
+10. digest.subject "Pickday: pedidos para {date}: {count}" – restructured for the no-plural rule; double colon is slightly awkward.
+11. orders.bulkConfirm "Mover pedidos para {date}: {count}" – same restructuring.
+12. surcharges.taxHeading "Tributos" – could be "Impostos".
+13. reason.beyondWindow "Longe demais" – short but slightly vague (means too far in the future).
+14. transfer.codeLabel/createCode – shortened "share code" to "código" for space.
+15. surcharges.errAmount keeps "4.50" (decimal point) as in English; Brazilian users would write 4,50 – depends on the input parser.
+
+## Admin: it
+
+### Pickday admin – Italian (it) translation notes
+
+Register: informal "tu" (as Shopify's Italian admin), imperative verbs ("Scegli", "Attiva", "Fai clic su"). Gender-neutral phrasing where possible ("Ti diamo il benvenuto", "lo configuro io").
+
+#### Glossary
+- Local delivery → Consegna locale; Store pickup → Ritiro in negozio; Shipping → Spedizione
+- Local pickup (Shopify settings page) → Ritiro locale
+- Checkout → pagamento ("al pagamento"); Checkout matching → Allineamento (del) pagamento
+- Settings > Notifications → Impostazioni > Notifiche; Customer/Staff notifications → Notifiche ai clienti / Notifiche per lo staff
+- Shipping and delivery → Spedizione e consegna; Packing slips → Documenti di trasporto
+- Theme editor → editor di temi; App embeds → Incorporamenti app; Online Store → Negozio online
+- Time slot → fascia oraria; Capacity → capacità; Cutoff → orario limite; Preparation time → tempo di preparazione
+- Booking window → finestra di prenotazione; Schedule (page/order) → Programmazione
+- Pickup location → sede di ritiro; Delivery area → area; Zone → zona; Postcode → CAP
+- Surcharge / fee → supplemento; "Delivery fee" product → "Costo di consegna"
+- Closures & holidays → Chiusure e festività; Vacation mode → Modalità ferie; Special open day → Apertura extra
+- Production list → lista di produzione; Route sheet → foglio di percorso; Day sheet → foglio del giorno
+- Cart drawer → carrello a scomparsa; Date picker → selettore di data; Buy it now → Acquista ora
+- Fulfilled → Evaso; Upgrade → Esegui l'upgrade / Passa a {plan}; Free plan → Gratuito (Starter, Pro unchanged)
+
+#### Least-sure strings
+1. checkout.title / help.diag.delivery – "Allineamento pagamento" chosen for "Checkout matching" (feature name; no Shopify equivalent).
+2. plans.free.name – translated "Gratuito"; Starter/Pro left as plan names. Check that billing plan names shown by Shopify match.
+3. method.pickup "Ritiro in negozio" vs Shopify settings "Ritiro locale" – deliberately different (method vs Shopify path).
+4. snippet.packingSlip.* – "Documenti di trasporto" assumed as Shopify IT label for Packing slips.
+5. snippet.*.step1 – "Notifiche per lo staff", "Conferma della spedizione", "Nuovo ordine" assumed Shopify IT labels.
+6. help.faq.notShowing.a / widget.setup.blockText – block name "Pickday date picker" left in English (must match the theme block name shown in editor).
+7. help.faq.*.a – "Acquista ora" for Buy it now (Shopify IT dynamic checkout button label).
+8. areas.regionCodesHelp / testRegionCode – examples changed from CA, NY to MI, RM (Italian province codes).
+9. capacity.hideBefore – "Nascondi una fascia quando mancano meno di (stesso giorno)" reads together with a following duration input; verify UI layout.
+10. digest.subject – "Pickday: ordini per il {date}: {count}" (double colon to avoid plural).
+11. orders.bulkConfirm – "Sposta gli ordini al {date} ({count})" (count moved to parenthesis to avoid plural).
+12. preview.rightNow – "In questo momento a {zone} sono le {now}" assumes {now} is a time (not date+time).
+13. home.alert.vacationText – "dal {start} fino alla fine, il {end}" – assumes date formats fit "il …".
+14. capacity.from/until "Dalle/Fino alle" assume time values; closures/orders/products from/to use "Dal/Al" (dates).
+15. surcharges.taxable "Tassa i supplementi" – shortened; alternative "Applica le imposte ai supplementi".
+
+## Admin: ja
+
+### Pickday admin – Japanese (ja) translation notes
+
+#### Register
+Polite です/ます style in sentences. Labels, buttons and headings are short noun phrases or verb + する/を〜, the way Shopify's Japanese admin writes them (e.g. 「保存」「日付を変更」「〜をオンにする」). The shopper is called お客様 throughout (this covers both "customer" and "shopper"). The merchant is called あなた only where the sentence needs it.
+
+#### Glossary
+| English | Japanese |
+|---|---|
+| Local delivery (method.delivery) | ローカルデリバリー |
+| Store pickup / Local pickup | 店舗受取 |
+| Shipping | 配送 |
+| Settings > Shipping and delivery | 設定 > 配送と配達 |
+| Settings > Notifications > Customer / Staff notifications | 設定 > 通知 > お客様通知 / スタッフ通知 |
+| Order confirmation / Shipping confirmation / New order | 注文確認 / 配送確認 / 新規注文 |
+| Packing slips | 梱包票 |
+| Theme editor / App embeds | テーマエディター / アプリ埋め込み |
+| Checkout | チェックアウト |
+| Cart drawer | カートドロワー |
+| Pickup location | 受取場所 (Shopify locations: ロケーション) |
+| Time slot | 時間帯 |
+| Cutoff time | 締め切り時間 |
+| Preparation time (lead time) | 準備期間 |
+| Booking window | 予約受付期間 |
+| Capacity / limit | 上限 (title: 時間帯と受注上限) |
+| Full | 満枠 |
+| Surcharges / fee | 追加料金 / 料金, "Delivery fee" product = 配達料金 |
+| Vacation mode | 休業モード |
+| Closures & holidays / special open day | 休業日と祝日 / 臨時営業日 |
+| Delivery areas / zones | 配達エリア / ゾーン |
+| Postcode / State or province | 郵便番号 / 都道府県/州 |
+| Production list / Route sheet / Day sheet | 製造リスト / ルートシート / 日別シート |
+| Variant / handle / Online Store sales channel | バリエーション / ハンドル / オンラインストア販売チャネル |
+| Fulfilled / Scheduled / Cancelled | 発送済み / 予定済み / キャンセル済み |
+| Buy it now | 今すぐ購入 |
+
+ICU plurals: Japanese has only the `other` category, so the strings keep `=0` where English has it, plus `other` with `#`.
+
+#### Strings I am least sure about
+1. `method.pickup` / `locations.*`: I used 店舗受取 for both "Store pickup" and Shopify's "Local pickup" settings page. Shopify JA may label it 「ローカルピックアップ」 in some places, so please check this against the live admin.
+2. `method.delivery`: ローカルデリバリー follows Shopify's JA term. A shopper-facing alternative would be 「配達」.
+3. `snippet.packingSlip.*`: 梱包票 is the Shopify JA name as I remember it. Please check it against the current admin, which may say 「納品書」.
+4. `plans.free.name` = 無料, but Starter and Pro stay in English as plan names. `common.availableOn` / `plans.switchTo` put the name into the string, giving e.g. 「Starterプランで利用可能」 and 「無料に切り替え」.
+5. `help.faq.notShowing.a`, `widget.setup.blockText`: I kept the block name 「Pickday date picker」 in English on the assumption that the theme block's name is not translated. Change it if the theme extension localises it.
+6. `areas.postcodesHelp`: I replaced the examples with Japanese postcodes (100-0001, 100*, 1000000-1999999). I checked these against `core/postcode.ts`, and dashes are accepted.
+7. `surcharges.errAmount`: the example changed from "5 or 4.50" to 「500」, because JPY has no decimals.
+8. `areas.deliveryOff`, `capacity.turnOnSlots`, `methods.shopifyNote`, `methods.nameIn`: the English ends in a dangling "in"/"use" that a link or control follows. I rendered it as 「…：」. Check how the UI joins the link to the text.
+9. `orders.status.fulfilled` / ext `statusFulfilled`: 発送済み is Shopify's JA term. For pickup orders it reads a little oddly.
+10. `production.offsetNote`: "Prep days ahead" became 準備の前倒し日数, which is somewhat clumsy.
+11. `capacity.hideBefore` / `capacity.showLeftBelow`: these labels sit next to an input field, so the word order may read awkwardly in the UI.
+12. `reason.beyondWindow` = 予約受付期間外, `reason.notYetOpen` = 受付開始前: these are interpretations rather than literal translations.
+13. `home.alert.vacationText`: I kept the {start}/{end} sentence close to the English.
+14. `plans.perMonth` = 「/月」: this assumes it follows a price.
+15. `areas.regionsLabel` etc.: I used 都道府県/州 for "state or province" so it works for both Japan and the US.
+
+## Admin: nl
+
+Register: "je". Key terms: Lokale bezorging / Ophalen in winkel / Verzending, tijdvak (time slot), bestelgrens / deadline (cutoff), abonnement (plan). Review: the Shopify Dutch labels for Packing slips and Local pickup, and whether "Verwerkt" matches Shopify's word for fulfilled.
