@@ -1,0 +1,182 @@
+// Pickday database schema (PostgreSQL on Neon).
+// Every table except Session is keyed by `shop` (the myshopify domain) and
+// every query in app/models filters by it, so stores never see each other's data.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+
+  @@index([shop])
+}
+
+model Shop {
+  shop            String    @id
+  active          Boolean   @default(true)
+  installedAt     DateTime  @default(now())
+  uninstalledAt   DateTime?
+  name            String?
+  email           String?
+  timeZone        String    @default("UTC")
+  currency        String    @default("USD")
+  country         String?
+  primaryLocale   String    @default("en")
+  locales         String[]  @default([])
+  adminLocale     String    @default("en")
+  plan            String    @default("free") // free | starter | pro
+  isDevStore      Boolean   @default(false)
+  subscriptionId  String?
+  /// JSON flags: welcomeDone, checklistDismissed, embedDetected, firstOrderCelebrated, ...
+  flags           Json      @default("{}")
+  /// JSON list of warnings shown on Home: [{code, at, detail}]
+  warnings        Json      @default("[]")
+  feedToken       String?   @unique
+  debugUntil      DateTime?
+  /// Last successful publish of availability (hourly job uses it).
+  publishedAt     DateTime?
+  publishedFor    String? // store-local date the availability window starts on
+  countsDirty     Boolean   @default(false)
+  validationId    String?
+  deliveryCustomizationId String?
+  surchargeProductId String?
+  updatedAt       DateTime  @updatedAt
+}
+
+model Settings {
+  shop      String   @id
+  version   Int      @default(1)
+  data      Json
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduledOrder {
+  id              String    @id @default(cuid())
+  shop            String
+  orderId         String // numeric Shopify id as string
+  orderName       String
+  customerFirst   String?
+  method          String
+  date            String? // YYYY-MM-DD (null in per-item mode when lines differ)
+  slotId          String?
+  slotLabel       String?
+  locationId      String?
+  zoneId          String?
+  area            String?
+  status          String    @default("scheduled") // scheduled | fulfilled | cancelled
+  items           Json      @default("[]") // [{lineId, productId, variantId, title, variant, qty, date?, slotId?}]
+  itemCount       Int       @default(0)
+  tags            String[]  @default([])
+  /// Recorded (counts capacity) but not tagged/announced because the plan's monthly limit was reached.
+  limited         Boolean   @default(false)
+  sourceUpdatedAt DateTime?
+  history         Json      @default("[]") // [{at, by, from, to}]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([shop, orderId])
+  @@index([shop, date])
+  @@index([shop, createdAt])
+}
+
+model ScheduledItem {
+  id        String  @id @default(cuid())
+  shop      String
+  orderId   String
+  lineId    String
+  productId String
+  variantId String
+  title     String
+  qty       Int
+  date      String
+  slotId    String?
+  method    String
+  locationId String?
+
+  @@unique([shop, orderId, lineId])
+  @@index([shop, date])
+}
+
+model CapacityCount {
+  shop   String
+  key    String // capacity key, e.g. "delivery", "pickup:l1", "delivery:z:north"
+  date   String
+  slotId String @default("")
+  orders Int    @default(0)
+  items  Int    @default(0)
+
+  @@id([shop, key, date, slotId])
+  @@index([shop, date])
+}
+
+model ProductCount {
+  shop   String
+  key    String // rule id or rule@location
+  date   String
+  qty    Int    @default(0)
+
+  @@id([shop, key, date])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  shop      String
+  at        DateTime @default(now())
+  actor     String?
+  kind      String // settings | order | import | plan
+  summary   String
+  detail    Json?
+
+  @@index([shop, at])
+}
+
+model DigestLog {
+  shop   String
+  day    String // store-local date the digest was sent for
+  sentAt DateTime @default(now())
+
+  @@id([shop, day])
+}
+
+model ShareCode {
+  code      String   @id
+  shop      String
+  data      Json
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model WebhookLog {
+  id        String   @id // X-Shopify-Webhook-Id
+  shop      String
+  topic     String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
