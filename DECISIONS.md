@@ -10,7 +10,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-03 Function API versions.** Validation uses the new `cart.validations.generate.run` target and delivery customization uses `cart.delivery-options.transform.run` (`deliveryOptionHide` / `deliveryOptionRename`), API 2026-07.
 
-**D-04 Thank-you page calendar file.** Checkout UI extensions run in a sandbox without DOM or Blob downloads, so a truly client-side `.ics` file is not possible there. The block offers (a) an "Add to Google Calendar" link built entirely in the extension (no server), and (b) an "Add to calendar (.ics)" link to a stateless server endpoint (`/ics/event`) that builds the file from signed query parameters without touching the database. If the server is asleep the first click takes up to a minute; the Google link always works instantly.
+**D-04 Thank-you page calendar file.** Checkout UI extensions run in a sandbox without DOM or Blob downloads, so a truly client-side `.ics` file is not possible there. The block offers (a) an "Add to Google Calendar" link built entirely in the extension (no server), and (b) an "Add to calendar (.ics)" link to a stateless server endpoint (`/ics/event`) that builds the file from the query string without touching the database. The parameters aren't signed: the endpoint only ever returns a calendar file built from validated, length-limited values, so there is nothing to protect. If the server is asleep the first click takes up to a minute; the Google link always works instantly.
 
 **D-05 Time-zone note wording.** Browsers have no translated city names, but they do have translated time-zone names (`Intl.DateTimeFormat` with `timeZoneName: "longGeneric"`, e.g. "Indische Normalzeit"). The note therefore reads "Dates and times are in {zone}." using that translated name, falling back to the city from the IANA id.
 
@@ -55,6 +55,16 @@ Short notes on choices made where the brief left room, or where Shopify works di
 **D-22 Product page date.** In "one date per order" mode the product page shows the earliest date (and an optional picker); a date picked there is carried into the cart widget. In "date per item" mode the product page picker writes the date as a line item property and, if the date is required, blocks adding to cart until one is picked.
 
 **D-23 Widget only loads where useful.** The script is loaded by the app embed on every page (deferred, about 20 KB gzipped) but reads the cart only once and never calls the Pickday server. Translations load lazily, one language at a time.
+
+## Checkout and orders (P4)
+
+**D-24 The validation Function is lenient by design.** It is a backstop, so when in doubt it lets the order through: the current time is read to the hour (Functions have no clock, only "is it after HH:00?" checks), pickup locations in another time zone are checked in the store's zone, and when the published counts don't fit the Function input the "full" check is skipped. The widget enforces the exact rules before checkout.
+
+**D-25 A required date also blocks "Buy it now".** Buy-it-now and express buttons skip the cart, so the validation Function stops them at checkout with "Please choose a delivery or pickup date in your cart". Merchants who sell mostly through Buy it now should turn "date required" off or remove the button.
+
+**D-26 Admin changes win.** After a merchant changes an order's date (order page or Orders page), later order updates from Shopify keep that date. The order's own attributes are rewritten too, so packing slips and other apps show the new date.
+
+**D-27 Orders over the plan limit.** Recorded and counted against capacity (so nothing is overbooked) but not tagged, not given the order metafield and not sent to Flow until the merchant upgrades (D-10).
 
 ## Not yet decided / proposed
 

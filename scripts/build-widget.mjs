@@ -64,4 +64,10 @@ for (const locale of locales) {
 for (const fn of ["pickday-validation", "pickday-delivery"]) {
   writeFileSync(join(root, `extensions/${fn}/src/messages.generated.json`), JSON.stringify(fnMessages) + "\n");
 }
+const tyMessages = {};
+for (const locale of locales) {
+  const msgs = JSON.parse(readFileSync(join(localesDir, `${locale}.json`), "utf8"));
+  tyMessages[locale] = Object.fromEntries(Object.entries(msgs).filter(([k]) => k.startsWith("thankyou.") || k.startsWith("calendar.event")));
+}
+writeFileSync(join(root, "extensions/pickday-thank-you/src/messages.generated.json"), JSON.stringify(tyMessages) + "\n");
 console.log(`[build-widget] Function messages: ${(JSON.stringify(fnMessages).length / 1024).toFixed(1)} KB`);

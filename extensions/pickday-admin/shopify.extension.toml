@@ -1,0 +1,18 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "t:name"
+handle = "pickday-admin"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/OrderBlock.tsx"
+target = "admin.order-details.block.render"
+
+[[extensions.targeting]]
+module = "./src/ScheduleAction.tsx"
+target = "admin.order-details.action.render"
+
+[[extensions.targeting]]
+module = "./src/ScheduleAction.tsx"
+target = "admin.draft-order-details.action.render"

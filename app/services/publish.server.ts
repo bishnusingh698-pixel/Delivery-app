@@ -21,16 +21,17 @@ export const FN_NAMESPACE = "$app:pickday";
 /** Soft limit we keep each JSON metafield under (Shopify allows more; Functions need less). */
 export const CONFIG_WARN_BYTES = 60_000;
 
-let installationIdCache = new Map<string, string>();
+let installationIdCache = new Map<string, { installation: string; shop: string }>();
 
-async function appInstallationId(shop: string, admin: AdminGraphql): Promise<string> {
+async function appInstallationId(shop: string, admin: AdminGraphql): Promise<{ installation: string; shop: string }> {
   const hit = installationIdCache.get(shop);
   if (hit) return hit;
-  const data = await gql<{ currentAppInstallation: { id: string } }>(admin, `#graphql
-    query PickdayInstallation { currentAppInstallation { id } }`);
-  installationIdCache.set(shop, data.currentAppInstallation.id);
-  if (installationIdCache.size > 500) installationIdCache = new Map([[shop, data.currentAppInstallation.id]]);
-  return data.currentAppInstallation.id;
+  const data = await gql<{ currentAppInstallation: { id: string }; shop: { id: string } }>(admin, `#graphql
+    query PickdayInstallation { currentAppInstallation { id } shop { id } }`);
+  const ids = { installation: data.currentAppInstallation.id, shop: data.shop.id };
+  if (installationIdCache.size > 500) installationIdCache = new Map();
+  installationIdCache.set(shop, ids);
+  return ids;
 }
 
 /** Create (or find) the validation and delivery customization for this shop. */
@@ -100,9 +101,8 @@ export interface PublishResult {
   bytes: { config: number; availability: number; fn: number };
 }
 
-/** Build and write all metafields for one shop. */
-export async function publishShop(shop: string, admin?: AdminGraphql, opts: { functions?: boolean } = {}): Promise<PublishResult> {
-  const client = admin ?? (await unauthenticated.admin(shop)).admin;
+/** The shop's current storefront config (what the widget sees), built from the database. */
+export async function storefrontConfigFor(shop: string) {
   const row = await requireShop(shop);
   const { settings, version } = await loadSettings(shop);
   const today = shopToday(row);
@@ -124,13 +124,21 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
     const names = Object.fromEntries(holidayRegions(a.country, row.primaryLocale.split("-")[0]).map((r) => [r.code, r.name]));
     a.regionNames = Object.fromEntries(a.regions.map((r) => [r, names[r] ?? r]));
   }
+  return { row, settings, config, today, version };
+}
+
+/** Build and write all metafields for one shop. */
+export async function publishShop(shop: string, admin?: AdminGraphql, opts: { functions?: boolean } = {}): Promise<PublishResult> {
+  const client = admin ?? (await unauthenticated.admin(shop)).admin;
+  const { row, settings, config, today } = await storefrontConfigFor(shop);
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
   const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null } = toFunctionConfig(config);
   // Capacity counts go to the Function too when they fit (otherwise it skips the "full" check, D-11).
   fnConfig.avail = JSON.stringify(fnConfig).length + JSON.stringify(availability).length < 24000 ? availability : null;
   const vars = ruleVariables(config);
 
-  const ownerId = await appInstallationId(shop, client);
+  const owners = await appInstallationId(shop, client);
+  const ownerId = owners.installation;
   let ids = { validationId: row.validationId, deliveryCustomizationId: row.deliveryCustomizationId };
   if (opts.functions !== false) {
     try {
@@ -146,6 +154,8 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   const metafields: Record<string, unknown>[] = [
     { ownerId, namespace: MF_NAMESPACE, key: "config", type: "json", value: json(config) },
     { ownerId, namespace: MF_NAMESPACE, key: "availability", type: "json", value: json(availability) },
+    // Read by the thank-you / order status block (checkout extensions can't read app-installation metafields).
+    { ownerId: owners.shop, namespace: FN_NAMESPACE, key: "checkout", type: "json", value: json(thankYouConfig(config)) },
   ];
   if (ids.validationId) {
     metafields.push({ ownerId: ids.validationId, namespace: FN_NAMESPACE, key: "config", type: "json", value: json(fnConfig) });
@@ -165,6 +175,15 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   else await clearWarning(shop, "configLarge");
   await prisma.shop.update({ where: { shop }, data: { publishedAt: new Date(), publishedFor: today, countsDirty: false } });
   return { config, bytes };
+}
+
+/** What the thank-you block needs: where the .ics endpoint lives and how to word the date. */
+export function thankYouConfig(config: StorefrontConfig) {
+  return {
+    u: (process.env.SHOPIFY_APP_URL ?? "").replace(/\/$/, ""),
+    dispatch: config.methods.find((m) => m.id === "shipping")?.dateMeaning === "dispatch",
+    tz: config.tz,
+  };
 }
 
 /** Delivery customization Function config: only what it needs. */

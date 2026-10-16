@@ -16,7 +16,7 @@
     "prisma": "prisma",
     "graphql-codegen": "graphql-codegen",
     "vite": "vite",
-    "typecheck": "react-router typegen && tsc --noEmit",
+    "typecheck": "react-router typegen && tsc --noEmit && tsc --noEmit -p extensions/pickday-admin && tsc --noEmit -p extensions/pickday-thank-you",
     "build:widget": "node scripts/build-widget.mjs",
     "test": "vitest run",
     "test:browser": "npm run build:widget && tsx tests/browser/widget.browser.ts",
