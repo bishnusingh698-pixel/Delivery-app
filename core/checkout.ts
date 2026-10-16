@@ -8,13 +8,15 @@
 import { checkSelection, type EngineInput } from "./engine";
 import { format } from "./i18n/format";
 import { matchLocale } from "./i18n/locales";
-import { datedLines, methodsFor } from "./rules";
+import { addDays } from "./civil";
+import { areaCovered, datedLines, findZone, methodsFor } from "./rules";
 import { ATTR_KEY, decodeItemSelection, decodeSelection } from "./selection";
 import type { Availability, CartLine, MethodId, Selection, StorefrontConfig } from "./types";
 
 export type Messages = Record<string, Record<string, string>>;
 
-export type FunctionConfig = StorefrontConfig & { trimmed?: boolean; avail?: Availability | null };
+/** tzShift: minutes to add to the shop's local time to get each pickup location's own local time (set at publish, refreshed hourly). */
+export type FunctionConfig = StorefrontConfig & { trimmed?: boolean; avail?: Availability | null; tzShift?: Record<string, number> };
 
 /* ------------------------------------------------------- validation */
 
@@ -143,19 +145,42 @@ export function validate(input: ValidationInput, messages: Messages): Validation
     }
   }
 
-  const now = { date: input.shop?.localTime?.date ?? "", minutes: minutesFromAliases(input.shop?.localTime) };
-  if (!now.date) return [];
+  // Delivery address checks: the postcode/region typed at checkout must still be covered,
+  // and its zone (not the one picked in the cart) decides the schedule.
+  let zoneId = sel.m === "delivery" ? sel.z : null;
+  if (sel.m === "delivery" && !cfg.trimmed && address?.zip) {
+    const where = { country, postcode: address.zip, region: address.provinceCode ?? null, areaId: sel.a };
+    if (areaCovered(cfg, where) === false) return err("area.notCovered", { postcode: address.zip });
+    zoneId = findZone(cfg, where)?.id ?? zoneId;
+  }
+  // Zones were left out of a trimmed config, so a zone's own days and slots can't be checked:
+  // let the order through rather than judge it by the wrong rules (D-11).
+  if (sel.m === "delivery" && cfg.trimmed && sel.z) return [];
+
+  const shopNow = { date: input.shop?.localTime?.date ?? "", minutes: minutesFromAliases(input.shop?.localTime) };
+  if (!shopNow.date) return [];
+  const shift = sel.m === "pickup" && sel.l ? cfg.tzShift?.[sel.l] ?? 0 : 0;
+  // Shopify only says which hour it is, so the minutes are unknown. Check at the start and
+  // at the end of the hour and accept the order if either passes: never block a valid order.
+  const conf: FunctionConfig = cfg;
+  const choice = sel;
+  const first = validateAt(shiftTime(shopNow, shift));
+  if (!first.length) return first;
+  const second = validateAt(shiftTime(shopNow, shift + 59));
+  return second.length ? first : second;
+
+  function validateAt(now: { date: string; minutes: number }): ValidationError[] {
   const base: EngineInput = {
-    config: cfg,
-    availability: cfg.avail ?? null,
-    method: sel.m,
-    locationId: sel.m === "pickup" ? sel.l : null,
-    zoneId: sel.m === "delivery" && !cfg.trimmed ? sel.z : null,
+    config: conf,
+    availability: conf.avail ?? null,
+    method: choice.m,
+    locationId: choice.m === "pickup" ? choice.l : null,
+    zoneId,
     now,
     lines: dated,
   };
 
-  if (cfg.dateMode === "item") {
+  if (conf.dateMode === "item") {
     for (const line of dated) {
       const it = itemSel.get(line.key);
       if (!it?.d) {
@@ -168,15 +193,23 @@ export function validate(input: ValidationInput, messages: Messages): Validation
     return [];
   }
 
-  if (!sel.d) return method.dateRequired ? err("validation.missingDate") : [];
-  const r = checkSelection(base, sel.d, sel.s);
-  if (!r.ok) return problem(r.reason, sel.lbl ?? sel.d, method.dateRequired, err);
+  if (!choice.d) return method.dateRequired ? err("validation.missingDate") : [];
+  const r = checkSelection(base, choice.d, choice.s);
+  if (!r.ok) return problem(r.reason, choice.lbl ?? choice.d, method.dateRequired, err);
 
   // Surcharge lines must match the chosen date/slot (Pro feature, D-19).
   const wanted = new Set(r.fees.map((f) => f.variantId).filter(Boolean) as string[]);
   for (const v of wanted) if (!feeQty.get(v)) return err("validation.surcharge");
   for (const [v, q] of feeQty) if (q > 0 && !wanted.has(v)) return err("validation.surcharge");
   return [];
+  }
+}
+
+/** Add minutes to a civil date-time, rolling the date over as needed. */
+export function shiftTime(now: { date: string; minutes: number }, by: number): { date: string; minutes: number } {
+  const total = now.minutes + by;
+  const days = Math.floor(total / 1440);
+  return { date: days ? addDays(now.date, days) : now.date, minutes: total - days * 1440 };
 }
 
 function problem(reason: string, label: string, required: boolean, err: (k: string, v?: Record<string, string>) => ValidationError[]): ValidationError[] {
@@ -231,7 +264,9 @@ export function customizeDelivery(input: DeliveryInput, messages: Messages): Del
   for (const g of input.cart.deliveryGroups) {
     let keep = g.deliveryOptions.filter((o) => optionMethod(cfg, o) === sel.m);
     if (sel.m === "pickup" && locName) {
-      const atLoc = keep.filter((o) => (o.title ?? "").toLowerCase().includes(locName));
+      // An exact name match wins, so "Downtown" doesn't also keep "Downtown East".
+      const exact = keep.filter((o) => (o.title ?? "").trim().toLowerCase() === locName);
+      const atLoc = exact.length ? exact : keep.filter((o) => (o.title ?? "").toLowerCase().includes(locName));
       if (atLoc.length) keep = atLoc;
     }
     if (!keep.length) continue;

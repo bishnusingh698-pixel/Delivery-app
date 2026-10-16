@@ -1,3 +1,4 @@
+import { syncFeeProduct } from "../services/fee-product.server";
 import { useEffect, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData, useRevalidator } from "react-router";
@@ -39,9 +40,19 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
   const { settings: mapped, missing } = await remapTargets(ctx.admin, prep.settings, src.refs, src.from === ctx.shop);
   if (body.intent === "preview") return { intent: "preview", ok: true, changes: prep.changes, productIds: prep.productIds, fees: prep.fees, missing };
   if (body.code && !(await useShareCode(body.code))) return { intent: "apply", ok: false, error: "badCode" };
+  // Another store's email recipients and Flow switch never come along: keep this store's own.
+  if (src.from !== ctx.shop) mapped.notifications = ctx.settings.notifications;
   const cols = collectionIdsIn(mapped.productRules);
   if (cols.length) mapped.productRules.collectionProducts = await resolveCollectionProducts(ctx.admin, cols).catch(() => ({}));
-  const r = await saveSettings(ctx, mapped, `Imported settings${body.code ? " (share code)" : " (file)"}`);
+  // Imported fees need this store's own fee variants, or they would never be charged.
+  let next = mapped;
+  if (hasFeature(ctx.plan, "surcharges") && mapped.surcharges.length) {
+    next = await syncFeeProduct(ctx.admin, ctx.shop, mapped).catch((e) => {
+      console.error("[transfer] fee product", (e as Error).message);
+      return mapped;
+    });
+  }
+  const r = await saveSettings(ctx, next, `Imported settings${body.code ? " (share code)" : " (file)"}`);
   if (!r.ok) return { intent: "apply", ok: false, error: "invalid" };
   await logActivity(ctx.shop, "import", `Changed: ${prep.changes.join(", ") || "nothing"}`, ctx.actor);
   return { intent: "apply", ok: true };

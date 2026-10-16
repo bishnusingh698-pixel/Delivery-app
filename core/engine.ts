@@ -323,8 +323,13 @@ export function feesFor(
   return out;
 }
 
-const dayFee = (config: EngineConfig, method: MethodId, date: string, sameDay: boolean) =>
-  feesFor(config, method, date, null, sameDay)[0] ?? null;
+/** The day's fee as shown in the calendar: every matching fee added up, as at checkout. */
+function dayFee(config: EngineConfig, method: MethodId, date: string, sameDay: boolean): Surcharge | null {
+  const fees = feesFor(config, method, date, null, sameDay);
+  if (fees.length < 2) return fees[0] ?? null;
+  const cents = fees.reduce((n, f) => n + Math.round(Number(f.amount) * 100), 0);
+  return { ...fees[0], amount: (cents / 100).toFixed(2) };
+}
 
 /* --------------------------------------------------------------- the day */
 
@@ -401,7 +406,7 @@ export function dayStatus(input: EngineInput, rules: ResolvedRules, earliest: Ea
   }
 
   const isSameDay = date === now.date;
-  const result: DayStatus = { ...base, available: true, left, fee: dayFee(config, rules.method.id, date, isSameDay) };
+  const result: DayStatus = { ...base, available: true, left, fee: dayFee(config, rules.method.id, date, isSameDay && earliest.sameDay) };
 
   if (rules.method.slotsEnabled) {
     const slots = slotsForDate(rules.capacity, date, special);

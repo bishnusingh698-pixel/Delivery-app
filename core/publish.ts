@@ -117,6 +117,7 @@ export function toStorefrontConfig(settings: Settings, meta: PublishMeta): Store
 
 /** Text keys the Functions may need merchant overrides for. */
 export const FUNCTION_TEXT_KEYS = [
+  "area.notCovered",
   "validation.missingDate",
   "validation.missingItemDate",
   "validation.dateUnavailable",

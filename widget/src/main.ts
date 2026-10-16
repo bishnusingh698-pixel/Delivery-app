@@ -105,6 +105,16 @@ async function main() {
     if (!pd.canCheckout()) {
       e.preventDefault();
       e.stopImmediatePropagation();
+      return;
+    }
+    // The choice is still being saved to the cart: wait for it, then continue to checkout.
+    if (pd.hasPendingSave()) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      void pd.flush().finally(() => {
+        if (e.type === "submit") (target as HTMLFormElement).requestSubmit((btn as HTMLElement | null) ?? undefined);
+        else (btn as HTMLElement).click();
+      });
     }
   };
   document.addEventListener("click", gate, true);
@@ -260,7 +270,7 @@ async function setHidden(pd: Pickday, form: HTMLFormElement | null, date: string
     }
     input.value = value;
   };
-  set(ATTR_KEY, date ? JSON.stringify({ d: date, s: null, t: null, lbl: pd.label(date, null) }) : "");
+  set(ATTR_KEY, date ? JSON.stringify({ d: date, s: null, t: null, lbl: pd.label(date, null, pd.tx, false) }) : "");
   set(READABLE_KEYS.date, date ? `${ptx.date(date, "long")} (${date})` : "");
 }
 

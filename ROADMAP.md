@@ -9,6 +9,7 @@ Ideas for after v1, roughly in order of value. Nothing here is promised.
 3. **Shopify POS.** A POS UI extension so in-store staff can take pre-orders with a pickup date.
 4. **Driver view.** A mobile-friendly route page for drivers (no Shopify login), with stops in order and "delivered" buttons.
 5. **Reports.** Busiest days, lead time actually used, cancellations, revenue per method, this year vs last year.
+6. **Capacity across items in date-per-item mode** (DECISIONS D-41). Check all lines on the same day together at checkout, and apply zone and tag-based limits per item.
 
 ## Later
 

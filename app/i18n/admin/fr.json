@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "Ce n'est pas un fichier de paramètres Pickday.",
   "transfer.exportHeading": "Exporter",
   "transfer.exportHelp": "Téléchargez tous les paramètres Pickday dans un fichier, ou créez un code à coller dans Pickday sur une autre boutique (par exemple votre deuxième boutique ou une boutique de test). Les codes sont valables 24 heures.",
-  "transfer.feeNote": "Ouvrez Suppléments et cliquez une fois sur Enregistrer après l'import pour créer le produit des frais dans cette boutique.",
+  "transfer.feeNote": "Les frais sont configurés dans cette boutique lors de l'importation. Vérifiez ensuite la page Frais supplémentaires.",
   "transfer.importHeading": "Importer",
   "transfer.importHelp": "Remplacez les paramètres Pickday de cette boutique par ceux d'un fichier ou d'un code de partage. Vous verrez les modifications avant tout enregistrement.",
   "transfer.imported": "Paramètres importés",

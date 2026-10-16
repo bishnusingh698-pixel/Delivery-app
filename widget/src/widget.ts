@@ -63,6 +63,7 @@ export class Pickday {
   mounts = new Set<HTMLElement>();
   st: State;
   saving: number | undefined;
+  inflight: Promise<void> | null = null;
   lastSaved = "";
   ready = false;
   hidden = true;
@@ -284,7 +285,7 @@ export class Pickday {
         const it = this.st.items[line.key];
         if (!it?.d) continue;
         const r = checkSelection(this.input({ lines: [line] }), it.d, it.s);
-        if (!r.ok) {
+        if (!r.ok && r.reason !== "slotRequired") {
           log(this.cfg, "item invalid", line.title, r);
           this.st.items[line.key] = { d: null, s: null };
           this.st.notice = this.tx.t("invalidated");
@@ -324,7 +325,8 @@ export class Pickday {
       z: this.zoneId(),
       a: area,
       c: this.country,
-      lbl: this.st.date ? this.label(this.st.date, slot ? [slot.start, slot.end] : null) : null,
+      // Saved labels are shown at checkout later: no "Today"/"Tomorrow" in them.
+      lbl: this.st.date ? this.label(this.st.date, slot ? [slot.start, slot.end] : null, this.tx, false) : null,
       lc: this.boot.locale,
       f: fees.length ? fees.map((f) => f.id) : null,
     };
@@ -343,11 +345,11 @@ export class Pickday {
   }
 
   /** "Fri, 18 Oct, 10:00–12:00" in the shopper's language. */
-  label(date: string, slot: [string, string] | null, tx = this.tx): string {
+  label(date: string, slot: [string, string] | null, tx = this.tx, relative = true): string {
     const today = this.now().date;
     const m = this.cfg.methods.find((x) => x.id === this.st.method);
     let d = tx.date(date);
-    if (m?.schedule.todayTomorrowLabels && tx === this.tx) {
+    if (relative && m?.schedule.todayTomorrowLabels && tx === this.tx) {
       if (date === today) d = tx.t("calendar.today");
       else if (date === addDays(today, 1)) d = tx.t("calendar.tomorrow");
     }
@@ -356,7 +358,33 @@ export class Pickday {
 
   schedulePersist() {
     window.clearTimeout(this.saving);
-    this.saving = window.setTimeout(() => void this.persist(false), 300);
+    this.saving = window.setTimeout(() => {
+      this.saving = undefined;
+      void this.track(this.persist(false));
+    }, 300);
+  }
+
+  private track(p: Promise<void>): Promise<void> {
+    const run = p.catch((e) => log(this.cfg, "save failed", e)).finally(() => {
+      if (this.inflight === run) this.inflight = null;
+    });
+    this.inflight = run;
+    return run;
+  }
+
+  /** Is a cart save waiting or running? (checkout must wait for it) */
+  hasPendingSave(): boolean {
+    return this.saving !== undefined || this.inflight !== null;
+  }
+
+  /** Finish any waiting or running save now. */
+  async flush(): Promise<void> {
+    if (this.saving !== undefined) {
+      window.clearTimeout(this.saving);
+      this.saving = undefined;
+      await this.track(this.persist(false));
+    }
+    while (this.inflight) await this.inflight;
   }
 
   /** Write cart attributes (and per-item properties / surcharge lines). */
@@ -406,7 +434,7 @@ export class Pickday {
       const props = { ...(item.properties ?? {}) };
       const slot = it?.d && it.s ? this.itemSlot(line!, it) : null;
       const want: Record<string, string> = {
-        [ATTR_KEY]: it?.d ? JSON.stringify({ d: it.d, s: it.s, t: slot ? `${slot.start}-${slot.end}` : null, lbl: this.label(it.d, slot ? [slot.start, slot.end] : null) }) : "",
+        [ATTR_KEY]: it?.d ? JSON.stringify({ d: it.d, s: it.s, t: slot ? `${slot.start}-${slot.end}` : null, lbl: this.label(it.d, slot ? [slot.start, slot.end] : null, this.tx, false) }) : "",
         [READABLE_KEYS.date]: it?.d ? `${ptx.date(it.d, "long")} (${it.d})` : "",
         [READABLE_KEYS.slot]: slot ? ptx.range(slot.start, slot.end) : "",
       };

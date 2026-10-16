@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "Non è un file di impostazioni Pickday.",
   "transfer.exportHeading": "Esporta",
   "transfer.exportHelp": "Scarica tutte le impostazioni di Pickday come file, oppure crea un codice da incollare in Pickday in un altro negozio (ad esempio il tuo secondo negozio o un negozio di prova). I codici valgono 24 ore.",
-  "transfer.feeNote": "Dopo l'importazione apri Supplementi e fai clic su Salva una volta, così il prodotto del supplemento viene creato in questo negozio.",
+  "transfer.feeNote": "I supplementi vengono configurati in questo negozio durante l'importazione. Controlla poi la pagina Supplementi.",
   "transfer.importHeading": "Importa",
   "transfer.importHelp": "Sostituisci le impostazioni Pickday di questo negozio con quelle di un file o di un codice di condivisione. Vedrai cosa cambia prima che venga salvato qualcosa.",
   "transfer.imported": "Impostazioni importate",

@@ -3,6 +3,8 @@
  * Mirrors core/types.ts. Unknown keys are stripped; missing keys get defaults
  * by merging with defaultSettings() before parsing.
  */
+import { bracesBalanced } from "../../core/texts-ui";
+import { postcodeProblems } from "../../core/areas-ui";
 import { z } from "zod";
 import { defaultSettings } from "../../core/defaults";
 import type { Settings } from "../../core/types";
@@ -255,11 +257,32 @@ export type SettingsIssue = { path: string; message: string };
 export function validateSettings(input: unknown): { ok: true; data: Settings } | { ok: false; issues: SettingsIssue[] } {
   const merged = deepMerge(defaultSettings(), input);
   const res = settingsSchema.safeParse(merged);
-  if (res.success) return { ok: true, data: res.data as Settings };
+  if (res.success) {
+    // The pages check these too; repeated here so an imported file can't publish them.
+    const issues = contentIssues(res.data as Settings);
+    return issues.length ? { ok: false, issues } : { ok: true, data: res.data as Settings };
+  }
   return {
     ok: false,
     issues: res.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
   };
+}
+
+function contentIssues(s: Settings): SettingsIssue[] {
+  const out: SettingsIssue[] = [];
+  for (const [locale, map] of Object.entries(s.texts)) {
+    for (const [key, text] of Object.entries(map)) if (!bracesBalanced(text)) out.push({ path: `texts.${locale}.${key}`, message: "Unbalanced { } in text" });
+  }
+  s.areas.forEach((a, i) => {
+    if (a.mode === "postcode" && postcodeProblems(a.postcodes).invalid.length) out.push({ path: `areas.${i}.postcodes`, message: "Postcode rule can't be read" });
+  });
+  s.zones.forEach((z, i) => {
+    if (postcodeProblems(z.postcodes).invalid.length) out.push({ path: `zones.${i}.postcodes`, message: "Postcode rule can't be read" });
+  });
+  s.closures.forEach((c, i) => {
+    if (!c.yearly && c.end < c.start) out.push({ path: `closures.${i}.end`, message: "End is before start" });
+  });
+  return out;
 }
 
 /** Lenient read of a stored document (old versions, partial data). */

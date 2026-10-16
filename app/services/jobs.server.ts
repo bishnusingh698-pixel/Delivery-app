@@ -12,16 +12,17 @@ import { sendDigestIfDue } from "./digest.server";
 import { checkEmbed } from "./embed.server";
 import { publishShop } from "./publish.server";
 
-let running: Promise<unknown> | null = null;
+const running = new Map<string, Promise<unknown>>();
 
-/** Run a job in the background so cron-job.org gets an instant answer; never two at once. */
+/** Run a job in the background so cron-job.org gets an instant answer; never two of the same job at once. */
 export function runInBackground(name: string, fn: () => Promise<unknown>): boolean {
-  if (running) return false;
+  if (running.has(name)) return false;
   const started = Date.now();
-  running = fn()
+  const p = fn()
     .then((r) => console.log(`[jobs] ${name} done in ${Date.now() - started} ms`, r))
     .catch((e) => console.error(`[jobs] ${name} failed`, e))
-    .finally(() => (running = null));
+    .finally(() => running.delete(name));
+  running.set(name, p);
   return true;
 }
 
@@ -82,6 +83,13 @@ export async function daily() {
       prisma.scheduledOrder.deleteMany({ where: { shop: g.shop } }),
       prisma.capacityCount.deleteMany({ where: { shop: g.shop } }),
       prisma.productCount.deleteMany({ where: { shop: g.shop } }),
+      prisma.activityLog.deleteMany({ where: { shop: g.shop } }),
+      prisma.digestLog.deleteMany({ where: { shop: g.shop } }),
+      prisma.shareCode.deleteMany({ where: { shop: g.shop } }),
+      prisma.webhookLog.deleteMany({ where: { shop: g.shop } }),
+      prisma.settings.deleteMany({ where: { shop: g.shop } }),
+      prisma.session.deleteMany({ where: { shop: g.shop } }),
+      prisma.shop.deleteMany({ where: { shop: g.shop } }),
     ]);
   }
   return { pruned, checked: shops.length, cleanedUninstalled: gone.length };

@@ -5,6 +5,7 @@
  * that changed (never incremented), so retries and out-of-order webhooks
  * can't drift them.
  */
+import { withLock } from "./lock.server";
 import prisma from "../db.server";
 import { lineMatches } from "../../core/rules";
 import type { Availability, CartLine, DayCount, Settings, StorefrontConfig } from "../../core/types";
@@ -37,6 +38,11 @@ type Agg = Map<string, { orders: number; items: number }>;
 export async function recountDates(shop: string, settings: Settings, dates: string[]) {
   const unique = [...new Set(dates.filter(Boolean))];
   if (!unique.length) return;
+  // Read and rewrite under one lock per store so two recounts can't overwrite each other.
+  await withLock(`count:${shop}`, () => recount(shop, settings, unique));
+}
+
+async function recount(shop: string, settings: Settings, unique: string[]) {
   const orders = await prisma.scheduledOrder.findMany({
     where: { shop, status: { not: "cancelled" }, date: { in: unique } },
   });
@@ -70,8 +76,10 @@ export async function recountDates(shop: string, settings: Settings, dates: stri
     }
   };
 
+  // Orders with per-item rows are counted from those rows below, not twice.
+  const itemOrders = new Set(perItem.map((i) => i.orderId));
   for (const o of orders) {
-    if (!o.date || !unique.includes(o.date)) continue;
+    if (!o.date || !unique.includes(o.date) || itemOrders.has(o.orderId)) continue;
     const items = ((o.items as unknown as StoredItem[]) ?? []).filter((i) => i.needsDate !== false);
     const qty = items.reduce((n, i) => n + i.qty, 0);
     const key = capacityKey(settings, o.method, o.locationId, o.zoneId);

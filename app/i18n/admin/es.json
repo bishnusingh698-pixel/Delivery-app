@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "Ese no es un archivo de ajustes de Pickday.",
   "transfer.exportHeading": "Exportar",
   "transfer.exportHelp": "Descarga todos los ajustes de Pickday como archivo o crea un código para pegarlo en Pickday en otra tienda (por ejemplo, tu segunda tienda o una tienda de prueba). Los códigos funcionan durante 24 horas.",
-  "transfer.feeNote": "Abre Recargos y haz clic en Guardar una vez tras importar para que se cree el producto de cargo en esta tienda.",
+  "transfer.feeNote": "Los recargos se configuran en esta tienda al importar. Revisa después la página Recargos.",
   "transfer.importHeading": "Importar",
   "transfer.importHelp": "Reemplaza los ajustes de Pickday de esta tienda con los de un archivo o un código para compartir. Verás qué cambia antes de guardar nada.",
   "transfer.imported": "Ajustes importados",

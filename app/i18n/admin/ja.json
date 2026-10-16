@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "Pickdayの設定ファイルではありません。",
   "transfer.exportHeading": "エクスポート",
   "transfer.exportHelp": "Pickdayのすべての設定をファイルでダウンロードするか、別のストア（2つ目のストアやテストストアなど）のPickdayに貼り付けるコードを作成します。コードの有効期限は24時間です。",
-  "transfer.feeNote": "インポート後に「追加料金」を開いて一度保存すると、このストアに料金の商品が作成されます。",
+  "transfer.feeNote": "手数料はインポート時にこのストアで設定されます。インポート後に追加料金ページを確認してください。",
   "transfer.importHeading": "インポート",
   "transfer.importHelp": "このストアのPickday設定を、ファイルまたは共有コードの設定で置き換えます。保存前に変更内容を確認できます。",
   "transfer.imported": "設定をインポートしました",

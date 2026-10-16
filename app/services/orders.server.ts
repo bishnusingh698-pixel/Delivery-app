@@ -8,7 +8,8 @@
 import type { Prisma } from "@prisma/client";
 import prisma from "../db.server";
 import { loadSettings, logActivity } from "../models/settings.server";
-import { addWarning, flagsOf, planOf, requireShop, setFlags } from "../models/shop.server";
+import { addWarning, flagsOf, planOf, requireShop, setFlags, shopToday } from "../models/shop.server";
+import { zonedToUtc } from "../../core/tz";
 import { PLAN_ORDER_LIMIT } from "../../core/publish";
 import type { Settings } from "../../core/types";
 import { recountDates } from "./counts.server";
@@ -25,6 +26,8 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
   const { settings } = await loadSettings(shop);
   const parsed = parseOrder(payload, settings);
   const existing = await prisma.scheduledOrder.findUnique({ where: { shop_orderId: { shop, orderId: String(payload.id) } } });
+  const sourceAt = payload.updated_at ? new Date(payload.updated_at) : null;
+  if (existing?.sourceUpdatedAt && sourceAt && sourceAt < existing.sourceUpdatedAt) return "stale";
 
   if (!parsed) {
     // Choice removed (or never made). Only matters if we had recorded it.
@@ -36,8 +39,6 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     if (admin && !existing.limited) await flowTrigger(shop, admin, "cancelled", existing).catch(() => {});
     return "removed";
   }
-
-  if (existing?.sourceUpdatedAt && parsed.updatedAt && parsed.updatedAt < existing.sourceUpdatedAt) return "stale";
 
   // Admin reschedules (stored in history) win over the original cart choice until the order changes them again.
   const keepAdminDate = existing && Array.isArray(existing.history) && (existing.history as unknown[]).length > 0 && topic !== "ADMIN";
@@ -164,6 +165,19 @@ export async function firstDelivery(id: string | null, shop: string, topic: stri
   } catch {
     return false;
   }
+}
+
+const planRank = (p: string) => (p === "pro" ? 2 : p === "starter" ? 1 : 0);
+
+/**
+ * Run after any plan change (from the Plans page or the billing webhook, whichever
+ * sees it first): on an upgrade, release this month's limited orders.
+ */
+export async function releaseAfterUpgrade(shop: string, admin: AdminGraphql, change: { from: string; to: string } | null) {
+  if (!change || planRank(change.to) <= planRank(change.from)) return 0;
+  const row = await requireShop(shop);
+  const monthStart = shopToday(row).slice(0, 8) + "01";
+  return releaseLimited(shop, admin, zonedToUtc(monthStart, "00:00", row.timeZone || "UTC"));
 }
 
 /**

@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { customizeDelivery, minutesFromAliases, validate, type DeliveryConfig, type ValidationInput } from "../core/checkout";
+import { customizeDelivery, minutesFromAliases, shiftTime, validate, type DeliveryConfig, type ValidationInput } from "../core/checkout";
 import { toFunctionConfig } from "../core/publish";
 import type { Selection, StorefrontConfig } from "../core/types";
 import { config } from "./helpers";
@@ -111,6 +111,38 @@ describe("validation Function", () => {
     expect(validate(vInput(c, { attr: sel({ d: null }) }), messages)[0].message).toBe(messages.en["validation.missingItemDate"]);
     const lines = vInput(c).cart.lines.map((l) => ({ ...l, attribute: { value: JSON.stringify({ d: "2026-10-15", s: null, t: null, lbl: "Thu" }) } }));
     expect(validate(vInput(c, { attr: sel({ d: null }), lines }), messages)).toEqual([]);
+  });
+
+  it("uses a pickup location's own time zone for cutoffs", () => {
+    // Shop in Berlin, location in New York (6 hours behind). At 15:00 Berlin it is 09:00 in New York: before the 14:00 cutoff.
+    const c = config((s) => {
+      s.methods.pickup.enabled = true;
+      s.methods.pickup.dateRequired = true;
+      s.methods.shipping.enabled = false;
+      s.methods.delivery.enabled = false;
+      s.locations.push({ id: "ny", shopifyLocationId: null, name: "New York", address: "", mapUrl: "", instructions: {}, timeZone: "America/New_York", enabled: true, countries: "all", custom: null });
+    });
+    const input = vInput(c, { hour: 15, attr: sel({ m: "pickup", l: "ny" }) });
+    expect(validate(input, messages)).toHaveLength(1);
+    (input.validation!.metafield!.jsonValue as any).tzShift = { ny: -360 };
+    expect(validate(input, messages)).toEqual([]);
+  });
+
+  it("blocks a delivery postcode typed at checkout that isn't covered", () => {
+    const c = config((s) => {
+      s.methods.delivery.enabled = true;
+      s.methods.delivery.dateRequired = true;
+      s.areas.push({ country: "DE", mode: "postcode", postcodes: ["10115"], areas: [], regions: [], askFirst: false });
+    });
+    expect(validate(vInput(c, { attr: sel({ m: "delivery" }) }), messages)).toEqual([]);
+    const input = vInput(c, { attr: sel({ m: "delivery" }) });
+    input.cart.deliveryGroups = [{ deliveryAddress: { countryCode: "DE", zip: "20095" } }];
+    expect(validate(input, messages)[0].message).toContain("20095");
+  });
+
+  it("adds minutes across midnight", () => {
+    expect(shiftTime({ date: "2026-10-14", minutes: 60 }, -120)).toEqual({ date: "2026-10-13", minutes: 1380 });
+    expect(shiftTime({ date: "2026-10-14", minutes: 1400 }, 59)).toEqual({ date: "2026-10-15", minutes: 19 });
   });
 });
 

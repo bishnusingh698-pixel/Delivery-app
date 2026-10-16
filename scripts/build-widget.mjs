@@ -55,7 +55,7 @@ if (js + css > 35 * 1024) {
 
 
 // Checkout Function messages: only the keys the Functions use, every language.
-const fnKeys = (k) => k.startsWith("validation.") || k.startsWith("checkout.") || k.startsWith("method.");
+const fnKeys = (k) => k.startsWith("validation.") || k.startsWith("checkout.") || k.startsWith("method.") || k === "area.notCovered";
 const fnMessages = {};
 for (const locale of locales) {
   const msgs = JSON.parse(readFileSync(join(localesDir, `${locale}.json`), "utf8"));
