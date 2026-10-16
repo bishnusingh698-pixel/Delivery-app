@@ -1,0 +1,402 @@
+{
+  "heading": {
+    "where": "Widget heading above everything.",
+    "max": 45
+  },
+  "methodGroup": {
+    "where": "Screen-reader label for the method choice (radio group).",
+    "max": 60
+  },
+  "method.delivery": {
+    "where": "Method name; must match Shopify checkout's term for local delivery.",
+    "max": 22
+  },
+  "method.pickup": {
+    "where": "Method name; must match Shopify checkout's term for in-store pickup.",
+    "max": 22
+  },
+  "method.shipping": {
+    "where": "Method name; must match Shopify checkout's term for shipping.",
+    "max": 22
+  },
+  "location.label": {
+    "where": "Label of the pickup location selector.",
+    "max": 30
+  },
+  "location.instructions": {
+    "where": "Heading above the merchant's pickup instructions.",
+    "max": 30
+  },
+  "location.map": {
+    "where": "Link to the location on a map.",
+    "max": 20
+  },
+  "area.postcodeLabel": {
+    "where": "Label of the postcode input (local delivery). Use the local word (ZIP code, PLZ, CEP…).",
+    "max": 20
+  },
+  "area.check": {
+    "where": "Button that checks the postcode.",
+    "max": 12
+  },
+  "area.areaLabel": {
+    "where": "Label of the delivery-area dropdown.",
+    "max": 25
+  },
+  "area.choose": {
+    "where": "Placeholder option in the area dropdown.",
+    "max": 30
+  },
+  "area.covered": {
+    "where": "Shown after a successful postcode check. {postcode} = what the shopper typed.",
+    "max": 60
+  },
+  "area.coveredArea": {
+    "where": "Shown after choosing a covered area. {area} = area name.",
+    "max": 60
+  },
+  "area.notCovered": {
+    "where": "Postcode not covered. {postcode} = what the shopper typed.",
+    "max": 60
+  },
+  "area.trySwitch": {
+    "where": "Follows the not-covered message when other methods exist.",
+    "max": 50
+  },
+  "area.enterPostcode": {
+    "where": "Error when Check is pressed with an empty field.",
+    "max": 40
+  },
+  "area.change": {
+    "where": "Link to change the postcode/area.",
+    "max": 12
+  },
+  "date.label.delivery": {
+    "where": "Label for the date field (local delivery, or shipping when the date means arrival).",
+    "max": 25
+  },
+  "date.label.pickup": {
+    "where": "Label for the date field (pickup).",
+    "max": 25
+  },
+  "date.label.dispatch": {
+    "where": "Label for the date field when the shipping date means the day the parcel ships.",
+    "max": 25
+  },
+  "date.choose": {
+    "where": "Placeholder of the date dropdown / button.",
+    "max": 25
+  },
+  "calendar.prev": {
+    "where": "Accessible label for the previous-month arrow.",
+    "max": 30
+  },
+  "calendar.next": {
+    "where": "Accessible label for the next-month arrow.",
+    "max": 30
+  },
+  "calendar.today": {
+    "where": "Label for today's date (also used instead of the date when enabled).",
+    "max": 12
+  },
+  "calendar.tomorrow": {
+    "where": "Label for tomorrow's date (used instead of the date when enabled).",
+    "max": 12
+  },
+  "calendar.available": {
+    "where": "Screen-reader state for a bookable day.",
+    "max": 20
+  },
+  "calendar.selected": {
+    "where": "Screen-reader state for the chosen day.",
+    "max": 20
+  },
+  "reason.closed": {
+    "where": "Why a day can't be chosen: shop closed that day.",
+    "max": 25
+  },
+  "reason.holiday": {
+    "where": "Day closed for a holiday. {name} = holiday name (from the merchant, may be another language).",
+    "max": 40
+  },
+  "reason.vacation": {
+    "where": "Day closed because the shop is on vacation.",
+    "max": 30
+  },
+  "reason.full": {
+    "where": "Day has no capacity left.",
+    "max": 25
+  },
+  "reason.tooSoon": {
+    "where": "Day is earlier than the preparation time allows.",
+    "max": 25
+  },
+  "reason.notOpen": {
+    "where": "Day before the merchant's launch date.",
+    "max": 30
+  },
+  "reason.productUnavailable": {
+    "where": "A product in the cart isn't sold on that day. {product} = product title.",
+    "max": 50
+  },
+  "reason.soldOut": {
+    "where": "A product's daily limit is reached. {product} = product or rule name.",
+    "max": 50
+  },
+  "reason.unavailable": {
+    "where": "Generic fallback reason.",
+    "max": 25
+  },
+  "reason.mayShift": {
+    "where": "Extra note for holidays based on a lunar calendar.",
+    "max": 70
+  },
+  "slot.label": {
+    "where": "Label above the time slot chips.",
+    "max": 25
+  },
+  "slot.group": {
+    "where": "Screen-reader label for the slot group.",
+    "max": 30
+  },
+  "slot.left": {
+    "where": "Shown on a slot or day with few spots left.",
+    "max": 20
+  },
+  "slot.full": {
+    "where": "Slot with no capacity left.",
+    "max": 10
+  },
+  "slot.busy": {
+    "where": "Shown under the slots when few remain.",
+    "max": 60
+  },
+  "fee": {
+    "where": "Surcharge next to a date or slot. {amount} = formatted price incl. currency.",
+    "max": 12
+  },
+  "fee.label": {
+    "where": "Name of the surcharge line explained to the shopper.",
+    "max": 30
+  },
+  "summary.delivery": {
+    "where": "Summary line after choosing (local delivery or shipping arrival). {date} = formatted date or Today/Tomorrow.",
+    "max": 60
+  },
+  "summary.deliveryTime": {
+    "where": "Same with a time slot. {time} = e.g. 10:00–12:00.",
+    "max": 70
+  },
+  "summary.pickup": {
+    "where": "Summary for pickup (single location).",
+    "max": 60
+  },
+  "summary.pickupTime": {
+    "where": "Pickup with slot.",
+    "max": 70
+  },
+  "summary.pickupAt": {
+    "where": "Pickup with a named location.",
+    "max": 80
+  },
+  "summary.pickupAtTime": {
+    "where": "Pickup with location and slot.",
+    "max": 90
+  },
+  "summary.dispatch": {
+    "where": "Shipping when the date is the dispatch day.",
+    "max": 60
+  },
+  "change": {
+    "where": "Link next to the summary to change the choice.",
+    "max": 12
+  },
+  "tzNote": {
+    "where": "Shown when the shopper's device is in another time zone. {zone} = translated time-zone name from the browser, e.g. 'Central European Time'.",
+    "max": 70
+  },
+  "required": {
+    "where": "Inline error when trying to check out without a date.",
+    "max": 50
+  },
+  "requiredSlot": {
+    "where": "Inline error when a slot is required.",
+    "max": 50
+  },
+  "requiredItems": {
+    "where": "Per-item mode: an item has no date.",
+    "max": 60
+  },
+  "invalidated": {
+    "where": "Shown when a saved date became invalid (cutoff passed, slot full, cart changed).",
+    "max": 80
+  },
+  "noDates": {
+    "where": "No bookable date at all.",
+    "max": 60
+  },
+  "noCommonDate": {
+    "where": "No date suits every item. {product} = the restricting product.",
+    "max": 120
+  },
+  "minOrder": {
+    "where": "Minimum order value not met. {method} = method name, {amount} = formatted amount.",
+    "max": 70
+  },
+  "vacation": {
+    "where": "Default vacation message. {date} = last closed day, {nextDate} = first open day.",
+    "max": 100
+  },
+  "loading": {
+    "where": "While the widget prepares the calendar.",
+    "max": 40
+  },
+  "poweredBy": {
+    "where": "Free plan footer link. {brand} = app name.",
+    "max": 30
+  },
+  "product.earliest.delivery": {
+    "where": "Product page message. {date} = formatted date or Today/Tomorrow.",
+    "max": 50
+  },
+  "product.earliest.pickup": {
+    "where": "Product page message.",
+    "max": 50
+  },
+  "product.earliest.dispatch": {
+    "where": "Product page message when the shipping date is the dispatch day.",
+    "max": 50
+  },
+  "product.countdown.delivery": {
+    "where": "Countdown before the cutoff. {duration} = e.g. 2 h 15 min. Use the select so 'today/tomorrow/on <date>' reads naturally.",
+    "max": 80
+  },
+  "product.countdown.pickup": {
+    "where": "Countdown for pickup.",
+    "max": 80
+  },
+  "product.countdown.dispatch": {
+    "where": "Countdown for dispatch.",
+    "max": 80
+  },
+  "duration.hm": {
+    "where": "Countdown duration with hours. Numbers are formatted by the code.",
+    "max": 15
+  },
+  "duration.m": {
+    "where": "Countdown duration under an hour.",
+    "max": 10
+  },
+  "product.pickDate": {
+    "where": "Product page picker heading (date per item).",
+    "max": 45
+  },
+  "product.dateRequired": {
+    "where": "Product page error when the date is missing.",
+    "max": 70
+  },
+  "item.dateFor": {
+    "where": "Per-item mode in the cart. {product} = product title.",
+    "max": 60
+  },
+  "validation.missingDate": {
+    "where": "Checkout error from the validation Function.",
+    "max": 120
+  },
+  "validation.missingItemDate": {
+    "where": "Checkout error (per-item mode).",
+    "max": 120
+  },
+  "validation.dateUnavailable": {
+    "where": "Checkout error. {date} = the date as the shopper saw it.",
+    "max": 140
+  },
+  "validation.methodUnavailable": {
+    "where": "Checkout error.",
+    "max": 140
+  },
+  "validation.minOrder": {
+    "where": "Checkout error. {amount} = e.g. 30.00 EUR.",
+    "max": 100
+  },
+  "validation.surcharge": {
+    "where": "Checkout error.",
+    "max": 140
+  },
+  "checkout.renameDate": {
+    "where": "Renamed delivery option at checkout. {option} = the store's option name, {date} = chosen date (+ time).",
+    "max": 80
+  },
+  "checkout.renamePickup": {
+    "where": "Renamed pickup option at checkout.",
+    "max": 80
+  },
+  "thankyou.heading": {
+    "where": "Heading of the thank-you / order status block.",
+    "max": 40
+  },
+  "thankyou.delivery": {
+    "where": "Thank-you text. {date} may include the time slot.",
+    "max": 100
+  },
+  "thankyou.pickup": {
+    "where": "Thank-you text.",
+    "max": 100
+  },
+  "thankyou.pickupAt": {
+    "where": "Thank-you text with location.",
+    "max": 120
+  },
+  "thankyou.shipping": {
+    "where": "Thank-you text (shipping, arrival date).",
+    "max": 100
+  },
+  "thankyou.dispatch": {
+    "where": "Thank-you text (shipping, dispatch date).",
+    "max": 100
+  },
+  "thankyou.addToCalendar": {
+    "where": "Calendar links heading.",
+    "max": 25
+  },
+  "thankyou.google": {
+    "where": "Link label.",
+    "max": 20
+  },
+  "thankyou.ics": {
+    "where": "Link label for the calendar file.",
+    "max": 30
+  },
+  "calendar.eventDelivery": {
+    "where": "Calendar event title. {order} = order number like #1001.",
+    "max": 50
+  },
+  "calendar.eventPickup": {
+    "where": "Calendar event title.",
+    "max": 50
+  },
+  "calendar.eventShipping": {
+    "where": "Calendar event title.",
+    "max": 50
+  },
+  "calendar.eventDispatch": {
+    "where": "Calendar event title.",
+    "max": 50
+  },
+  "snippet.method": {
+    "where": "Label in order emails / packing slips.",
+    "max": 25
+  },
+  "snippet.date": {
+    "where": "Label in order emails / packing slips.",
+    "max": 15
+  },
+  "snippet.time": {
+    "where": "Label in order emails / packing slips.",
+    "max": 15
+  },
+  "snippet.location": {
+    "where": "Label in order emails / packing slips.",
+    "max": 25
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "blocks": {
+    "cart": {
+      "notReady": "Pickday is not set up yet. Open the Pickday app and save your settings, then turn on the Pickday app embed."
+    }
+  }
+}

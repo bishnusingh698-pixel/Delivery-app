@@ -6,6 +6,7 @@ import prisma from "../db.server";
 import { unauthenticated } from "../shopify.server";
 import { addDays } from "../../core/civil";
 import { toFunctionConfig, toStorefrontConfig } from "../../core/publish";
+import { holidayRegions } from "./holidays.server";
 import { targetIsEmpty } from "../../core/rules";
 import type { Settings, StorefrontConfig } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
@@ -117,6 +118,12 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
     debugUntil: row.debugUntil && row.debugUntil > new Date() ? row.debugUntil.toISOString() : null,
     today,
   });
+  // Region names for the storefront dropdown, in the store's language.
+  for (const a of config.areas) {
+    if (a.mode !== "region" || !a.regions.length) continue;
+    const names = Object.fromEntries(holidayRegions(a.country, row.primaryLocale.split("-")[0]).map((r) => [r.code, r.name]));
+    a.regionNames = Object.fromEntries(a.regions.map((r) => [r, names[r] ?? r]));
+  }
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
   const fnConfig = toFunctionConfig(config);
   const vars = ruleVariables(config);

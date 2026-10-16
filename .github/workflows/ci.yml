@@ -19,3 +19,9 @@ jobs:
       - run: npm run build
         env:
           SHOPIFY_APP_URL: http://localhost
+      - name: Storefront widget in a real browser (long text, RTL, phone width)
+        run: npx tsx tests/browser/widget.browser.ts
+        env:
+          PLAYWRIGHT_CHROMIUM: /usr/bin/google-chrome
+      - name: Built widget assets are up to date
+        run: git diff --exit-code -- extensions/pickday-theme/assets

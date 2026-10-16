@@ -1,0 +1,26 @@
+{%- comment -%} Boot data for the Pickday widget. Everything comes from app-owned metafields, so the storefront never needs the Pickday server. {%- endcomment -%}
+<script id="pickday-data" type="application/json">
+{
+  "config": {{ app.metafields.pickday.config.value | json | default: 'null' }},
+  "availability": {{ app.metafields.pickday.availability.value | json | default: 'null' }},
+  "locale": {{ request.locale.iso_code | json }},
+  "country": {{ localization.country.iso_code | json }},
+  "currency": {{ cart.currency.iso_code | default: shop.currency | json }},
+  "rate": 1,
+  "template": {{ template.name | append: '' | json }},
+  "pseudo": {% if request.design_mode and block.settings.pseudo %}true{% else %}false{% endif %},
+  "poweredByUrl": "https://pickday.app/?utm_source=widget",
+  "brand": "Pickday",
+  "assetBase": {{ 'pickday.js' | asset_url | split: 'pickday.js' | first | json }},
+  "itemCollections": {
+    {%- for item in cart.items limit: 100 -%}
+      {{ item.product_id | append: '' | json }}: [{% for c in item.product.collections limit: 50 %}"{{ c.id }}"{% unless forloop.last %},{% endunless %}{% endfor %}]{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  },
+  "itemTags": {
+    {%- for item in cart.items limit: 100 -%}
+      {{ item.product_id | append: '' | json }}: {{ item.product.tags | json }}{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  }
+}
+</script>

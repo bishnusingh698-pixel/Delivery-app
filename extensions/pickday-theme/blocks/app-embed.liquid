@@ -1,0 +1,20 @@
+{%- comment -%}
+  Pickday app embed. Turn it on once in Theme editor > App embeds.
+  It loads the widget on every page and places it in the cart drawer automatically.
+{%- endcomment -%}
+{%- if app.metafields.pickday.config.value -%}
+  {% render 'pickday-data', block: block %}
+  {{ 'pickday.css' | asset_url | stylesheet_tag: preload: false }}
+  <script src="{{ 'pickday.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:embed.name",
+  "target": "body",
+  "settings": [
+    { "type": "paragraph", "content": "t:embed.help" },
+    { "type": "checkbox", "id": "pseudo", "label": "t:embed.pseudo", "default": false }
+  ]
+}
+{% endschema %}

@@ -144,6 +144,8 @@ export interface CountryAreas {
   postcodes: string[]; // raw rule lines
   areas: Area[];
   regions: string[]; // province codes
+  /** Display names for the region codes (filled in when publishing). */
+  regionNames?: Record<string, string>;
   askFirst: boolean;
 }
 
