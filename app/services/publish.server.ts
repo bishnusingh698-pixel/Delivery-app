@@ -125,7 +125,9 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
     a.regionNames = Object.fromEntries(a.regions.map((r) => [r, names[r] ?? r]));
   }
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
-  const fnConfig = toFunctionConfig(config);
+  const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null } = toFunctionConfig(config);
+  // Capacity counts go to the Function too when they fit (otherwise it skips the "full" check, D-11).
+  fnConfig.avail = JSON.stringify(fnConfig).length + JSON.stringify(availability).length < 24000 ? availability : null;
   const vars = ruleVariables(config);
 
   const ownerId = await appInstallationId(shop, client);

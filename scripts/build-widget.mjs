@@ -52,4 +52,16 @@ if (js + css > 35 * 1024) {
   console.error("[build-widget] widget is over the 35 KB gzip budget");
   process.exit(1);
 }
-void statSync;
+
+
+// Checkout Function messages: only the keys the Functions use, every language.
+const fnKeys = (k) => k.startsWith("validation.") || k.startsWith("checkout.") || k.startsWith("method.");
+const fnMessages = {};
+for (const locale of locales) {
+  const msgs = JSON.parse(readFileSync(join(localesDir, `${locale}.json`), "utf8"));
+  fnMessages[locale] = Object.fromEntries(Object.entries(msgs).filter(([k]) => fnKeys(k)));
+}
+for (const fn of ["pickday-validation", "pickday-delivery"]) {
+  writeFileSync(join(root, `extensions/${fn}/src/messages.generated.json`), JSON.stringify(fnMessages) + "\n");
+}
+console.log(`[build-widget] Function messages: ${(JSON.stringify(fnMessages).length / 1024).toFixed(1)} KB`);

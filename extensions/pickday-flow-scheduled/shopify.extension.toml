@@ -1,0 +1,26 @@
+[[extensions]]
+name = "Delivery date scheduled"
+handle = "pickday-flow-scheduled"
+type = "flow_trigger"
+description = "An order was placed with a Pickday delivery, pickup or shipping date."
+
+[settings]
+
+  [[settings.fields]]
+  type = "order_reference"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Method"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Time slot"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Pickup location"

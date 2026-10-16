@@ -1,0 +1,26 @@
+[[extensions]]
+name = "Delivery date changed"
+handle = "pickday-flow-rescheduled"
+type = "flow_trigger"
+description = "A Pickday delivery, pickup or shipping date was changed from the admin."
+
+[settings]
+
+  [[settings.fields]]
+  type = "order_reference"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Method"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Time slot"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Pickup location"

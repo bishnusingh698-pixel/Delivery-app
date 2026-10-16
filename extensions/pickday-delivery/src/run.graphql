@@ -1,0 +1,25 @@
+query Input {
+  cart {
+    attribute(key: "_pickday") {
+      value
+    }
+    deliveryGroups {
+      id
+      deliveryOptions {
+        handle
+        title
+        deliveryMethodType
+      }
+    }
+  }
+  localization {
+    language {
+      isoCode
+    }
+  }
+  deliveryCustomization {
+    metafield(namespace: "$app:pickday", key: "config") {
+      jsonValue
+    }
+  }
+}

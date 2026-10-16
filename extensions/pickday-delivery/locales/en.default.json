@@ -1,0 +1,4 @@
+{
+  "name": "Pickday checkout matching",
+  "description": "Shows only the delivery, pickup or shipping options that match the date chosen in the cart."
+}
