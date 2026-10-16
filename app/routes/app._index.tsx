@@ -53,6 +53,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     overview: { today: sum([ctx.today]), tomorrow: sum([addDays(ctx.today, 1)]), week: sum(week) },
     alerts: alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usagePct: usage.limit === null ? null : usage.pct, warnings: warningsOf(ctx.row) }),
     busy,
+    celebrate: !!flags.firstOrderAt && !flags.firstOrderCelebrated,
     methods: ctx.settings.methodOrder.filter((m) => ctx.settings.methods[m].enabled),
   };
 };
@@ -75,6 +76,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (intent === "dismissChecklist") await setFlags(ctx.shop, { checklistDismissed: true });
   if (intent === "showChecklist") await setFlags(ctx.shop, { checklistDismissed: false });
   if (intent === "dismissHolidays") await setFlags(ctx.shop, { holidayYearOffered: Number(ctx.today.slice(0, 4)) + 1 });
+  if (intent === "celebrated") await setFlags(ctx.shop, { firstOrderCelebrated: true });
   if (intent === "testedCheckout") await setFlags(ctx.shop, { checkoutTested: true });
   return { ok: true };
 };
@@ -94,6 +96,7 @@ export default function Home() {
   return (
     <Page title={t("home.title")} subtitle={t("home.subtitle")}>
       {d.welcome ? <Welcome countries={d.countries} country={d.country} /> : null}
+      {d.celebrate ? <Celebrate /> : null}
       <Alerts />
       <Checklist />
       <Overview />
@@ -139,6 +142,19 @@ function Welcome({ countries, country }: { countries: string[]; country: string 
         </Stack>
       </Stack>
     </Section>
+  );
+}
+
+function Celebrate() {
+  const t = useT();
+  const fetcher = useFetcher();
+  if (fetcher.state !== "idle" || fetcher.data) return null;
+  return (
+    <s-banner tone="success" heading={t("home.celebrateHeading")}>
+      {t("home.celebrateText")}
+      <s-button slot="secondary-actions" href="/app/orders">{t("home.celebrateAction")}</s-button>
+      <s-button slot="secondary-actions" variant="tertiary" onClick={() => fetcher.submit({ intent: "celebrated" }, { method: "post" })}>{t("home.dismiss")}</s-button>
+    </s-banner>
   );
 }
 

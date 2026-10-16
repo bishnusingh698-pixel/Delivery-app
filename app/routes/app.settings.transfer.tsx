@@ -7,21 +7,22 @@ import { Button, Locked, Page, Section, Stack, TextField } from "../components/p
 import { useT } from "../i18n/react";
 import { logActivity, recentActivity } from "../models/settings.server";
 import { adminContext, saveSettings } from "../services/settings.server";
-import { createShareCode, exportDocument, prepareImport, readShareCode } from "../services/transfer.server";
+import { collectionIdsIn, resolveCollectionProducts } from "../services/collections.server";
+import { createShareCode, exportDocument, prepareImport, readShareCode, refsFor, remapTargets, useShareCode, type Refs } from "../services/transfer.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const activity = await recentActivity(ctx.shop, 50);
   return {
     allowed: hasFeature(ctx.plan, "importExport"),
-    doc: exportDocument(ctx.shop, ctx.settings),
+    doc: exportDocument(ctx.shop, ctx.settings, await refsFor(ctx.admin, ctx.settings)),
     activity: activity.map((a) => ({ id: a.id, at: a.at.toISOString(), actor: a.actor, kind: a.kind, summary: a.summary })),
   };
 };
 
 type Result =
   | { intent: "share"; code: string; expiresAt: string }
-  | { intent: "preview"; ok: true; changes: string[]; productIds: boolean; fees: boolean }
+  | { intent: "preview"; ok: true; changes: string[]; productIds: boolean; fees: boolean; missing: string[] }
   | { intent: "preview" | "apply"; ok: false; error: string }
   | { intent: "apply"; ok: true };
 
@@ -29,14 +30,18 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
   const ctx = await adminContext(request);
   if (!hasFeature(ctx.plan, "importExport")) return { intent: "apply", ok: false, error: "locked" };
   const body = (await request.json()) as { intent: string; doc?: unknown; code?: string };
-  if (body.intent === "share") return { intent: "share", ...(await createShareCode(ctx.shop, ctx.settings)) };
+  if (body.intent === "share") return { intent: "share", ...(await createShareCode(ctx.shop, ctx.settings, await refsFor(ctx.admin, ctx.settings))) };
   const doc = body.code ? await readShareCode(body.code) : body.doc;
   if (body.code && !doc) return { intent: body.intent === "apply" ? "apply" : "preview", ok: false, error: "badCode" };
   const prep = prepareImport(ctx.settings, doc);
   if (!prep.ok) return { intent: body.intent === "apply" ? "apply" : "preview", ok: false, error: prep.error };
-  if (body.intent === "preview") return { intent: "preview", ok: true, changes: prep.changes, productIds: prep.productIds, fees: prep.fees };
-  // Keep this store's own links (fee product, Shopify location ids are re-linked on the pages).
-  const r = await saveSettings(ctx, prep.settings, `Imported settings${body.code ? " (share code)" : " (file)"}`);
+  const src = doc as { from?: string; refs?: Refs };
+  const { settings: mapped, missing } = await remapTargets(ctx.admin, prep.settings, src.refs, src.from === ctx.shop);
+  if (body.intent === "preview") return { intent: "preview", ok: true, changes: prep.changes, productIds: prep.productIds, fees: prep.fees, missing };
+  if (body.code && !(await useShareCode(body.code))) return { intent: "apply", ok: false, error: "badCode" };
+  const cols = collectionIdsIn(mapped.productRules);
+  if (cols.length) mapped.productRules.collectionProducts = await resolveCollectionProducts(ctx.admin, cols).catch(() => ({}));
+  const r = await saveSettings(ctx, mapped, `Imported settings${body.code ? " (share code)" : " (file)"}`);
   if (!r.ok) return { intent: "apply", ok: false, error: "invalid" };
   await logActivity(ctx.shop, "import", `Changed: ${prep.changes.join(", ") || "nothing"}`, ctx.actor);
   return { intent: "apply", ok: true };
@@ -115,7 +120,7 @@ export default function TransferPage() {
             <s-banner tone="warning" heading={t("transfer.previewHeading")}>
               <Stack gap="small-200">
                 <s-text>{res.changes.length ? t("transfer.willChange", { list: res.changes.join(", ") }) : t("transfer.noChanges")}</s-text>
-                {res.productIds ? <s-text>{t("transfer.productNote")}</s-text> : null}
+                {res.productIds ? <s-text>{res.missing.length ? t("transfer.productMissing", { list: res.missing.slice(0, 10).join(", ") }) : t("transfer.productMapped")}</s-text> : null}
                 {res.fees ? <s-text>{t("transfer.feeNote")}</s-text> : null}
                 <s-text>{t("transfer.locationNote")}</s-text>
                 <Stack direction="inline" gap="small-200">

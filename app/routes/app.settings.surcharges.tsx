@@ -7,7 +7,8 @@ import { Button, Checkbox, ChoiceList, DateField, Locked, Modal, MoneyField, Mul
 import { SettingsChrome, fieldId, useSettingsForm } from "../components/settings-form";
 import { WeekdayPicker, newId, useFormatDate, useMethodLabel, useWeekdays } from "../components/shared";
 import { useI18n, useT } from "../i18n/react";
-import { FeeProductError, feeProductStatus, normalizeAmount, syncFeeProduct } from "../services/fee-product.server";
+import { normalizeAmount } from "../../core/fees";
+import { FeeProductError, feeProductStatus, syncFeeProduct } from "../services/fee-product.server";
 import { adminContext, saveSettings, shopMeta, type SaveResult } from "../services/settings.server";
 import { validateSettings } from "../services/settings-schema.server";
 

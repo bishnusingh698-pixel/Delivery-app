@@ -76,6 +76,42 @@ Updated after every phase. "Needs a live store" means the step can only be check
 5. **Available days:** add a rule "Only on Saturdays" for a product: with it in the cart only Saturdays can be picked.
 6. **Surcharges** (Pro): add "Saturday delivery", weekday Saturday, 5.00, save. In Shopify **Products**, a "Delivery fee" product exists (tag `pickday-hidden`). On the storefront pick a Saturday: a "Delivery fee" line with "Fee: Saturday delivery" appears in the cart; pick a Friday: it goes away. Check out: the fee is charged.
 
+## Acceptance tests
+
+"Automated" = covered by `npm test` or `npm run test:browser` and passing. "Needs a live store" = the code is in place but it can only be confirmed on a development store (Shopify checkout, webhooks, theme editor and calendars can't run here). Steps for each are in the "How to test" sections above.
+
+| # | Test | Result |
+|---|---|---|
+| 1 | Fresh install → welcome → checklist; theme editor link turns the step green | Needs a live store (embed detection logic automated) |
+| 2 | Kolkata store / UTC server / New York shopper: same days before and after 2 PM cutoff, time zone note | ✅ Automated (engine time-zone and cutoff tests; widget note) — confirm on a live store |
+| 3 | German Monday-first, Arabic mirrored RTL, Japanese date format | ✅ Automated (browser test, 28 languages, RTL screenshots) |
+| 4 | Local delivery only for Germany: US market sees Shipping only | ✅ Automated (country rules) — confirm with Markets on a live store |
+| 5 | Postcode range 10115–10999 accepts "10 117"; area-list country shows a dropdown | ✅ Automated (postcode tests; area mode in widget) |
+| 6 | Imported holiday closed and labelled; special open Sunday selectable | ✅ Automated (engine tests) |
+| 7 | Slot max 2 → "Full" after 2 orders; capacity by items | ✅ Automated (counts + engine); "within ~1 minute" needs a live store |
+| 8 | Product daily limit 40 → "Sold out for Sourdough" only for carts with it | ✅ Automated (engine product limits) |
+| 9 | Date restriction 10–18 April limits the calendar; mixed cart with no common date explained | ✅ Automated (engine restrictions) |
+| 10 | Selection survives reload/drawer; +3-day item clears a too-early date with message | ✅ Automated (browser: saved attributes; engine re-validation) — drawer needs a live theme |
+| 11 | Gift-card-only cart: widget hidden, checkout allowed | ✅ Automated (Function + rules tests) |
+| 12 | Missing date blocked in cart and by the validation Function on a direct checkout link | ✅ Automated (browser gate + Function tests) — live checkout needs a store |
+| 13 | Checkout matching shows only the chosen pickup, renamed; never hides everything; Home warning | ✅ Automated (Function tests); Home warning comes from order webhook mismatch |
+| 14 | Per-item mode: two dates on order, Orders, Production | ✅ Automated (order parsing + DB tests) — pages need a live store |
+| 15 | Sunday fee added, Monday removed, checkout blocks if fee removed | ✅ Automated (Function surcharge tests, fee product tests) — cart behaviour needs a live store |
+| 16 | Order shows date in details, tags, metafield, lists; thank-you date and .ics | Needs a live store (parsing, tags and .ics generation automated) |
+| 17 | Change a date and bulk-move 5 orders; tags, attributes, counts update; back arrow keeps filters | ✅ Automated (reschedule DB tests) — UI needs a live store |
+| 18 | Draft order schedule carries into the order | Needs a live store |
+| 19 | Cancelling frees capacity and product limits | ✅ Automated (orders DB test) |
+| 20 | ICS feed works in Google Calendar; regenerating invalidates the old URL | Needs a live store (feed format automated) |
+| 21 | Flow "Schedule created" fires with correct data | Needs a live store |
+| 22 | Digest sent once even if the job runs twice | ✅ By design (log row written before sending, unique per store and day) — confirm on a live store |
+| 23 | Export from store A, import into B with product remapping; share code works once and expires | ✅ Automated (round trip); remapping by product handle and one-time codes need two live stores |
+| 24 | Free plan 31st order → upgrade banner; checkout still works | ✅ Logic automated (usage alerts, limited orders still recorded) — confirm on a live store |
+| 25 | Server stopped: storefront and Functions still work | ✅ By design (metafields only; widget makes no server calls) — confirm on a live store |
+| 26 | Keyboard and screen reader usable; reduced motion respected | ✅ Automated (keyboard navigation in browser test; reduced-motion CSS); screen reader pass needs a person |
+| 27 | Uninstall leaves no theme code; reinstall works | ✅ By design (theme app extension only) — confirm on a live store |
+| 28 | Widget size target met; cart page not slower | ✅ Automated (20.3 KB gzipped, budget 35 KB, deferred loading) |
+| 29 | Translations: keys, placeholders, plurals in 28 locales; no English leftovers; pseudo-loc; review list | ✅ Automated (translation tests, browser overflow test); TRANSLATION_REVIEW.md lists strings for native review |
+
 ## Automated checks (run `npm test`)
 
 - Date engine: lead time, per-weekday cutoffs, working-day counting, closures, special open days, vacation, booking window, launch date, product restrictions, extra lead time, daily limits, capacity by orders and by items, slot limits, per-date overrides, admin overrides, multiple time zones, DST, leap years, country rules, postcode ranges, zones, surcharges.

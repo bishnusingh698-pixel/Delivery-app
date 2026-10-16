@@ -8,6 +8,7 @@
  * published to the Online Store, and writes each surcharge's numeric variant
  * id into the settings before they are saved.
  */
+import { normalizeAmount } from "../../core/fees";
 import type { Settings, Surcharge } from "../../core/types";
 import { gql, numericId, ShopifyGraphqlError, type AdminGraphql } from "./graphql.server";
 
@@ -28,12 +29,7 @@ export class FeeProductError extends Error {
 /* ------------------------------------------------------------ pure helpers */
 
 /** "5" -> "5.00", "5.5" -> "5.50". Invalid input returns null. */
-export function normalizeAmount(amount: string | null | undefined): string | null {
-  if (amount === null || amount === undefined) return null;
-  const n = Number(String(amount).trim());
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n.toFixed(2);
-}
+export { normalizeAmount };
 
 /** Distinct normalized amounts used by the surcharges, in first-seen order. */
 export function distinctAmounts(surcharges: Pick<Surcharge, "amount">[]): string[] {

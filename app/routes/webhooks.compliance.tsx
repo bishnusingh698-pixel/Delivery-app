@@ -21,7 +21,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         where: { shop, orderId: { in: ids } },
         select: { orderName: true, customerFirst: true, method: true, date: true, slotLabel: true },
       });
-      await logActivity(shop, "privacy", `Customer data request: ${rows.length} scheduled order(s) hold first name + schedule`, "Shopify", rows);
+      await logActivity(shop, "privacy", `Customer data request: ${rows.length} scheduled order(s) hold first name + schedule (shown to the merchant on request)`, "Shopify");
       break;
     }
     case "CUSTOMERS_REDACT": {
