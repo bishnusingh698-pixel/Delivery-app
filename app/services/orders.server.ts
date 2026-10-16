@@ -165,3 +165,48 @@ export async function firstDelivery(id: string | null, shop: string, topic: stri
     return false;
   }
 }
+
+/**
+ * After an upgrade: orders recorded over the old plan limit this month get their
+ * tags and metafield now (D-10). Older limited orders stay as they are.
+ */
+export async function releaseLimited(shop: string, admin: AdminGraphql, since: Date) {
+  const { settings } = await loadSettings(shop);
+  const rows = await prisma.scheduledOrder.findMany({ where: { shop, limited: true, createdAt: { gte: since }, status: { not: "cancelled" } }, take: 500 });
+  let done = 0;
+  for (const o of rows) {
+    const perItem = await prisma.scheduledItem.findMany({ where: { shop, orderId: o.orderId } });
+    try {
+      await writeToShopify(
+        shop,
+        admin,
+        settings,
+        {
+          orderId: o.orderId,
+          orderName: o.orderName,
+          customerFirst: o.customerFirst,
+          selection: null,
+          method: o.method as ParsedOrder["method"],
+          date: o.date,
+          slotId: o.slotId,
+          slotLabel: o.slotLabel,
+          locationId: o.locationId,
+          zoneId: o.zoneId,
+          area: o.area,
+          status: o.status as ParsedOrder["status"],
+          items: [],
+          itemCount: o.itemCount,
+          perItem: perItem.map((i) => ({ lineId: i.lineId, productId: i.productId, variantId: i.variantId, title: i.title, qty: i.qty, date: i.date, slotId: i.slotId })),
+          updatedAt: null,
+          shippingTitle: null,
+        },
+        o.tags,
+      );
+      await prisma.scheduledOrder.update({ where: { id: o.id }, data: { limited: false } });
+      done++;
+    } catch (e) {
+      console.error("[orders] release limited", shop, o.orderName, (e as Error).message);
+    }
+  }
+  return done;
+}

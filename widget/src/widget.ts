@@ -449,7 +449,8 @@ export class Pickday {
       wanted.delete(vid);
     }
     for (const vid of wanted) {
-      await addVariant(vid, 1);
+      const names = want.filter((f) => f.variantId === vid).map((f) => f.label).filter(Boolean);
+      await addVariant(vid, 1, names.length ? { Fee: names.join(", ") } : undefined);
       changed = true;
     }
     if (changed) {

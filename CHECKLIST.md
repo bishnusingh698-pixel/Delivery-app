@@ -11,7 +11,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | P3 Storefront widget | ✅ Done | Theme app extension (app embed, cart block, product block); widget for cart page, cart drawer and product page; 28 languages; checkout button gate; browser tests for long text and right-to-left. 20 KB gzipped. |
 | P4 Functions, webhooks, extensions | ✅ Done | Validation Function (backstop) and delivery customization Function (checkout matching); orders webhook (idempotent, out-of-order safe, counts, tags, order metafield); billing webhook; Flow triggers; thank-you and order status block with calendar links; order page block, "Change delivery date" order action and draft order action. |
 | P5 Orders, production, notifications, jobs | ✅ Done | Orders page (list with filters and search, month calendar with counts and capacity bars, order detail with change history and "Change date", bulk move with capacity preview, CSV export, day sheet and route sheet printing); Production list (print, CSV, per-slot split, prep-day offset); Notifications page (daily summary email, 5 copy-paste snippets with steps, secret calendar feed, Flow toggle); hourly and daily jobs (republish, digest, pruning, app embed check). |
-| P6 Locations, areas, product rules, surcharges | ⏳ | |
+| P6 Locations, areas, product rules, surcharges | ✅ Done | Pickup locations (import from Shopify, own hours and limits, instructions per language); delivery areas by postcode, named area or region, zones with their own days and limits, "Test an address"; product rules (no date needed, extra preparation time, available days, daily limits per product, method-only) with Shopify product and collection pickers; surcharges with an automatically managed hidden fee product. |
 | P7 Billing, import/export, help, polish | ⏳ | |
 
 ## How to test P1 (needs a live store)
@@ -67,6 +67,15 @@ Updated after every phase. "Needs a live store" means the step can only be check
 12. Click **Create calendar address**, copy it, and add it in Google Calendar (**Other calendars > + > From URL**). Your orders appear (Google refreshes every few hours). Click **Make a new address**: the old one stops working.
 13. In Shopify Flow, create a workflow with the trigger **Schedule created**. Place an order: the workflow runs.
 
+## How to test P6 (needs a live store)
+
+1. **Pickup locations:** open **Settings > Pickup locations**, click **Import from Shopify**, add your location. Turn on **Own schedule and limits**, close it on Mondays, click **Save**. On the storefront choose Store pickup: Mondays are not offered for that location.
+2. **Delivery areas** (Pro): open **Settings > Delivery areas**, add your country, choose **Postcodes**, enter one postcode, save. In **Test an address**, type that postcode: "Delivered: Yes"; another postcode: "No". On the storefront choose Local delivery and type a postcode outside the list: the picker says you don't deliver there.
+3. **Zones:** add a zone "North" with your postcode and **Different days**: Tuesday only. On the storefront, that postcode only offers Tuesdays. Place an order; on **Orders > Print route sheet** it is listed under North.
+4. **Product rules** (Pro): under **Products that don't need a date**, pick a product. A cart with only that product shows no picker and checkout isn't blocked. Under **Needs extra preparation time**, pick another product with 2 days: with it in the cart the first date moves 2 days later.
+5. **Available days:** add a rule "Only on Saturdays" for a product: with it in the cart only Saturdays can be picked.
+6. **Surcharges** (Pro): add "Saturday delivery", weekday Saturday, 5.00, save. In Shopify **Products**, a "Delivery fee" product exists (tag `pickday-hidden`). On the storefront pick a Saturday: a "Delivery fee" line with "Fee: Saturday delivery" appears in the cart; pick a Friday: it goes away. Check out: the fee is charged.
+
 ## Automated checks (run `npm test`)
 
 - Date engine: lead time, per-weekday cutoffs, working-day counting, closures, special open days, vacation, booking window, launch date, product restrictions, extra lead time, daily limits, capacity by orders and by items, slot limits, per-date overrides, admin overrides, multiple time zones, DST, leap years, country rules, postcode ranges, zones, surcharges.
@@ -76,6 +85,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 - Orders (with Postgres): new order counted, duplicate and older webhooks ignored, date change moves the count, cancel frees capacity, over-limit orders recorded but flagged; admin reschedule refuses full days unless overridden, keeps other order attributes, updates tags and history.
 - Calendar links and .ics files.
 - Email snippets: right Liquid object per template, balanced tags.
+- Settings pages: postcode rule checking and address test, collection membership paging, Shopify location import, fee product variants (one per amount, never deleted), settings export/import round trip, Home checklist and alerts.
 - Scheduled jobs: only the exact `X-Pickday-Secret` is accepted (missing or short secrets refuse everything); app embed detection in the theme settings.
 
 ## Browser checks (run `npm run test:browser`)

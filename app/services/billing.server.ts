@@ -14,14 +14,17 @@ export function planFromName(name: string | null | undefined): PlanId {
 }
 
 /** Apply a subscription status change. ACTIVE (incl. trial) = that plan; anything else = Free. */
-export async function applySubscription(shop: string, sub: { id: string; name: string; status: string } | null) {
+export async function applySubscription(shop: string, sub: { id: string; name: string; status: string } | null): Promise<{ from: PlanId; to: PlanId } | null> {
   const active = sub && sub.status.toUpperCase() === "ACTIVE";
   const row = await prisma.shop.findUnique({ where: { shop }, select: { plan: true, subscriptionId: true } });
-  if (!row) return;
+  if (!row) return null;
   // A cancelled old subscription must not downgrade a newer active one.
-  if (!active && sub && row.subscriptionId && row.subscriptionId !== sub.id) return;
+  if (!active && sub && row.subscriptionId && row.subscriptionId !== sub.id) return null;
   const plan = active ? planFromName(sub!.name) : "free";
-  if (row.plan === plan && row.subscriptionId === (active ? sub!.id : null)) return;
+  if (row.plan === plan && row.subscriptionId === (active ? sub!.id : null)) return null;
   await prisma.shop.update({ where: { shop }, data: { plan, subscriptionId: active ? sub!.id : null } });
   schedulePublish(shop, 500);
+  return { from: row.plan as PlanId, to: plan };
 }
+
+export const billingTest = () => process.env.BILLING_TEST === "true" || process.env.NODE_ENV !== "production";

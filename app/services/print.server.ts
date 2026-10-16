@@ -78,10 +78,15 @@ export function daySheet(t: T, lang: string, settings: Settings, date: string, d
 /** Route sheet: local delivery orders sorted by zone, then postcode. */
 export function routeSheet(t: T, lang: string, settings: Settings, dateLabel: string, orders: ScheduledOrder[], live: Map<string, LiveOrder>) {
   const zoneName = (id: string | null) => settings.zones.find((z) => z.id === id)?.name ?? "";
+  // Zones are routed in the order the merchant listed them; orders without a zone go last.
+  const zoneRank = (id: string | null) => {
+    const i = settings.zones.findIndex((z) => z.id === id);
+    return i < 0 ? settings.zones.length : i;
+  };
   const sorted = orders
     .filter((o) => o.method === "delivery")
-    .map((o) => ({ o, zip: normalizePostcode(live.get(o.orderId)?.address?.zip ?? o.area ?? ""), zone: zoneName(o.zoneId) }))
-    .sort((a, b) => a.zone.localeCompare(b.zone) || a.zip.localeCompare(b.zip, undefined, { numeric: true }) || (a.o.slotLabel ?? "").localeCompare(b.o.slotLabel ?? ""));
+    .map((o) => ({ o, zip: normalizePostcode(live.get(o.orderId)?.address?.zip ?? o.area ?? ""), zone: zoneName(o.zoneId), rank: zoneRank(o.zoneId) }))
+    .sort((a, b) => a.rank - b.rank || a.zip.localeCompare(b.zip, undefined, { numeric: true }) || (a.o.slotLabel ?? "").localeCompare(b.o.slotLabel ?? ""));
   let body = `<h1>${esc(t("print.routeTitle", { date: dateLabel }))}</h1><p class="muted">${esc(t("print.orderCount", { count: sorted.length }))}</p>`;
   body += `<table><thead><tr><th>#</th><th>${esc(t("print.zone"))}</th><th>${esc(t("orders.colSlot"))}</th><th>${esc(t("orders.colOrder"))}</th><th>${esc(t("print.address"))}</th><th>${esc(t("print.phone"))}</th><th>${esc(t("print.items"))}</th><th>${esc(t("print.note"))}</th></tr></thead><tbody>`;
   sorted.forEach(({ o, zone }, i) => {
