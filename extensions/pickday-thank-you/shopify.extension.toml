@@ -1,0 +1,21 @@
+api_version = "2026-10"
+
+[[extensions]]
+name = "t:name"
+handle = "pickday-thank-you"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/Schedule.tsx"
+target = "purchase.thank-you.block.render"
+
+[[extensions.targeting]]
+module = "./src/Schedule.tsx"
+target = "customer-account.order-status.block.render"
+
+[[extensions.metafields]]
+namespace = "$app:pickday"
+key = "checkout"
+
+[extensions.capabilities]
+api_access = false

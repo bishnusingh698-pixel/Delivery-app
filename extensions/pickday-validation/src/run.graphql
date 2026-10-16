@@ -1,0 +1,91 @@
+query Input($ruleTags: [String!], $ruleCollections: [ID!]) {
+  buyerJourney {
+    step
+  }
+  cart {
+    attribute(key: "_pickday") {
+      value
+    }
+    cost {
+      subtotalAmount {
+        amount
+        currencyCode
+      }
+    }
+    deliveryGroups {
+      deliveryAddress {
+        countryCode
+        zip
+        provinceCode
+      }
+    }
+    lines {
+      id
+      quantity
+      attribute(key: "_pickday") {
+        value
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+          requiresShipping
+          product {
+            id
+            isGiftCard
+            hasTags(tags: $ruleTags) {
+              tag
+              hasTag
+            }
+            inCollections(ids: $ruleCollections) {
+              collectionId
+              isMember
+            }
+          }
+        }
+      }
+    }
+  }
+  localization {
+    language {
+      isoCode
+    }
+    country {
+      isoCode
+    }
+  }
+  presentmentCurrencyRate
+  shop {
+    localTime {
+      date
+        h01: timeAfter(time: "01:00:00")
+        h02: timeAfter(time: "02:00:00")
+        h03: timeAfter(time: "03:00:00")
+        h04: timeAfter(time: "04:00:00")
+        h05: timeAfter(time: "05:00:00")
+        h06: timeAfter(time: "06:00:00")
+        h07: timeAfter(time: "07:00:00")
+        h08: timeAfter(time: "08:00:00")
+        h09: timeAfter(time: "09:00:00")
+        h10: timeAfter(time: "10:00:00")
+        h11: timeAfter(time: "11:00:00")
+        h12: timeAfter(time: "12:00:00")
+        h13: timeAfter(time: "13:00:00")
+        h14: timeAfter(time: "14:00:00")
+        h15: timeAfter(time: "15:00:00")
+        h16: timeAfter(time: "16:00:00")
+        h17: timeAfter(time: "17:00:00")
+        h18: timeAfter(time: "18:00:00")
+        h19: timeAfter(time: "19:00:00")
+        h20: timeAfter(time: "20:00:00")
+        h21: timeAfter(time: "21:00:00")
+        h22: timeAfter(time: "22:00:00")
+        h23: timeAfter(time: "23:00:00")
+    }
+  }
+  validation {
+    metafield(namespace: "$app:pickday", key: "config") {
+      jsonValue
+    }
+  }
+}

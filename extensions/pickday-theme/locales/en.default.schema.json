@@ -1,0 +1,20 @@
+{
+  "embed": {
+    "name": "Pickday date picker",
+    "help": "Shows the delivery and pickup date picker in your cart and cart drawer. Settings are in the Pickday app.",
+    "pseudo": "Test long translations (theme editor only)"
+  },
+  "blocks": {
+    "cart": {
+      "name": "Pickday date picker",
+      "help": "Choose where the date picker sits on the cart page. Without this block it is placed above the checkout button."
+    },
+    "product": {
+      "name": "Pickday delivery estimate",
+      "help": "Shows the earliest delivery or pickup date for this product. Settings are in the Pickday app.",
+      "product": "Product (leave empty to use the page's product)",
+      "formId": "Product form ID (advanced)",
+      "formIdInfo": "Only needed if a date picker on the product page doesn't save the date. Leave empty to detect it."
+    }
+  }
+}

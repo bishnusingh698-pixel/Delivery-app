@@ -1,0 +1,4 @@
+{
+  "name": "Pickday date check",
+  "description": "Stops checkout when a required delivery or pickup date is missing, full or no longer available."
+}

@@ -1,0 +1,26 @@
+[[extensions]]
+name = "Schedule cancelled"
+handle = "pickday-flow-cancelled"
+type = "flow_trigger"
+description = "An order with a Pickday date was cancelled, or its date was removed."
+
+[settings]
+
+  [[settings.fields]]
+  type = "order_reference"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Method"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Time slot"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Pickup location"

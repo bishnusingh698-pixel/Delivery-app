@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pickday
+          POSTGRES_PASSWORD: pickday
+          POSTGRES_DB: pickday
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U pickday" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://pickday:pickday@localhost:5432/pickday
+      DIRECT_URL: postgresql://pickday:pickday@localhost:5432/pickday
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npx prisma migrate deploy
+      - run: npm test
+      - run: npm run build
+        env:
+          SHOPIFY_APP_URL: http://localhost
+      - name: Storefront widget in a real browser (long text, RTL, phone width)
+        run: npx tsx tests/browser/widget.browser.ts
+        env:
+          PLAYWRIGHT_CHROMIUM: /usr/bin/google-chrome
+      - name: Built widget assets are up to date
+        run: git diff --exit-code -- extensions

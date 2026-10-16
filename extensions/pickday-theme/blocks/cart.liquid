@@ -1,0 +1,16 @@
+{%- comment -%} Places the date picker exactly where the merchant wants it on the cart page. Needs the app embed turned on. {%- endcomment -%}
+<div data-pickday-mount="block" class="pickday" {{ block.shopify_attributes }}></div>
+{%- if request.design_mode and app.metafields.pickday.config.value == blank -%}
+  <p style="padding:12px;border:1px dashed currentColor;border-radius:8px">{{ 'blocks.cart.notReady' | t }}</p>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:blocks.cart.name",
+  "target": "section",
+  "enabled_on": { "templates": ["cart"] },
+  "settings": [
+    { "type": "paragraph", "content": "t:blocks.cart.help" }
+  ]
+}
+{% endschema %}

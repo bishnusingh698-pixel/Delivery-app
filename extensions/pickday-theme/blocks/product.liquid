@@ -1,0 +1,35 @@
+{%- comment -%} Earliest-date message (and optional date picker) on the product page. Needs the app embed turned on. {%- endcomment -%}
+{%- liquid
+  assign p = product
+  if block.settings.product != blank
+    assign p = block.settings.product
+  endif
+  assign needs_shipping = false
+  for v in p.variants
+    if v.requires_shipping
+      assign needs_shipping = true
+      break
+    endif
+  endfor
+-%}
+{%- if p -%}
+<div
+  data-pickday-product='{"id":"{{ p.id }}","title":{{ p.title | json | escape }},"tags":{{ p.tags | json | escape }},"collections":[{% for c in p.collections limit: 50 %}"{{ c.id }}"{% unless forloop.last %},{% endunless %}{% endfor %}],"giftCard":{% if p.gift_card? %}true{% else %}false{% endif %},"requiresShipping":{{ needs_shipping }},"variants":[{% for v in p.variants limit: 100 %}{"id":"{{ v.id }}","requiresShipping":{{ v.requires_shipping }}}{% unless forloop.last %},{% endunless %}{% endfor %}]}'
+  {% if block.settings.form_id != blank %}data-form="{{ block.settings.form_id | escape }}"{% else %}data-form="product-form-{{ section.id }}"{% endif %}
+  hidden
+  {{ block.shopify_attributes }}
+></div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:blocks.product.name",
+  "target": "section",
+  "enabled_on": { "templates": ["product"] },
+  "settings": [
+    { "type": "paragraph", "content": "t:blocks.product.help" },
+    { "type": "product", "id": "product", "label": "t:blocks.product.product" },
+    { "type": "text", "id": "form_id", "label": "t:blocks.product.formId", "info": "t:blocks.product.formIdInfo" }
+  ]
+}
+{% endschema %}

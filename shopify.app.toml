@@ -1,0 +1,43 @@
+# Pickday app configuration. Run `shopify app config link` to fill client_id
+# for your own Partner app, then `shopify app deploy` to push extensions + this file.
+client_id = ""
+name = "Pickday: Delivery Date Picker"
+application_url = "https://pickday.onrender.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
+
+[access_scopes]
+# Minimal scopes (see DECISIONS.md D-20 for why each is needed).
+scopes = "read_orders,write_orders,read_draft_orders,write_draft_orders,read_products,write_products,write_publications,read_locations,read_themes,read_markets,write_validations,write_delivery_customizations"
+
+[auth]
+redirect_urls = [ "https://pickday.onrender.com/auth/callback" ]
+
+[webhooks]
+api_version = "2026-10"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks/app/uninstalled"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/scopes_update" ]
+  uri = "/webhooks/app/scopes_update"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create", "orders/updated", "orders/cancelled", "orders/edited" ]
+  uri = "/webhooks/orders"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app_subscriptions/update" ]
+  uri = "/webhooks/billing"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact" ]
+  uri = "/webhooks/compliance"
+
+[pos]
+embedded = false
