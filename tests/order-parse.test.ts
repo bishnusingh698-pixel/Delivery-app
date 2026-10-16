@@ -53,7 +53,7 @@ describe("order parsing", () => {
 
   it("builds tags with a prefix", () => {
     const p = parseOrder(order(), settings())!;
-    expect(orderTags(p, "PD-", "Main Street")).toEqual(["PD-Pickday", "PD-Pickup", "PD-2026-10-18", "PD-10:00-12:00", "PD-Main Street"]);
+    expect(orderTags(p, "PD-", "Main Street")).toEqual(["PD-Pickday", "PD-Method: Pickup", "PD-Date: 2026-10-18", "PD-Slot: 10:00-12:00", "PD-Location: Main Street"]);
   });
 
   it("spots a checkout option that disagrees with the choice", () => {

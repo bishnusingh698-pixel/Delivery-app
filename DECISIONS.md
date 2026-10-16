@@ -66,6 +66,20 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-27 Orders over the plan limit.** Recorded and counted against capacity (so nothing is overbooked) but not tagged, not given the order metafield and not sent to Flow until the merchant upgrades (D-10).
 
+## Orders, production and notifications (P5)
+
+**D-28 Addresses and phones are never stored.** Day sheets and route sheets fetch them live from Shopify at print time (needs protected customer data level 2 for name, address and phone; see README). If Shopify refuses, the sheets still print without them. Pickday's database keeps order number, first name, items, date and area only.
+
+**D-29 Bulk moves reuse the single-order path.** Each order in a bulk move goes through the same checks as "Change date" (unless "Ignore limits" is ticked), so counts, tags, attributes, history and Flow triggers stay consistent. Customers are never emailed.
+
+**D-30 The daily summary.** Sent by the hourly job in the first run at or after the chosen time (store time zone), at most once per store per day (a log row is written before sending). Only Pro stores, only when Brevo is configured. It never goes to customers.
+
+**D-31 Calendar feed is a secret link.** Anyone with the URL can read it, so it holds only order number, first name, method and slot (items only if the merchant opts in) and can be regenerated. Window: 30 days back to 180 days ahead. Calendar apps cache it, so changes show up with a delay.
+
+**D-32 Data retention.** Daily job: webhook logs after 7 days, digest logs after 60 days, activity log after 180 days, capacity counts 3 days after the date, schedules 400 days after the date (so "last year" comparisons work), all data of stores uninstalled for 60 days (if Shopify's shop/redact never arrived).
+
+**D-33 Email snippets, not template edits.** Pickday can't and won't change notification templates. It gives copy-paste Liquid that reads the order's "Delivery date" attribute and re-formats the ISO date, so the date follows the template's language where Shopify supports it.
+
 ## Not yet decided / proposed
 
 Further decisions are added as phases land.

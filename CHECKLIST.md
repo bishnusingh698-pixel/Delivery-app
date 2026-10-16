@@ -10,7 +10,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | P2 Engine + schedule settings | ✅ Done | Date engine + 30 automated tests; Settings hub; Methods & countries, Schedule (with live preview), Slots & capacity, Closures & holidays pages. |
 | P3 Storefront widget | ✅ Done | Theme app extension (app embed, cart block, product block); widget for cart page, cart drawer and product page; 28 languages; checkout button gate; browser tests for long text and right-to-left. 20 KB gzipped. |
 | P4 Functions, webhooks, extensions | ✅ Done | Validation Function (backstop) and delivery customization Function (checkout matching); orders webhook (idempotent, out-of-order safe, counts, tags, order metafield); billing webhook; Flow triggers; thank-you and order status block with calendar links; order page block, "Change delivery date" order action and draft order action. |
-| P5 Orders, production, notifications, jobs | ⏳ | |
+| P5 Orders, production, notifications, jobs | ✅ Done | Orders page (list with filters and search, month calendar with counts and capacity bars, order detail with change history and "Change date", bulk move with capacity preview, CSV export, day sheet and route sheet printing); Production list (print, CSV, per-slot split, prep-day offset); Notifications page (daily summary email, 5 copy-paste snippets with steps, secret calendar feed, Flow toggle); hourly and daily jobs (republish, digest, pruning, app embed check). |
 | P6 Locations, areas, product rules, surcharges | ⏳ | |
 | P7 Billing, import/export, help, polish | ⏳ | |
 
@@ -46,10 +46,26 @@ Updated after every phase. "Needs a live store" means the step can only be check
 2. On the storefront add a product, choose **Store pickup** and a date in the cart, then click **Check out**. At the delivery step only the pickup option is shown, named like "Main Street – Fri, 18 Oct".
 3. Go back to the cart, clear the date (click **Change**, then remove it via a different method), and use the browser address bar to go straight to `/checkout`. Checkout shows "Please choose a delivery or pickup date in your cart before checking out." and won't let you pay.
 4. Place an order with a date. On the thank-you page a "Your delivery schedule" box shows the date and **Google Calendar** / **Apple or Outlook (.ics)** links. Click each: the event has the right date and time.
-5. Open the order in Shopify admin. The **Delivery date** block shows the date. The order has tags like `Pickday`, `Pickup`, `2026-10-18`.
+5. Open the order in Shopify admin. The **Delivery date** block shows the date. The order has tags like `Pickday`, `Method: Store pickup`, `Date: 2026-10-18`, `Slot: 10:00-12:00`.
 6. Click **More actions > Pickday** (or **Change date** in the block). Pick another date and click **Save**. The block, the tags and the order's additional details show the new date.
 7. Try to move it to a full day: the date isn't offered. Tick **Override**: it is, and saving works.
 8. Create a draft order, click **More actions > Pickday**, choose a date and save. Complete the draft: the new order has the date.
+
+## How to test P5 (needs a live store)
+
+1. Place 3 test orders with dates (two for tomorrow, one next week). Open **Pickday > Orders**. All 3 are listed, soonest first.
+2. Click **Tomorrow**: only the two orders for tomorrow are shown. Type the order number of one into the search box: only that order is shown. Clear it.
+3. Click **Calendar**. Tomorrow shows "2" under the method name and, if you set a daily limit, a bar like "2 / 20". Click that day: the list opens filtered to it.
+4. Tick both orders for tomorrow and click **Print day sheet**. A print window opens with the orders grouped by method and time slot, with items, notes and (for local delivery) the address.
+5. With local delivery orders, click **Print route sheet** (Pro): orders are sorted by zone, then postcode, with address and phone.
+6. Click **Export CSV** and open the file in Excel or Google Sheets: accents show correctly, one row per order.
+7. Tick one order, click **Move to another date**, pick a date. The box shows how full that date is before and after. Click **Move**. The order now shows the new date, here and in Shopify admin (tags and additional details).
+8. Click an order number. The detail page shows the schedule, items and change history (the move from step 7). Click **Change date**, tick **Ignore limits for this change**: closed and full days can be picked. Save.
+9. Open **Pickday > Production**. Tomorrow's products are listed with total quantity and number of orders. Click **Print** and **Export CSV**.
+10. Open **Pickday > Notifications**. Turn on **Send a daily summary**, choose a time one hour from now and add your email. Click **Save**. After that hour (cron-job.org must be set up), the email arrives with tomorrow's orders. It is sent at most once a day.
+11. Click **Copy** on **Order confirmation email**, click **Where to paste this** and follow the 3 steps. Place a new order: the confirmation email shows "Delivery details" with the date. Click **I've added it**.
+12. Click **Create calendar address**, copy it, and add it in Google Calendar (**Other calendars > + > From URL**). Your orders appear (Google refreshes every few hours). Click **Make a new address**: the old one stops working.
+13. In Shopify Flow, create a workflow with the trigger **Schedule created**. Place an order: the workflow runs.
 
 ## Automated checks (run `npm test`)
 
@@ -59,6 +75,8 @@ Updated after every phase. "Needs a live store" means the step can only be check
 - Checkout Functions: valid choice passes, adding to cart never blocked, missing/closed/full/past-cutoff dates blocked in the shopper's language, wrong country, minimum order, date per item, gift cards, no config; checkout matching hides/renames correctly and never hides everything.
 - Orders (with Postgres): new order counted, duplicate and older webhooks ignored, date change moves the count, cancel frees capacity, over-limit orders recorded but flagged; admin reschedule refuses full days unless overridden, keeps other order attributes, updates tags and history.
 - Calendar links and .ics files.
+- Email snippets: right Liquid object per template, balanced tags.
+- Scheduled jobs: only the exact `X-Pickday-Secret` is accepted (missing or short secrets refuse everything); app embed detection in the theme settings.
 
 ## Browser checks (run `npm run test:browser`)
 

@@ -118,11 +118,11 @@ export function orderTags(o: Pick<ParsedOrder, "method" | "date" | "slotLabel" |
   const p = prefix.trim();
   const tag = (s: string) => `${p}${s}`.slice(0, 40);
   const method = o.method === "delivery" ? "Local delivery" : o.method === "pickup" ? "Pickup" : "Shipping";
-  const tags = [tag("Pickday"), tag(method)];
+  const tags = [tag("Pickday"), tag(`Method: ${method}`)];
   const dates = o.date ? [o.date] : [...new Set(o.perItem.map((i) => i.date))];
-  for (const d of dates.slice(0, 5)) tags.push(tag(d));
-  if (o.slotLabel) tags.push(tag(o.slotLabel));
-  if (locationName) tags.push(tag(locationName));
+  for (const d of dates.slice(0, 5)) tags.push(tag(`Date: ${d}`));
+  if (o.slotLabel) tags.push(tag(`Slot: ${o.slotLabel}`));
+  if (locationName) tags.push(tag(`Location: ${locationName}`));
   return [...new Set(tags)];
 }
 

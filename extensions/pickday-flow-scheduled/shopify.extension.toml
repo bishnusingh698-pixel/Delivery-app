@@ -1,8 +1,8 @@
 [[extensions]]
-name = "Delivery date scheduled"
+name = "Schedule created"
 handle = "pickday-flow-scheduled"
 type = "flow_trigger"
-description = "An order was placed with a Pickday delivery, pickup or shipping date."
+description = "A Pickday delivery, pickup or shipping date was set on an order (at checkout or from the admin)."
 
 [settings]
 

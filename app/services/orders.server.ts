@@ -33,6 +33,7 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     await prisma.scheduledOrder.update({ where: { id: existing.id }, data: { status: "cancelled" } });
     await prisma.scheduledItem.deleteMany({ where: { shop, orderId: existing.orderId } });
     await afterChange(shop, settings, [existing.date]);
+    if (admin && !existing.limited) await flowTrigger(shop, admin, "cancelled", existing).catch(() => {});
     return "removed";
   }
 
@@ -101,6 +102,9 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     if (methodMismatch(parsed, settings.checkoutMatching.rateMap)) await addWarning(shop, "checkoutMismatch", parsed.orderName);
   }
 
+  if (!saved.limited && admin && parsed.status === "cancelled" && existing && existing.status !== "cancelled") {
+    await flowTrigger(shop, admin, "cancelled", saved).catch(() => {});
+  }
   if (!saved.limited && admin && parsed.status !== "cancelled") {
     const dateChanged = !existing || existing.date !== saved.date || existing.slotId !== saved.slotId || existing.method !== saved.method;
     if (dateChanged) {

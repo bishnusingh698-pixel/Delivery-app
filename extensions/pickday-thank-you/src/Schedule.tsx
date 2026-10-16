@@ -29,7 +29,7 @@ function Schedule() {
   const t = (key: string, values: Record<string, string> = {}) => format(table[key] ?? (messages as any).en[key] ?? key, values, { plural: () => "other" });
 
   const cfgRaw = (api.appMetafields?.value ?? []).find((m: any) => m.metafield?.key === "checkout")?.metafield?.value;
-  let cfg: { u?: string; dispatch?: boolean; tz?: string } = {};
+  let cfg: { u?: string; dispatch?: boolean; tz?: string; ins?: Record<string, Record<string, string>> } = {};
   try {
     cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
   } catch {
@@ -48,6 +48,8 @@ function Schedule() {
   const kind = sel.m === "pickup" ? "pickup" : sel.m === "delivery" ? "delivery" : cfg.dispatch ? "dispatch" : "shipping";
   const sentence = kind === "pickup" && location ? t("thankyou.pickupAt", { location, date }) : t(`thankyou.${kind}`, { date });
 
+  const insMap = sel.m === "pickup" && sel.l ? cfg.ins?.[sel.l] : undefined;
+  const instructions = insMap ? insMap[lang] || insMap[loc] || insMap[lang.split("-")[0]] || Object.values(insMap).find(Boolean) || "" : "";
   const orderName: string = api.orderConfirmation?.value?.number ?? api.order?.value?.name ?? "";
   const titleKey = { delivery: "calendar.eventDelivery", pickup: "calendar.eventPickup", shipping: "calendar.eventShipping", dispatch: "calendar.eventDispatch" }[kind];
   const links = calendarLinks({
@@ -64,6 +66,7 @@ function Schedule() {
     <s-section heading={t("thankyou.heading")}>
       <s-stack gap="base">
         <s-text>{sentence}</s-text>
+        {instructions ? <s-text color="subdued">{instructions}</s-text> : null}
         <s-stack direction="inline" gap="base">
           <s-text color="subdued">{t("thankyou.addToCalendar")}:</s-text>
           <s-link href={links.google} target="_blank">

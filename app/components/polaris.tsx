@@ -58,10 +58,11 @@ export function TextField(
     maxLength?: number;
     type?: "text" | "email" | "url" | "search";
     required?: boolean;
+    readOnly?: boolean;
   },
 ) {
   const ref = useRef<El>(null);
-  useProps(ref, { value: p.value ?? "", error: p.error ?? "", disabled: !!p.disabled, required: !!p.required });
+  useProps(ref, { value: p.value ?? "", error: p.error ?? "", disabled: !!p.disabled, required: !!p.required, readOnly: !!p.readOnly });
   useEvent(ref, "input", (e) => p.onChange(valueOf(e)));
   const common = {
     ref,

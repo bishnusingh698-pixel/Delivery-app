@@ -1,5 +1,5 @@
 [[extensions]]
-name = "Delivery date changed"
+name = "Schedule changed"
 handle = "pickday-flow-rescheduled"
 type = "flow_trigger"
 description = "A Pickday delivery, pickup or shipping date was changed from the admin."

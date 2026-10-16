@@ -8,12 +8,12 @@ import { planOf, requireShop } from "../models/shop.server";
 import { hasFeature } from "../../core/publish";
 import { gql, type AdminGraphql } from "./graphql.server";
 
-export type FlowEvent = "scheduled" | "rescheduled" | "upcoming";
+export type FlowEvent = "scheduled" | "rescheduled" | "cancelled";
 
 const HANDLES: Record<FlowEvent, string> = {
   scheduled: "pickday-flow-scheduled",
   rescheduled: "pickday-flow-rescheduled",
-  upcoming: "pickday-flow-upcoming",
+  cancelled: "pickday-flow-cancelled",
 };
 
 const METHOD: Record<string, string> = { delivery: "Local delivery", pickup: "Pickup", shipping: "Shipping" };

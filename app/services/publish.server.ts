@@ -183,6 +183,8 @@ export function thankYouConfig(config: StorefrontConfig) {
     u: (process.env.SHOPIFY_APP_URL ?? "").replace(/\/$/, ""),
     dispatch: config.methods.find((m) => m.id === "shipping")?.dateMeaning === "dispatch",
     tz: config.tz,
+    // Pickup instructions per location and language.
+    ins: Object.fromEntries(config.locations.filter((l) => Object.values(l.instructions).some(Boolean)).map((l) => [l.id, l.instructions])),
   };
 }
 

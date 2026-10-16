@@ -1,8 +1,8 @@
 [[extensions]]
-name = "Delivery date is tomorrow"
-handle = "pickday-flow-upcoming"
+name = "Schedule cancelled"
+handle = "pickday-flow-cancelled"
 type = "flow_trigger"
-description = "Runs once a day for each order whose delivery, pickup or shipping date is tomorrow."
+description = "An order with a Pickday date was cancelled, or its date was removed."
 
 [settings]
 

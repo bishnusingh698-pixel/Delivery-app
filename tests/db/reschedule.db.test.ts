@@ -55,9 +55,9 @@ describe.skipIf(!process.env.DATABASE_URL)("admin reschedule", async () => {
     const keys = update.variables.input.customAttributes.map((a: any) => a.key);
     expect(keys).toEqual(expect.arrayContaining(["Gift note", "_pickday", "Delivery date"]));
     const tags = calls.find((c) => c.query.includes("tagsAdd"))!.variables.tags;
-    expect(tags).toContain("2027-03-11");
+    expect(tags).toContain("Date: 2027-03-11");
     const remove = calls.find((c) => c.query.includes("tagsRemove"))!.variables.tags;
-    expect(remove).toContain("2027-03-10");
+    expect(remove).toContain("Date: 2027-03-10");
     const count = await prisma.capacityCount.findFirst({ where: { shop: SHOP, key: "shipping", date: "2027-03-10", slotId: "" } });
     expect(count?.orders ?? 0).toBe(0);
   });
