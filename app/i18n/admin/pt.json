@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "Não é um arquivo de configurações do Pickday.",
   "transfer.exportHeading": "Exportar",
   "transfer.exportHelp": "Baixe todas as configurações do Pickday em um arquivo ou crie um código para colar no Pickday de outra loja (por exemplo, sua segunda loja ou uma loja de teste). Os códigos valem por 24 horas.",
-  "transfer.feeNote": "Depois de importar, abra Taxas extras e clique em Salvar uma vez para criar o produto de taxa nesta loja.",
+  "transfer.feeNote": "As taxas são configuradas nesta loja ao importar. Depois, confira a página Taxas extras.",
   "transfer.importHeading": "Importar",
   "transfer.importHelp": "Substitua as configurações do Pickday desta loja pelas de um arquivo ou código. Você verá o que muda antes de salvar.",
   "transfer.imported": "Configurações importadas",

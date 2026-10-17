@@ -26,7 +26,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-10 Free plan limit.** Instead of not recording orders above the monthly limit, Pickday still records them (so capacity stays correct for shoppers — otherwise a full day would look empty) but does not tag them, write the order metafield or fire Flow triggers until the merchant upgrades. Upgrading backfills tags for the current month. The widget and checkout are never affected.
 
-**D-11 Function config size.** Function input is size-limited, so the Function copy of the config drops display-only data (addresses, instructions, widget styles, non-checkout texts). If it is still over 20 KB, postcode lists and zones are removed from the Function copy; the Function then validates against method-level rules only (more lenient, never stricter). Home shows a warning suggesting fewer/shorter postcode rules.
+**D-11 Function config size.** Function input is size-limited, so the Function copy of the config drops display-only data (addresses, instructions, widget styles, non-checkout texts). If it is still over 20 KB, postcode lists and zones are removed from the Function copy; the Function then validates against method-level rules only, and skips the date check for orders that use a zone (D-39), so it is never stricter. Home shows a warning suggesting fewer/shorter postcode rules.
 
 ## Behaviour choices
 
@@ -89,6 +89,14 @@ Short notes on choices made where the brief left room, or where Shopify works di
 **D-36 Region codes without country prefix.** Delivery regions are stored as province codes ("CA"), matched with or without "US-".
 
 **D-37 Plan location limit counts all locations,** enabled or not, to keep the rule easy to explain.
+
+**D-38 Checkout gives the benefit of the doubt within the hour.** Shopify tells the validation Function only which hour it is in the shop's time zone. The Function checks the choice at the start and at the end of that hour and lets the order through if either passes, so a valid order is never blocked; a cutoff can be missed by up to 59 minutes at checkout (the widget itself uses the exact time). Pickup locations in another time zone get their offset from the shop published with the config, refreshed hourly so daylight-saving changes are followed.
+
+**D-39 Checkout re-checks the delivery address.** For delivery, the postcode or region typed at checkout must still be covered (message "Sorry, we don't deliver to … yet"), and its zone decides the schedule. In "pick your area" mode the shopper's chosen area is trusted. When the config had to be trimmed (D-11) and the order uses a zone, the date check is skipped rather than judged by the wrong rules.
+
+**D-40 Importing settings from another store keeps your own notifications.** Digest recipients, the calendar feed and the Flow switch are never copied from another store. Imported fees get this store's own fee variants straight away.
+
+**D-41 Known limit: date per item and capacity.** In date-per-item mode each line is checked on its own at checkout, so two lines on the same nearly-full day can together go over the limit by one order. Zone limits and tag-based product limits also aren't applied per item. The daily counts stay correct (the day shows as full afterwards); a fix is on the roadmap.
 
 ## Not yet decided / proposed
 

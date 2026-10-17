@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "That isn't a Pickday settings file.",
   "transfer.exportHeading": "Export",
   "transfer.exportHelp": "Download all Pickday settings as a file, or create a code to paste into Pickday in another store (for example your second store or a test store). Codes work for 24 hours.",
-  "transfer.feeNote": "Open Surcharges and click Save once after importing so the fee product is created in this store.",
+  "transfer.feeNote": "Fees are set up in this store when you import. Check the Surcharges page afterwards.",
   "transfer.importHeading": "Import",
   "transfer.importHelp": "Replace this store's Pickday settings with settings from a file or a share code. You'll see what changes before anything is saved.",
   "transfer.imported": "Settings imported",

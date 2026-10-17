@@ -8,6 +8,7 @@ import { addDays } from "../../core/civil";
 import { dayMax, resolveRules, specialDayFor } from "../../core/engine";
 import type { MethodId, Settings, StorefrontConfig } from "../../core/types";
 import type { StoredItem } from "./counts.server";
+import { loadSettings } from "../models/settings.server";
 
 export type RangeKey = "today" | "tomorrow" | "week" | "next7" | "custom" | "upcoming" | "all";
 
@@ -141,10 +142,14 @@ export async function dayCounts(shop: string, config: StorefrontConfig, from: st
     if (!m.enabled) continue;
     const keys =
       m.id === "pickup"
-        ? config.locations.filter((l) => l.enabled).map((l) => ({ key: `pickup:${l.id}`, loc: l.id as string | null }))
-        : [{ key: m.id as string, loc: null as string | null }];
-    for (const { key, loc } of keys) {
-      const rules = resolveRules(config, m.id, loc, null);
+        ? config.locations.filter((l) => l.enabled).map((l) => ({ key: `pickup:${l.id}`, loc: l.id as string | null, zone: null as string | null }))
+        : [
+            { key: m.id as string, loc: null as string | null, zone: null as string | null },
+            // Delivery zones with their own limit are counted under their own key.
+            ...(m.id === "delivery" ? config.zones.filter((z) => z.capacity).map((z) => ({ key: `delivery:z:${z.id}`, loc: null, zone: z.id as string | null })) : []),
+          ];
+    for (const { key, loc, zone } of keys) {
+      const rules = resolveRules(config, m.id, loc, zone);
       if (!rules) continue;
       for (let d = from; d <= to; d = addDays(d, 1)) {
         const max = dayMax(rules.capacity, d, specialDayFor(config, d, m.id, loc));
@@ -188,10 +193,25 @@ export async function production(shop: string, from: string, to: string, filters
       add(o.orderId, it.title, it.variant ?? null, `${it.productId}|${it.variantId}`, it.qty, o.slotLabel);
     }
   }
-  for (const it of perItem) add(it.orderId, it.title, null, `${it.productId}|${it.variantId}`, it.qty, it.slotId);
+  const labels = perItem.some((i) => i.slotId) ? slotLabels((await loadSettings(shop)).settings) : new Map<string, string>();
+  for (const it of perItem) add(it.orderId, it.title, null, `${it.productId}|${it.variantId}`, it.qty, it.slotId ? labels.get(it.slotId) ?? it.slotId : null);
   return [...rows.values()]
     .map((r) => ({ title: r.title, variant: r.variant, qty: r.qty, orders: r.orders.size, slots: [...r.slots].filter(([s]) => s).map(([slot, qty]) => ({ slot, qty })) }))
     .sort((a, b) => a.title.localeCompare(b.title) || (a.variant ?? "").localeCompare(b.variant ?? ""));
+}
+
+/** Slot id → "09:00-12:00", from every slot list in the settings (methods, locations, zones, special days). */
+export function slotLabels(settings: Settings): Map<string, string> {
+  const out = new Map<string, string>();
+  const walk = (v: unknown) => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (!v || typeof v !== "object") return;
+    const o = v as Record<string, unknown>;
+    if (typeof o.id === "string" && typeof o.start === "string" && typeof o.end === "string" && !out.has(o.id)) out.set(o.id, `${o.start}-${o.end}`);
+    Object.values(o).forEach(walk);
+  };
+  walk(settings);
+  return out;
 }
 
 /** CSV with a UTF-8 BOM so Excel opens accents correctly. */

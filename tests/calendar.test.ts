@@ -20,7 +20,7 @@ describe("calendar links and files", () => {
     const ev = icsEvent({ uid: "u1", stamp: "20261016T000000Z", title: "Order #1, cake; candles", date: "2026-10-18", start: "10:00", end: "12:00", timeZone: "Europe/Berlin" });
     const cal = icsCalendar("Deliveries", [ev]);
     expect(cal).toContain("DTSTART;TZID=Europe/Berlin:20261018T100000");
-    expect(cal).toContain("SUMMARY:Order #1\\, cake\; candles");
+    expect(cal).toContain("SUMMARY:Order #1\\, cake\\; candles");
     expect(cal.split("\r\n").every((l) => l.length <= 75)).toBe(true);
     expect(cal.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
   });

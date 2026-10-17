@@ -19,6 +19,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const html = (s: string) => new Response(s, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 
   if (kind === "production") {
+    if (!hasFeature(ctx.plan, "production")) return new Response("Upgrade", { status: 402 });
     const from = url.searchParams.get("from") ?? ctx.today;
     const to = url.searchParams.get("to") ?? from;
     if (!isValidDate(from) || !isValidDate(to)) return new Response("Bad date", { status: 400 });

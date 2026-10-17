@@ -39,7 +39,7 @@ export function calendarLinks(e: CalendarEvent & { icsBase: string | null }): { 
 
 /** Escape text for an iCalendar property value and fold long lines. */
 export function icsText(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
 function fold(line: string): string {

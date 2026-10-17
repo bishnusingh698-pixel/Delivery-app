@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "Dat is geen instellingenbestand van Pickday.",
   "transfer.exportHeading": "Exporteren",
   "transfer.exportHelp": "Download alle Pickday-instellingen als bestand, of maak een code om in Pickday in een andere winkel te plakken (bijvoorbeeld je tweede winkel of een testwinkel). Codes werken 24 uur.",
-  "transfer.feeNote": "Open Toeslagen en klik na het importeren één keer op Opslaan zodat het toeslagproduct in deze winkel wordt aangemaakt.",
+  "transfer.feeNote": "De toeslagen worden bij het importeren in deze winkel ingesteld. Controleer daarna de pagina Toeslagen.",
   "transfer.importHeading": "Importeren",
   "transfer.importHelp": "Vervang de Pickday-instellingen van deze winkel door instellingen uit een bestand of deelcode. Je ziet wat er verandert voordat er iets wordt opgeslagen.",
   "transfer.imported": "Instellingen geïmporteerd",

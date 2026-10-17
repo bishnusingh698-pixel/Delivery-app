@@ -865,7 +865,7 @@
   "transfer.error.notPickday": "Das ist keine Pickday-Einstellungsdatei.",
   "transfer.exportHeading": "Export",
   "transfer.exportHelp": "Lade alle Pickday-Einstellungen als Datei herunter oder erstelle einen Code, den du in Pickday in einem anderen Shop einfügst (zum Beispiel deinem zweiten Shop oder einem Testshop). Codes gelten 24 Stunden.",
-  "transfer.feeNote": "Öffne nach dem Import Zuschläge und klicke einmal auf Speichern, damit das Gebührenprodukt in diesem Shop erstellt wird.",
+  "transfer.feeNote": "Die Gebühren werden beim Import in diesem Shop eingerichtet. Prüfe danach die Seite Zuschläge.",
   "transfer.importHeading": "Import",
   "transfer.importHelp": "Ersetze die Pickday-Einstellungen dieses Shops durch Einstellungen aus einer Datei oder einem Freigabecode. Du siehst die Änderungen, bevor etwas gespeichert wird.",
   "transfer.imported": "Einstellungen importiert",

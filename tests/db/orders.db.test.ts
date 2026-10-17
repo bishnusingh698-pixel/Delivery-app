@@ -66,4 +66,23 @@ describe.skipIf(!hasDb)("recording orders", async () => {
     expect(row?.limited).toBe(true);
     expect(await count("2026-10-21")).toBe(1);
   });
+
+  it("counts a per-item order once, not twice", async () => {
+    const items = (await count("2026-10-23")) + 0;
+    const o = order(3, "2026-10-23", "2026-10-16T10:00:00Z", {
+      note_attributes: [{ name: "_pickday", value: JSON.stringify({ v: 1, m: "shipping", d: null, s: null, t: null, l: null, z: null, a: null, c: "DE", lbl: null, lc: "en", f: null }) }],
+      line_items: [{ id: 30, product_id: 1, variant_id: 11, title: "Cake", quantity: 2, properties: [{ name: "_pickday", value: JSON.stringify({ d: "2026-10-23", s: null, t: null, lbl: null }) }] }],
+    });
+    await recordOrder(SHOP, o, null, "ORDERS_CREATE");
+    expect(await count("2026-10-23")).toBe(items + 1);
+  });
+
+  it("records create and update for one order arriving together without losing either", async () => {
+    const { withLock } = await import("../../app/services/lock.server");
+    const run = (u: string, d: string) => withLock(`order:${SHOP}`, () => recordOrder(SHOP, order(4, d, u), null));
+    await Promise.all([run("2026-10-16T10:00:00Z", "2026-10-26"), run("2026-10-16T10:05:00Z", "2026-10-27")]);
+    expect((await prisma.scheduledOrder.findFirst({ where: { shop: SHOP, orderId: "4" } }))?.date).toBe("2026-10-27");
+    expect(await count("2026-10-26")).toBe(0);
+    expect(await count("2026-10-27")).toBe(1);
+  });
 });

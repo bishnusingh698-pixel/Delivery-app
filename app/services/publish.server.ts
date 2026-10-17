@@ -5,6 +5,7 @@
 import prisma from "../db.server";
 import { unauthenticated } from "../shopify.server";
 import { addDays } from "../../core/civil";
+import { nowInZone } from "../../core/tz";
 import { toFunctionConfig, toStorefrontConfig } from "../../core/publish";
 import { holidayRegions } from "./holidays.server";
 import { targetIsEmpty } from "../../core/rules";
@@ -132,7 +133,10 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   const client = admin ?? (await unauthenticated.admin(shop)).admin;
   const { row, settings, config, today } = await storefrontConfigFor(shop);
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
-  const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null } = toFunctionConfig(config);
+  const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null; tzShift?: Record<string, number> } = toFunctionConfig(config);
+  // The Function only knows the shop's local time; pickup locations in other zones get an offset (republished hourly, so DST is followed).
+  const tzShift = locationTimeShifts(config);
+  if (Object.keys(tzShift).length) fnConfig.tzShift = tzShift;
   // Capacity counts go to the Function too when they fit (otherwise it skips the "full" check, D-11).
   fnConfig.avail = JSON.stringify(fnConfig).length + JSON.stringify(availability).length < 24000 ? availability : null;
   const vars = ruleVariables(config);
@@ -226,4 +230,18 @@ export function schedulePublish(shop: string, delayMs = 3000) {
       });
     }, delayMs),
   );
+}
+
+/** Minutes between the shop's local time and each pickup location's own time zone, right now. */
+export function locationTimeShifts(config: Pick<StorefrontConfig, "tz" | "locations">, at = new Date()): Record<string, number> {
+  const shop = nowInZone(config.tz || "UTC", at);
+  const out: Record<string, number> = {};
+  for (const l of config.locations) {
+    if (!l.timeZone || l.timeZone === config.tz) continue;
+    const here = nowInZone(l.timeZone, at);
+    const days = here.date === shop.date ? 0 : here.date > shop.date ? 1 : -1;
+    const diff = days * 1440 + here.minutes - shop.minutes;
+    if (diff) out[l.id] = diff;
+  }
+  return out;
 }

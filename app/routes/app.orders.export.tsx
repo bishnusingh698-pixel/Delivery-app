@@ -1,3 +1,4 @@
+import { hasFeature } from "../../core/publish";
 import type { LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { adminContext } from "../services/settings.server";
@@ -14,6 +15,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     new Response(body, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "no-store" } });
 
   if (url.searchParams.get("kind") === "production") {
+    if (!hasFeature(ctx.plan, "production")) return new Response("Upgrade", { status: 402 });
     const from = url.searchParams.get("from") ?? ctx.today;
     const to = url.searchParams.get("to") ?? from;
     if (!isValidDate(from) || !isValidDate(to)) return new Response("Bad date", { status: 400 });

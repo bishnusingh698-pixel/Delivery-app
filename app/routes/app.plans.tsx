@@ -6,11 +6,10 @@ import { Button, Page, Section, Stack } from "../components/polaris";
 import { useT } from "../i18n/react";
 import { logActivity } from "../models/settings.server";
 import { applySubscription, billingTest } from "../services/billing.server";
-import { releaseLimited } from "../services/orders.server";
+import { releaseAfterUpgrade } from "../services/orders.server";
 import { adminContext } from "../services/settings.server";
 import { monthlyUsage } from "../services/usage.server";
 import { authenticate, PLAN_PRO, PLAN_STARTER } from "../shopify.server";
-import { zonedToUtc } from "../../core/tz";
 
 const NAMES: Record<Exclude<PlanId, "free">, typeof PLAN_STARTER | typeof PLAN_PRO> = { starter: PLAN_STARTER, pro: PLAN_PRO };
 
@@ -25,10 +24,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const change = await applySubscription(ctx.shop, sub ? { id: sub.id, name: sub.name, status: sub.status } : null);
     if (change) {
       plan = ctx.row.isDevStore ? "pro" : change.to;
-      if (rank(change.to) > rank(change.from)) {
-        const monthStart = ctx.today.slice(0, 8) + "01";
-        await releaseLimited(ctx.shop, ctx.admin, zonedToUtc(monthStart, "00:00", ctx.row.timeZone || "UTC"));
-      }
+      await releaseAfterUpgrade(ctx.shop, ctx.admin, change);
     }
   } catch (e) {
     console.error("[plans] billing check", (e as Error).message);
@@ -36,8 +32,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const usage = await monthlyUsage(ctx.shop, { ...ctx.row, plan });
   return { plan, devStore: ctx.row.isDevStore, usage, test: billingTest() };
 };
-
-const rank = (p: PlanId) => (p === "pro" ? 2 : p === "starter" ? 1 : 0);
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const ctx = await adminContext(request);
