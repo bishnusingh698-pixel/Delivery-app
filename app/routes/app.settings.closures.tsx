@@ -50,7 +50,6 @@ export default function ClosuresPage() {
   const form = useSettingsForm(initial);
   const { draft, update } = form;
   const allowed = hasFeature(meta.plan, "closures");
-  const methods: MethodId[] = ["delivery", "pickup", "shipping"];
 
   const ordersIn = (start: string, end: string) => {
     let n = 0;

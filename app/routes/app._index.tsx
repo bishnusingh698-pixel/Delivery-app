@@ -5,7 +5,7 @@ import { addDays } from "../../core/civil";
 import { BUSINESS_TYPES, applyBusinessPreset, type BusinessType } from "../../core/defaults";
 import { alerts, busyDays, checklist, type ChecklistId } from "../../core/home";
 import { hasFeature } from "../../core/publish";
-import type { MethodId } from "../../core/types";
+import type { MethodId, PlanId, Settings } from "../../core/types";
 import { Button, Page, Section, Select, Stack } from "../components/polaris";
 import { countryName, useFormatDate, useMethodLabel } from "../components/shared";
 import { useI18n, useT } from "../i18n/react";
@@ -51,12 +51,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     checklistDismissed: !!flags.checklistDismissed,
     themeLink: themeEditorLink(ctx.shop),
     overview: { today: sum([ctx.today]), tomorrow: sum([addDays(ctx.today, 1)]), week: sum(week) },
-    alerts: alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usagePct: usage.limit === null ? null : usage.pct, warnings: warningsOf(ctx.row) }),
+    alerts: alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usagePct: usage.limit === null ? null : usage.pct, warnings: warningsOf(ctx.row), plan: ctx.plan }),
     busy,
     celebrate: !!flags.firstOrderAt && !flags.firstOrderCelebrated,
     methods: ctx.settings.methodOrder.filter((m) => ctx.settings.methods[m].enabled),
   };
 };
+
+/** A preset never switches on what the plan doesn't include (Free: one method, no time slots). */
+function presetForPlan(s: Settings, plan: PlanId): Settings {
+  if (!hasFeature(plan, "allMethods")) {
+    const first = s.methodOrder.find((id) => s.methods[id].enabled);
+    for (const id of s.methodOrder) s.methods[id].enabled = id === first;
+  }
+  if (!hasFeature(plan, "slots")) for (const id of s.methodOrder) s.methods[id].slotsEnabled = false;
+  return s;
+}
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const ctx = await adminContext(request);
@@ -66,7 +76,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const type = String(form.get("businessType")) as BusinessType;
     const country = String(form.get("country") || "") || null;
     let next = { ...ctx.settings, country };
-    if (BUSINESS_TYPES.includes(type)) next = applyBusinessPreset(next, type);
+    if (BUSINESS_TYPES.includes(type)) next = presetForPlan(applyBusinessPreset(next, type), ctx.plan);
     const r = await saveSettings(ctx, next, `Welcome: ${type}`);
     if (r.ok) await setFlags(ctx.shop, { welcomeDone: true });
     return { ok: r.ok };
@@ -169,6 +179,7 @@ function Alerts() {
     vacation: { href: "/app/settings/closures", label: t("home.alert.vacationAction") },
     embedOff: { href: d.themeLink, label: t("home.alert.embedOffAction") },
     usage: { href: "/app/plans", label: t("home.alert.usageAction") },
+    planOff: { href: "/app/plans", label: t("home.alert.planOffAction") },
     holidays: { href: "/app/settings/closures", label: t("home.alert.holidaysAction") },
     checkoutMismatch: { href: "/app/settings/checkout", label: t("home.alert.checkoutMismatchAction") },
     configLarge: { href: "/app/settings/areas", label: t("home.alert.configLargeAction") },
@@ -181,6 +192,7 @@ function Alerts() {
         if (typeof p.first === "string") p.first = fmt(p.first);
         if (typeof p.start === "string" && p.start) p.start = fmt(p.start);
         if (typeof p.end === "string" && p.end) p.end = fmt(p.end);
+        if (typeof p.keys === "string") p.features = p.keys.split(",").map((k) => t(`${k}.title`)).join(", ");
         const l = link[a.id];
         return (
           <s-banner key={a.id} tone={a.tone} heading={t(`home.alert.${a.id}`, p)}>

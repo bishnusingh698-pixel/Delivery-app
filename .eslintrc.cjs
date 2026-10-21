@@ -19,7 +19,8 @@ module.exports = {
     commonjs: true,
     es6: true,
   },
-  ignorePatterns: ["!**/.server", "!**/.client"],
+  // Built widget bundle and generated Shopify type files are not linted.
+  ignorePatterns: ["!**/.server", "!**/.client", "extensions/*/assets/*.js", "extensions/**/shopify.d.ts", "build/"],
 
   // Base config
   extends: ["eslint:recommended"],
@@ -50,6 +51,9 @@ module.exports = {
       },
       rules: {
         "react/no-unknown-property": ["error", { ignore: ["variant"] }],
+        // Advisory only: these React Compiler checks flag patterns that are intentional here (syncing fetcher results into state).
+        "react-hooks/set-state-in-effect": "warn",
+        "react-hooks/refs": "warn",
       },
     },
 
@@ -74,6 +78,11 @@ module.exports = {
         "plugin:import/recommended",
         "plugin:import/typescript",
       ],
+      rules: {
+        // GraphQL responses are untyped JSON; \`any\` there is deliberate.
+        "@typescript-eslint/no-explicit-any": "off",
+        "no-empty": ["error", { allowEmptyCatch: true }],
+      },
     },
 
     // Node

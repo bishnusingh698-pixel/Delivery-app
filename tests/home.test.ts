@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alerts, busyDays, checklist } from "../core/home";
+import { alerts, busyDays, checklist, settingsOffOnPlan } from "../core/home";
 import { defaultSettings } from "../core/defaults";
 
 describe("home", () => {
@@ -22,5 +22,17 @@ describe("home", () => {
     expect(a.map((x) => x.id)).toEqual(["embedOff", "vacation", "busy", "usage", "holidays"]);
     const quiet = alerts({ settings: defaultSettings("US"), today: "2026-03-01", flags: { embedDetected: true }, embedChecked: true, busyDays: [], usagePct: 10, warnings: [] });
     expect(quiet).toEqual([]);
+  });
+  it("lists settings a lower plan switches off", () => {
+    const s = defaultSettings("US");
+    s.methods.delivery.enabled = true;
+    s.methods.pickup.enabled = true;
+    s.methods.delivery.slotsEnabled = true;
+    s.surcharges.push({ id: "f", label: "", kind: "weekday", weekdays: [6], dates: [], slotIds: [], methods: "all", amount: "5", variantId: null } as any);
+    expect(settingsOffOnPlan(s, "free")).toEqual(["methods", "capacity", "surcharges"]);
+    expect(settingsOffOnPlan(s, "starter")).toEqual(["surcharges"]);
+    expect(settingsOffOnPlan(s, "pro")).toEqual([]);
+    const a = alerts({ settings: s, today: "2026-03-01", flags: { embedDetected: true }, embedChecked: true, busyDays: [], usagePct: null, warnings: [], plan: "starter" });
+    expect(a).toContainEqual({ id: "planOff", tone: "warning", params: { keys: "surcharges" } });
   });
 });

@@ -194,6 +194,7 @@ function ChangeModal({ data }: { data: Found }) {
         ) : null}
         <Checkbox label={t("orders.ignoreLimits")} details={t("orders.ignoreLimitsHelp")} checked={force} onChange={setForce} />
         <s-text color="subdued">{t("order.tzNote", { zone: data.timeZone })}</s-text>
+        <s-text color="subdued">{t("order.changeNote")}</s-text>
       </Stack>
     </Modal>
   );
