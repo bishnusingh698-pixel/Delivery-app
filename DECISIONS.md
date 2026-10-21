@@ -24,7 +24,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-09 Capacity is not race-proof in v1.** Capacity is enforced in the storefront from published counts (refreshed a few seconds after each order) and counted after ordering. Two shoppers can still book the last spot at the same second; the merchant sees the day as over capacity and can move one order. A hard limit would need a reservation call at checkout, which would make checkout depend on the server.
 
-**D-10 Free plan limit.** Instead of not recording orders above the monthly limit, Pickday still records them (so capacity stays correct for shoppers — otherwise a full day would look empty) but does not tag them, write the order metafield or fire Flow triggers until the merchant upgrades. Upgrading backfills tags for the current month. The widget and checkout are never affected.
+**D-10 Free plan limit.** Instead of not recording orders above the monthly limit (since D-54: above the limit plus a 20% buffer), Pickday still records them (so capacity stays correct for shoppers — otherwise a full day would look empty) but does not tag them, write the order metafield or fire Flow triggers until the merchant upgrades. Upgrading backfills tags for the current month. The widget and checkout are never affected.
 
 **D-11 Function config size.** Function input is size-limited, so the Function copy of the config drops display-only data (addresses, instructions, widget styles, non-checkout texts). If it is still over 20 KB, postcode lists and zones are removed from the Function copy; the Function then validates against method-level rules only, and skips the date check for orders that use a zone (D-39), so it is never stricter. Home shows a warning suggesting fewer/shorter postcode rules.
 
@@ -123,6 +123,24 @@ Short notes on choices made where the brief left room, or where Shopify works di
 - Special open days win over vacation mode, and calendar-day lead time after the cutoff counts from the next working day (D-12).
 - Test orders count toward capacity, so a test order can be used to check the setup.
 
+## Pricing (October 2026)
+
+**D-51 Plans and prices live in one file.** `core/plans.ts` holds the monthly and yearly price, order, location and closure limits, feature set, trial days, grace buffer and Shopify billing names of each plan. Free $0 (30 orders a month), Starter $4.99/month or $49/year (500 orders a month), Pro $9.99/month or $99/year (unlimited orders and locations). The billing config, the Plans page, feature locks and usage all read it; `core/publish.ts` re-exports the old names so existing imports keep working. Subscriptions approved before this change keep the price Shopify approved; their names ("Starter", "Pro") still map to the right plan. Changes of what each plan includes:
+- Starter now also has the production list (page, print, CSV), products without a date and extra preparation time per product, settings export/import by file, special open days and holiday import, the orders calendar and the orders CSV export.
+- Free keeps one method, the basic schedule, up to 10 closures plus vacation mode, the orders list and the printable day sheet. Products without a date are no longer on Free (they were before): on Free those settings are kept but switched off.
+- Pro adds share codes (create and use) on top of file import, which is Starter.
+- Pages show what's locked with a lock and "Available on Starter/Pro"; nothing is hidden.
+
+**D-52 Yearly billing and plan changes.** Four Shopify plans: "Starter", "Starter yearly", "Pro", "Pro yearly" (`Every30Days` / `Annual`), each with a 14-day trial. Yearly = "2 months free" (10 × monthly, rounded); the Plans page shows the per-month figure ("$4.08/month, billed $49 a year") and opens on Yearly. Plan changes use Shopify's `STANDARD` replacement behaviour: Shopify decides, so upgrades apply right away and a cheaper plan on the same interval starts at the next billing cycle. The current interval is read from the active subscription's name. Every subscription request carries the full 14-day trial, also when a merchant only changes plan or interval; Pickday doesn't shorten it (it could pass the remaining trial days later if that gets abused).
+
+**D-53 Free closures limit.** Free has up to 10 closures (one-time and yearly, not counting one-time closures already over) plus vacation mode. If a store has more (for example after a downgrade), the published config keeps the first 10 by start date; the others are kept in settings and work again after an upgrade. Special open days and imported holidays are Starter: on Free they're kept but not published. The Closures page counts closures on Free and stops adding at 10.
+
+**D-54 Soft cap with a 20% grace buffer.** Counting and capacity never stop. At 80% of the monthly order limit Home shows a warning. From 100% everything keeps working normally for another 20% of the limit (Free: orders 31–36, Starter: 501–600), with a stronger banner and an Upgrade button on Home and the Plans page. Past limit × 1.2 only the extras pause for new orders: tags, the order metafield and Flow triggers (an order is `limited` when the month's count before it is at least floor(limit × 1.2)). The widget, checkout, capacity and the date on the order are never affected. Upgrading catches up the month's limited orders as before (D-10). The daily summary is Pro only, so it has no limit to apply.
+
+**D-55 The monthly count resets on the 1st, not on the billing date.** Usage counts scheduled orders created since the 1st of the month in the store's time zone. Shopify's billing date isn't exposed reliably (trials, plan changes and yearly plans each move it), so a calendar month is used on purpose. This differs from "per billing cycle" in the pricing document.
+
 ## Not yet decided / proposed
+
+- **Founding-merchant price lock (proposed, not built).** Stores that subscribe in the first months could keep their price for life when prices rise later. Shopify already keeps an approved subscription's price until the app asks for a new one, so this would mostly be a promise plus a list of stores; the owner decides whether to offer it.
 
 Further decisions are added as phases land.

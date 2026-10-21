@@ -51,7 +51,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     checklistDismissed: !!flags.checklistDismissed,
     themeLink: themeEditorLink(ctx.shop),
     overview: { today: sum([ctx.today]), tomorrow: sum([addDays(ctx.today, 1)]), week: sum(week) },
-    alerts: alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usagePct: usage.limit === null ? null : usage.pct, warnings: warningsOf(ctx.row), plan: ctx.plan }),
+    alerts: alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usage: usage.limit === null ? null : usage, warnings: warningsOf(ctx.row), plan: ctx.plan }),
     busy,
     celebrate: !!flags.firstOrderAt && !flags.firstOrderCelebrated,
     methods: ctx.settings.methodOrder.filter((m) => ctx.settings.methods[m].enabled),
@@ -179,6 +179,8 @@ function Alerts() {
     vacation: { href: "/app/settings/closures", label: t("home.alert.vacationAction") },
     embedOff: { href: d.themeLink, label: t("home.alert.embedOffAction") },
     usage: { href: "/app/plans", label: t("home.alert.usageAction") },
+    usageGrace: { href: "/app/plans", label: t("common.upgrade") },
+    usagePaused: { href: "/app/plans", label: t("common.upgrade") },
     planOff: { href: "/app/plans", label: t("home.alert.planOffAction") },
     holidays: { href: "/app/settings/closures", label: t("home.alert.holidaysAction") },
     checkoutMismatch: { href: "/app/settings/checkout", label: t("home.alert.checkoutMismatchAction") },
@@ -198,7 +200,7 @@ function Alerts() {
           <s-banner key={a.id} tone={a.tone} heading={t(`home.alert.${a.id}`, p)}>
             {t(`home.alert.${a.id}Text`, p)}
             {l ? (
-              <s-button slot="secondary-actions" href={l.href} target={a.id === "embedOff" ? "_top" : undefined}>
+              <s-button slot="secondary-actions" href={l.href} target={a.id === "embedOff" ? "_top" : undefined} variant={a.id === "usageGrace" || a.id === "usagePaused" ? "primary" : undefined}>
                 {l.label}
               </s-button>
             ) : null}

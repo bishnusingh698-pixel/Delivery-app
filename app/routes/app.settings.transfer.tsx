@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData, useRevalidator } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { hasFeature } from "../../core/publish";
+import { hasFeature } from "../../core/plans";
 import { Button, Locked, Page, Section, Stack, TextField } from "../components/polaris";
 import { useT } from "../i18n/react";
 import { logActivity, recentActivity } from "../models/settings.server";
@@ -16,6 +16,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const activity = await recentActivity(ctx.shop, 50);
   return {
     allowed: hasFeature(ctx.plan, "importExport"),
+    shareAllowed: hasFeature(ctx.plan, "shareCodes"),
     doc: exportDocument(ctx.shop, ctx.settings, await refsFor(ctx.admin, ctx.settings)),
     activity: activity.map((a) => ({ id: a.id, at: a.at.toISOString(), actor: a.actor, kind: a.kind, summary: a.summary })),
   };
@@ -31,6 +32,10 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
   const ctx = await adminContext(request);
   if (!hasFeature(ctx.plan, "importExport")) return { intent: "apply", ok: false, error: "locked" };
   const body = (await request.json()) as { intent: string; doc?: unknown; code?: string };
+  // Files are Starter; share codes (create or use) are Pro.
+  if ((body.intent === "share" || body.code) && !hasFeature(ctx.plan, "shareCodes")) {
+    return { intent: body.intent === "apply" ? "apply" : "preview", ok: false, error: "shareLocked" };
+  }
   if (body.intent === "share") {
     const res = await createShareCode(ctx.shop, ctx.settings, await refsFor(ctx.admin, ctx.settings));
     await logActivity(ctx.shop, "export", "Created a share code (valid 24 hours, works once)", ctx.actor);
@@ -67,7 +72,7 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
 };
 
 export default function TransferPage() {
-  const { allowed, doc, activity } = useLoaderData<typeof loader>();
+  const { allowed, shareAllowed, doc, activity } = useLoaderData<typeof loader>();
   const t = useT();
   const shopify = useAppBridge();
   const share = useFetcher<typeof action>();
@@ -109,13 +114,14 @@ export default function TransferPage() {
 
   return (
     <Page title={t("transfer.title")} subtitle={t("transfer.subtitle")} backTo={{ href: "/app/settings", label: t("nav.settings") }}>
-      {!allowed ? <Locked plan="Pro" label={t("transfer.locked")} upgradeLabel={t("common.upgrade")} /> : null}
+      {!allowed ? <Locked plan="Starter" label={t("transfer.locked")} upgradeLabel={t("common.upgrade")} /> : null}
+      {allowed && !shareAllowed ? <Locked plan="Pro" label={t("transfer.shareLocked")} upgradeLabel={t("common.upgrade")} /> : null}
       <Section heading={t("transfer.exportHeading")}>
         <Stack gap="base">
           <s-text color="subdued">{t("transfer.exportHelp")}</s-text>
           <Stack direction="inline" gap="small-200" wrap>
             <Button icon="export" disabled={!allowed} onClick={download}>{t("transfer.download")}</Button>
-            <Button disabled={!allowed} loading={share.state !== "idle"} onClick={() => share.submit({ intent: "share" }, { method: "post", encType: "application/json" })}>{t("transfer.createCode")}</Button>
+            <Button disabled={!shareAllowed} icon={shareAllowed ? undefined : "lock"} loading={share.state !== "idle"} onClick={() => share.submit({ intent: "share" }, { method: "post", encType: "application/json" })}>{shareAllowed ? t("transfer.createCode") : `${t("transfer.createCode")} (Pro)`}</Button>
           </Stack>
           {sh ? (
             <s-banner tone="success" heading={t("transfer.codeReady", { code: sh.code })}>
@@ -131,8 +137,8 @@ export default function TransferPage() {
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(e) => onFile(e.currentTarget.files?.[0])} />
           <Stack direction="inline" gap="small-200" alignItems="end" wrap>
             <Button icon="import" disabled={!allowed} onClick={() => fileRef.current?.click()}>{t("transfer.chooseFile")}</Button>
-            <TextField label={t("transfer.codeLabel")} value={code} placeholder="ABCD234XYZ" disabled={!allowed} onChange={setCode} />
-            <Button disabled={!allowed || code.replace(/\W/g, "").length !== 10} onClick={() => preview({ code })}>{t("transfer.useCode")}</Button>
+            <TextField label={shareAllowed ? t("transfer.codeLabel") : `${t("transfer.codeLabel")} (Pro)`} value={code} placeholder="ABCD234XYZ" disabled={!shareAllowed} onChange={setCode} />
+            <Button disabled={!shareAllowed || code.replace(/\W/g, "").length !== 10} onClick={() => preview({ code })}>{t("transfer.useCode")}</Button>
           </Stack>
           {res && "ok" in res && !res.ok ? <s-banner tone="critical">{t(`transfer.error.${res.error}`)}</s-banner> : null}
           {res?.intent === "preview" && res.ok && pending ? (

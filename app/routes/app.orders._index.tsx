@@ -7,7 +7,7 @@ import { weekOrder } from "../../core/i18n/week";
 import { hasFeature } from "../../core/publish";
 import type { MethodId } from "../../core/types";
 import prisma from "../db.server";
-import { Button, Checkbox, EmptyState, Modal, Page, Section, Select, Stack, TextField, closeModal, openModal } from "../components/polaris";
+import { Button, Checkbox, EmptyState, Locked, Modal, Page, Section, Select, Stack, TextField, closeModal, openModal } from "../components/polaris";
 import { downloadUrl, printUrl } from "../components/print";
 import { useFormatDate, useMethodLabel } from "../components/shared";
 import { useI18n, useT } from "../i18n/react";
@@ -33,6 +33,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     slotsByMethod: Object.fromEntries(s.methodOrder.map((m) => [m, s.methods[m].capacity.slots.map((x) => ({ id: x.id, label: `${x.start}–${x.end}` }))])) as Record<MethodId, { id: string; label: string }[]>,
     anyOrders: (await prisma.scheduledOrder.count({ where: { shop: ctx.shop } })) > 0,
   };
+  if (view === "calendar" && !hasFeature(ctx.plan, "ordersCalendar")) return { ...base, month: null, days: null, rows: [], total: 0, pages: 1 };
   if (view === "calendar") {
     const month = isValidDate(url.searchParams.get("month") ?? "") ? firstOfMonth(url.searchParams.get("month")!) : firstOfMonth(ctx.today);
     const { config } = await storefrontConfigFor(ctx.shop);
@@ -104,6 +105,8 @@ export default function OrdersPage() {
     >
       {!data.anyOrders ? (
         <EmptyState heading={t("orders.emptyHeading")} text={t("orders.emptyText")} action={<Button href="/app/widget" variant="primary">{t("orders.emptyAction")}</Button>} />
+      ) : data.view === "calendar" && !hasFeature(data.plan, "ordersCalendar") ? (
+        <Locked plan="Starter" label={t("orders.calendarLocked")} upgradeLabel={t("common.upgrade")} />
       ) : data.view === "calendar" ? (
         <CalendarView data={data} onPick={(d) => navigate(`/app/orders?range=custom&from=${d}&to=${d}`)} onMonth={(m) => set({ month: m })} />
       ) : (
@@ -183,6 +186,7 @@ function ListView({ data, set }: { data: Data; set: (p: Record<string, string | 
   };
   const routeAllowed = hasFeature(data.plan, "routeSheet");
   const bulkAllowed = hasFeature(data.plan, "bulkReschedule");
+  const csvAllowed = hasFeature(data.plan, "csvExport");
 
   return (
     <>
@@ -193,7 +197,7 @@ function ListView({ data, set }: { data: Data; set: (p: Record<string, string | 
         <Stack direction="inline" gap="small-200" justifyContent="space-between" alignItems="center">
           <s-text color="subdued">{selected.size ? t("orders.selected", { count: selected.size }) : t("orders.count", { count: data.total })}</s-text>
           <s-button-group>
-            <Button onClick={() => run(() => downloadUrl(`/app/orders/export?${query()}`, "orders.csv"))} icon="export">{t("orders.exportCsv")}</Button>
+            <Button disabled={!csvAllowed} onClick={() => run(() => downloadUrl(`/app/orders/export?${query()}`, "orders.csv"))} icon={csvAllowed ? "export" : "lock"}>{t("orders.exportCsv")}{csvAllowed ? "" : " (Starter)"}</Button>
             <Button onClick={() => run(() => printUrl(`/app/print?kind=day&${query()}`))} icon="print">{t("orders.printDay")}</Button>
             <Button disabled={!routeAllowed} onClick={() => run(() => printUrl(`/app/print?kind=route&${query()}`))} icon="location">{t("orders.printRoute")}{routeAllowed ? "" : " (Pro)"}</Button>
             <Button disabled={!selected.size || !bulkAllowed} onClick={() => openModal("bulk-modal")} icon="calendar">{t("orders.bulkReschedule")}{bulkAllowed ? "" : " (Pro)"}</Button>

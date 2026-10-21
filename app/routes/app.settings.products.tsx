@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 import { emptyTarget } from "../../core/defaults";
-import { hasFeature } from "../../core/publish";
+import { hasFeature } from "../../core/plans";
 import { targetIsEmpty } from "../../core/rules";
 import { METHOD_IDS, type MethodId, type ProductRules, type Settings } from "../../core/types";
 import { Button, Checkbox, ChoiceList, DateField, Locked, MultiChoice, NumberField, Page, Section, TextField } from "../components/polaris";
@@ -64,6 +64,8 @@ export default function ProductsPage() {
   const t = useT();
   const label = useMethodLabel();
   const fmt = useFormatDate();
+  // Products without a date and extra preparation time are Starter; the other rules are Pro.
+  const basicsAllowed = hasFeature(meta.plan, "productBasics");
   const allowed = hasFeature(meta.plan, "productRules");
   const [titles, setTitles] = useState<TitleMap>(initialTitles);
   const onTitles = (fresh: TitleMap) => setTitles((prev) => ({ ...prev, ...fresh }));
@@ -109,6 +111,7 @@ export default function ProductsPage() {
     />
   );
   const locked = !allowed;
+  const basicsLocked = !basicsAllowed;
 
   return (
     <Page title={t("products.title")} subtitle={t("products.subtitle")} backTo={{ href: "/app/settings", label: t("nav.settings") }}>
@@ -128,6 +131,8 @@ export default function ProductsPage() {
         </s-banner>
       ) : null}
 
+      {basicsLocked ? <Locked plan="Starter" label={t("products.lockedStarter")} upgradeLabel={t("common.upgrade")} /> : null}
+
       <Section heading={t("products.excludeHeading")}>
         <s-stack gap="base">
           <s-text color="subdued">{t("products.excludeHelp")}</s-text>
@@ -138,10 +143,12 @@ export default function ProductsPage() {
             onChange={(v) => set((p) => (p.exclude = v))}
             titles={titles}
             onTitles={onTitles}
+            disabled={basicsLocked}
           />
           <ChoiceList
             label={t("products.mixedCart")}
             value={r.mixedCart}
+            disabled={basicsLocked}
             options={[
               { value: "any", label: t("products.mixedAny"), details: t("products.mixedAnyHelp") },
               { value: "all", label: t("products.mixedAll"), details: t("products.mixedAllHelp") },
@@ -151,8 +158,6 @@ export default function ProductsPage() {
         </s-stack>
       </Section>
 
-      {locked ? <Locked plan="Pro" label={t("products.locked")} upgradeLabel={t("common.upgrade")} /> : null}
-
       {/* Extra preparation time */}
       <Section heading={t("products.leadHeading")}>
         <s-stack gap="base">
@@ -160,7 +165,7 @@ export default function ProductsPage() {
           {r.extraLead.map((x, i) => (
             <s-box key={x.id} padding="base" border="base" borderRadius="base">
               <s-stack gap="base">
-                {picker(`productRules.extraLead.${i}.target`, x.target, (v) => set((p) => (p.extraLead[i].target = v)), locked)}
+                {picker(`productRules.extraLead.${i}.target`, x.target, (v) => set((p) => (p.extraLead[i].target = v)), basicsLocked)}
                 <s-box inlineSize="200px">
                   <NumberField
                     label={t("products.leadDays")}
@@ -168,7 +173,7 @@ export default function ProductsPage() {
                     min={0}
                     max={365}
                     suffix={t("products.days")}
-                    disabled={locked}
+                    disabled={basicsLocked}
                     onChange={(v) => set((p) => (p.extraLead[i].days = Math.max(0, Math.round(v ?? 0))))}
                   />
                 </s-box>
@@ -177,12 +182,14 @@ export default function ProductsPage() {
             </s-box>
           ))}
           <s-box>
-            <Button icon="plus" disabled={locked} onClick={() => set((p) => p.extraLead.push({ id: newId("rule_"), target: emptyTarget(), days: 1 }))}>
+            <Button icon="plus" disabled={basicsLocked} onClick={() => set((p) => p.extraLead.push({ id: newId("rule_"), target: emptyTarget(), days: 1 }))}>
               {t("products.addLead")}
             </Button>
           </s-box>
         </s-stack>
       </Section>
+
+      {locked ? <Locked plan="Pro" label={t("products.locked")} upgradeLabel={t("common.upgrade")} /> : null}
 
       {/* Only available on some days */}
       <Section heading={t("products.restrictHeading")}>

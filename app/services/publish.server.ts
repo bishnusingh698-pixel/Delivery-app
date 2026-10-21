@@ -114,7 +114,7 @@ export async function storefrontConfigFor(shop: string) {
     timeZone: row.timeZone,
     primaryLocale: row.primaryLocale,
     plan,
-    overLimit: usage.over,
+    overLimit: usage.paused,
     currency: row.currency,
     debugUntil: row.debugUntil && row.debugUntil > new Date() ? row.debugUntil.toISOString() : null,
     today,

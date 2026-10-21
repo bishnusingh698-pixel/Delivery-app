@@ -5,6 +5,7 @@
  */
 import { addDays } from "./civil";
 import { closureMatches } from "./engine";
+import { PLAN_CLOSURE_LIMIT, PLAN_FEATURES, PLAN_LOCATION_LIMIT } from "./plans";
 import type { PlanId, Settings, StorefrontConfig } from "./types";
 
 export interface PublishMeta {
@@ -19,29 +20,20 @@ export interface PublishMeta {
   today: string;
 }
 
-/** Features each plan unlocks (also used by the admin for lock badges). */
-export const PLAN_FEATURES: Record<PlanId, Set<string>> = {
-  free: new Set([]),
-  starter: new Set(["allMethods", "slots", "capacity", "closures", "holidays", "checkoutMatching", "noBranding"]),
-  pro: new Set([
-    "allMethods", "slots", "capacity", "closures", "holidays", "checkoutMatching", "noBranding",
-    "unlimitedLocations", "areas", "productRules", "dateMode", "surcharges", "production", "bulkReschedule",
-    "routeSheet", "calendarFeed", "flow", "digest", "customCss", "importExport",
-  ]),
-};
-
-export const PLAN_ORDER_LIMIT: Record<PlanId, number | null> = { free: 30, starter: 300, pro: null };
-export const PLAN_LOCATION_LIMIT: Record<PlanId, number | null> = { free: 1, starter: 1, pro: null };
-
-export function hasFeature(plan: PlanId, feature: string): boolean {
-  return PLAN_FEATURES[plan].has(feature);
-}
+export {
+  PLAN_FEATURES,
+  PLAN_ORDER_LIMIT,
+  PLAN_LOCATION_LIMIT,
+  PLAN_CLOSURE_LIMIT,
+  hasFeature,
+} from "./plans";
 
 /**
  * Apply plan limits so a downgraded store keeps working with the features it
  * still pays for. Data is never deleted, only switched off in the published copy.
+ * `today` (store zone) lets the Free closure limit skip past one-time closures.
  */
-export function applyPlan(s: Settings, plan: PlanId): Settings {
+export function applyPlan(s: Settings, plan: PlanId, today?: string): Settings {
   const out: Settings = JSON.parse(JSON.stringify(s));
   const f = PLAN_FEATURES[plan];
   if (!f.has("allMethods")) {
@@ -58,20 +50,28 @@ export function applyPlan(s: Settings, plan: PlanId): Settings {
       m.capacity.slots = m.capacity.slots.map((x) => ({ ...x, max: null }));
     }
   }
-  if (!f.has("closures")) {
-    out.closures = [];
-    out.specialDays = [];
+  if (!f.has("specialDays")) out.specialDays = [];
+  if (!f.has("holidays")) out.closures = out.closures.filter((c) => c.kind !== "holiday");
+  const closureLimit = PLAN_CLOSURE_LIMIT[plan];
+  if (closureLimit !== null) {
+    // Free: the first closures by start date that still matter (past one-time closures don't count).
+    const live = today ? out.closures.filter((c) => closureActive(c, today)) : out.closures;
+    const keep = new Set([...live].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0)).slice(0, closureLimit));
+    out.closures = out.closures.filter((c) => keep.has(c));
   }
   if (!f.has("checkoutMatching")) out.checkoutMatching.enabled = false;
   if (!f.has("areas")) {
     out.areas = [];
     out.zones = [];
   }
+  if (!f.has("productBasics")) {
+    out.productRules.exclude = { products: [], variants: [], collections: [], tags: [] };
+    out.productRules.extraLead = [];
+  }
   if (!f.has("productRules")) {
     out.productRules.restrictions = [];
     out.productRules.limits = [];
     out.productRules.methodOnly = [];
-    out.productRules.extraLead = [];
   }
   if (!f.has("dateMode")) out.dateMode = "order";
   if (!f.has("surcharges")) out.surcharges = [];
@@ -87,9 +87,13 @@ export function applyPlan(s: Settings, plan: PlanId): Settings {
   return out;
 }
 
+/** A closure that still matters on or after `today` (yearly, or not yet over; one day of slack for time zones). */
+export function closureActive(c: Settings["closures"][number], today: string): boolean {
+  return c.yearly || c.end >= addDays(today, -1);
+}
+
 export function toStorefrontConfig(settings: Settings, meta: PublishMeta): StorefrontConfig {
-  const s = applyPlan(settings, meta.plan);
-  const keepClosure = (c: Settings["closures"][number]) => c.yearly || c.end >= addDays(meta.today, -1);
+  const s = applyPlan(settings, meta.plan, meta.today);
   return {
     v: meta.version,
     tz: meta.timeZone,
@@ -100,7 +104,7 @@ export function toStorefrontConfig(settings: Settings, meta: PublishMeta): Store
     methods: s.methodOrder.map((id) => ({ id, ...s.methods[id] })),
     defaultMethod: s.defaultMethod,
     locations: s.locations,
-    closures: s.closures.filter(keepClosure),
+    closures: s.closures.filter((c) => closureActive(c, meta.today)),
     specialDays: s.specialDays.filter((d) => d.date >= addDays(meta.today, -1)),
     vacation: s.vacation,
     areas: s.areas,

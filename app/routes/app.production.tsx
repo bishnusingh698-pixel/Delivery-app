@@ -59,7 +59,7 @@ export default function ProductionPage() {
       primary={<Button slot="primary-action" variant="primary" icon="print" disabled={!d.allowed} onClick={() => run(() => printUrl(`/app/print?kind=production&${q}`))}>{t("production.print")}</Button>}
       secondary={<Button slot="secondary-actions" icon="export" disabled={!d.allowed} onClick={() => run(() => downloadUrl(`/app/orders/export?kind=production&${q}`, "production.csv"))}>{t("orders.exportCsv")}</Button>}
     >
-      {!d.allowed ? <Locked plan="Pro" label={t("production.locked")} upgradeLabel={t("common.upgrade")} /> : null}
+      {!d.allowed ? <Locked plan="Starter" label={t("production.locked")} upgradeLabel={t("common.upgrade")} /> : null}
       <Section>
         <Stack direction="inline" gap="small-200" wrap>
           <Button variant={d.from === d.today && d.to === d.today ? "primary" : "secondary"} onClick={() => set({ from: d.today, to: d.today })}>{t("orders.range.today")}</Button>

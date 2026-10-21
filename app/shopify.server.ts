@@ -3,14 +3,32 @@ import {
   ApiVersion,
   AppDistribution,
   BillingInterval,
+  BillingReplacementBehavior,
   shopifyApp,
 } from "@shopify/shopify-app-react-router/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 import { onInstall } from "./services/install.server";
+import { ALL_BILLING_NAMES, BILLING_NAMES, TRIAL_DAYS, price, type BillingIntervalId, type PaidPlanId } from "../core/plans";
 
-export const PLAN_STARTER = "Starter" as const;
-export const PLAN_PRO = "Pro" as const;
+export const PLAN_STARTER = BILLING_NAMES.starter.monthly;
+export const PLAN_PRO = BILLING_NAMES.pro.monthly;
+/** Every subscription name Pickday sells; pass this to every billing.check. */
+export const BILLING_PLAN_NAMES = ALL_BILLING_NAMES;
+
+/** One billing plan per paid plan and interval; prices and trial come from core/plans.ts. */
+const billingPlan = (plan: PaidPlanId, interval: BillingIntervalId) => ({
+  trialDays: TRIAL_DAYS,
+  // Shopify decides: upgrades apply now, cheaper plans on the same interval at the next cycle (D-52).
+  replacementBehavior: BillingReplacementBehavior.Standard,
+  lineItems: [
+    {
+      amount: price(plan, interval),
+      currencyCode: "USD",
+      interval: interval === "yearly" ? BillingInterval.Annual : BillingInterval.Every30Days,
+    } as const,
+  ],
+});
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
@@ -22,14 +40,10 @@ const shopify = shopifyApp({
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
   billing: {
-    [PLAN_STARTER]: {
-      trialDays: 14,
-      lineItems: [{ amount: 7.99, currencyCode: "USD", interval: BillingInterval.Every30Days }],
-    },
-    [PLAN_PRO]: {
-      trialDays: 14,
-      lineItems: [{ amount: 14.99, currencyCode: "USD", interval: BillingInterval.Every30Days }],
-    },
+    [BILLING_NAMES.starter.monthly]: billingPlan("starter", "monthly"),
+    [BILLING_NAMES.starter.yearly]: billingPlan("starter", "yearly"),
+    [BILLING_NAMES.pro.monthly]: billingPlan("pro", "monthly"),
+    [BILLING_NAMES.pro.yearly]: billingPlan("pro", "yearly"),
   },
   hooks: {
     afterAuth: async ({ session, admin }) => {

@@ -5,12 +5,11 @@
 import prisma from "../db.server";
 import type { PlanId } from "../../core/types";
 import { schedulePublish } from "./publish.server";
+import { fromBillingName } from "../../core/plans";
 
+/** Plan from a Shopify subscription name ("Starter", "Starter yearly", "Pro", "Pro yearly"). */
 export function planFromName(name: string | null | undefined): PlanId {
-  const n = (name ?? "").toLowerCase();
-  if (n.includes("pro")) return "pro";
-  if (n.includes("starter")) return "starter";
-  return "free";
+  return fromBillingName(name).plan;
 }
 
 /** Apply a subscription status change. ACTIVE (incl. trial) = that plan; anything else = Free. */

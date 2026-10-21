@@ -59,12 +59,17 @@ describe.skipIf(!hasDb)("recording orders", async () => {
     expect(await count("2026-10-22")).toBe(0);
   });
 
-  it("still records orders over the free plan limit, flagged as limited", async () => {
+  it("soft cap: over the free limit orders work normally for 20% more, then are recorded but flagged as limited", async () => {
     await prisma.scheduledOrder.createMany({ data: Array.from({ length: 30 }, (_, i) => ({ shop: SHOP, orderId: `x${i}`, orderName: `#x${i}`, method: "shipping", date: "2026-09-01" })) });
+    // 31st order this month: inside the 20% buffer, not limited.
+    await recordOrder(SHOP, order(20, "2026-10-21", "2026-10-16T10:00:00Z"), null, "ORDERS_CREATE");
+    expect((await prisma.scheduledOrder.findFirst({ where: { shop: SHOP, orderId: "20" } }))?.limited).toBe(false);
+    // Past 36 this month (30 × 1.2): the next one is limited.
+    await prisma.scheduledOrder.createMany({ data: Array.from({ length: 5 }, (_, i) => ({ shop: SHOP, orderId: `y${i}`, orderName: `#y${i}`, method: "shipping", date: "2026-09-01" })) });
     await recordOrder(SHOP, order(2, "2026-10-21", "2026-10-16T10:00:00Z"), null, "ORDERS_CREATE");
     const row = await prisma.scheduledOrder.findFirst({ where: { shop: SHOP, orderId: "2" } });
     expect(row?.limited).toBe(true);
-    expect(await count("2026-10-21")).toBe(1);
+    expect(await count("2026-10-21")).toBe(2);
   });
 
   it("counts a per-item order once, not twice", async () => {

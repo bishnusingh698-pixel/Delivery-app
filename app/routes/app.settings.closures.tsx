@@ -4,7 +4,8 @@ import { useFetcher, useLoaderData } from "react-router";
 import { addDays, addMonths, daysInMonth, weekday } from "../../core/civil";
 import { closureMatches } from "../../core/engine";
 import { weekOrder } from "../../core/i18n/week";
-import { hasFeature } from "../../core/publish";
+import { PLAN_CLOSURE_LIMIT, hasFeature } from "../../core/plans";
+import { closureActive } from "../../core/publish";
 import type { Closure, MethodId, Settings, SpecialDay } from "../../core/types";
 import prisma from "../db.server";
 import { Button, Checkbox, DateField, Locked, Modal, MultiChoice, NumberField, Page, Section, Select, Switch, TextField, closeModal, openModal } from "../components/polaris";
@@ -49,7 +50,12 @@ export default function ClosuresPage() {
   const fmt = useFormatDate();
   const form = useSettingsForm(initial);
   const { draft, update } = form;
-  const allowed = hasFeature(meta.plan, "closures");
+  // Free: up to 10 closures plus vacation mode; special open days and holiday import are Starter (D-53).
+  const specialAllowed = hasFeature(meta.plan, "specialDays");
+  const holidaysAllowed = hasFeature(meta.plan, "holidays");
+  const closureLimit = PLAN_CLOSURE_LIMIT[meta.plan];
+  const closuresUsed = draft.closures.filter((c) => c.kind !== "holiday" && closureActive(c, meta.today)).length;
+  const atLimit = closureLimit !== null && closuresUsed >= closureLimit;
 
   const ordersIn = (start: string, end: string) => {
     let n = 0;
@@ -114,7 +120,7 @@ export default function ClosuresPage() {
       backTo={{ href: "/app/settings", label: t("nav.settings") }}
     >
       <SettingsChrome form={form} />
-      {!allowed ? <Locked plan="Starter" label={t("closures.locked")} upgradeLabel={t("common.upgrade")} /> : null}
+      {!specialAllowed || !holidaysAllowed ? <Locked plan="Starter" label={t("closures.locked")} upgradeLabel={t("common.upgrade")} /> : null}
 
       <Section heading={t("closures.vacation")}>
         <s-stack gap="base">
@@ -157,7 +163,7 @@ export default function ClosuresPage() {
             update((d) => {
               const hit = d.closures.find((c) => !c.yearly && c.start === date && c.end === date && c.methods === "all" && c.locations === "all");
               if (hit) d.closures = d.closures.filter((c) => c !== hit);
-              else d.closures.push({ id: newId("c"), label: "", start: date, end: date, yearly: false, methods: "all", locations: "all", kind: "blackout" });
+              else if (!atLimit) d.closures.push({ id: newId("c"), label: "", start: date, end: date, yearly: false, methods: "all", locations: "all", kind: "blackout" });
             })
           }
         />
@@ -165,10 +171,24 @@ export default function ClosuresPage() {
 
       <Section heading={t("closures.list")}>
         <s-stack gap="base">
+          {closureLimit !== null ? (
+            closuresUsed > closureLimit ? (
+              <s-banner tone="warning">{t("closures.freeOver", { limit: closureLimit })}</s-banner>
+            ) : (
+              <s-stack direction="inline" gap="small-200" alignItems="center">
+                <s-text color="subdued">{t("closures.freeLimit", { count: closuresUsed, limit: closureLimit })}</s-text>
+                {atLimit ? (
+                  <s-badge icon="lock" tone="info">
+                    {t("common.availableOn", { plan: "Starter" })}
+                  </s-badge>
+                ) : null}
+              </s-stack>
+            )
+          ) : null}
           <s-stack direction="inline" gap="small-200">
             <Button
               variant="primary"
-              disabled={!allowed}
+              disabled={atLimit}
               onClick={() => {
                 setEditing(blank());
                 openModal("closure-modal");
@@ -176,17 +196,18 @@ export default function ClosuresPage() {
             >
               {t("closures.add")}
             </Button>
-            <Button disabled={!allowed} onClick={() => openModal("special-modal")}>
-              {t("closures.addSpecial")}
+            <Button disabled={!specialAllowed} icon={specialAllowed ? undefined : "lock"} onClick={() => openModal("special-modal")}>
+              {specialAllowed ? t("closures.addSpecial") : `${t("closures.addSpecial")} (Starter)`}
             </Button>
             <Button
-              disabled={!allowed}
+              disabled={!holidaysAllowed}
+              icon={holidaysAllowed ? undefined : "lock"}
               onClick={() => {
                 loadHolidays();
                 openModal("holiday-modal");
               }}
             >
-              {t("closures.importHolidays")}
+              {holidaysAllowed ? t("closures.importHolidays") : `${t("closures.importHolidays")} (Starter)`}
             </Button>
           </s-stack>
           {visible.length ? (

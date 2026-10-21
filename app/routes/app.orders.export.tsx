@@ -1,4 +1,4 @@
-import { hasFeature } from "../../core/publish";
+import { hasFeature } from "../../core/plans";
 import type { LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { adminContext } from "../services/settings.server";
@@ -26,6 +26,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     ));
   }
 
+  if (!hasFeature(ctx.plan, "csvExport")) return new Response("Upgrade", { status: 402 });
   const f = parseFilters(url, ctx.today);
   const ids = url.searchParams.get("ids")?.split(",").filter(Boolean).slice(0, 5000);
   const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : whereFor(ctx.shop, f);

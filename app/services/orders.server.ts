@@ -75,8 +75,8 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
   let limited = existing?.limited ?? false;
   if (!existing) {
     const row = await requireShop(shop);
-    const limit = PLAN_ORDER_LIMIT[planOf(row)];
-    if (limit !== null) limited = (await monthlyUsage(shop, row)).count >= limit;
+    // Soft cap (D-54): extras pause only past the limit plus the 20% buffer.
+    if (PLAN_ORDER_LIMIT[planOf(row)] !== null) limited = (await monthlyUsage(shop, row)).paused;
   }
 
   const oldDates = existing ? [existing.date] : [];

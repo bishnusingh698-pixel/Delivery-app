@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
-import { hasFeature } from "../../core/publish";
+import { hasFeature, minPlanFor } from "../../core/plans";
 import { Page } from "../components/polaris";
 import { useT } from "../i18n/react";
 import { adminContext } from "../services/settings.server";
@@ -10,17 +10,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return { plan: ctx.plan };
 };
 
-const CARDS: { key: string; href: string; icon: string; feature?: string; plan?: string }[] = [
+/** `feature`: the card shows a lock with the plan that unlocks the page (pages partly usable on a plan show none). */
+const CARDS: { key: string; href: string; icon: string; feature?: string }[] = [
   { key: "methods", href: "/app/settings/methods", icon: "delivery" },
   { key: "schedule", href: "/app/settings/schedule", icon: "calendar" },
-  { key: "capacity", href: "/app/settings/capacity", icon: "clock", feature: "slots", plan: "Starter" },
-  { key: "closures", href: "/app/settings/closures", icon: "calendar-check", feature: "closures", plan: "Starter" },
+  { key: "capacity", href: "/app/settings/capacity", icon: "clock", feature: "slots" },
+  { key: "closures", href: "/app/settings/closures", icon: "calendar-check" },
   { key: "locations", href: "/app/settings/locations", icon: "location" },
-  { key: "areas", href: "/app/settings/areas", icon: "map", feature: "areas", plan: "Pro" },
-  { key: "products", href: "/app/settings/products", icon: "product", feature: "productRules", plan: "Pro" },
-  { key: "checkout", href: "/app/settings/checkout", icon: "cart", feature: "checkoutMatching", plan: "Starter" },
-  { key: "surcharges", href: "/app/settings/surcharges", icon: "money", feature: "surcharges", plan: "Pro" },
-  { key: "transfer", href: "/app/settings/transfer", icon: "import", feature: "importExport", plan: "Pro" },
+  { key: "areas", href: "/app/settings/areas", icon: "map", feature: "areas" },
+  { key: "products", href: "/app/settings/products", icon: "product", feature: "productBasics" },
+  { key: "checkout", href: "/app/settings/checkout", icon: "cart", feature: "checkoutMatching" },
+  { key: "surcharges", href: "/app/settings/surcharges", icon: "money", feature: "surcharges" },
+  { key: "transfer", href: "/app/settings/transfer", icon: "import", feature: "importExport" },
 ];
 
 export default function SettingsHub() {
@@ -39,7 +40,7 @@ export default function SettingsHub() {
                   <s-heading>{t(`${c.key}.title`)}</s-heading>
                   {locked ? (
                     <s-badge icon="lock" tone="info">
-                      {c.plan}
+                      {t("common.availableOn", { plan: minPlanFor(c.feature!) })}
                     </s-badge>
                   ) : null}
                 </s-stack>
