@@ -82,6 +82,8 @@ async function recount(shop: string, settings: Settings, unique: string[]) {
     if (!o.date || !unique.includes(o.date) || itemOrders.has(o.orderId)) continue;
     const items = ((o.items as unknown as StoredItem[]) ?? []).filter((i) => i.needsDate !== false);
     const qty = items.reduce((n, i) => n + i.qty, 0);
+    // Fully refunded (every dated item at quantity 0): the order no longer takes a spot.
+    if (items.length && !qty) continue;
     const key = capacityKey(settings, o.method, o.locationId, o.zoneId);
     bump(key, o.date, "", qty);
     if (o.slotId) bump(key, o.date, o.slotId, qty);

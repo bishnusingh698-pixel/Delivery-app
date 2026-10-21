@@ -10,7 +10,9 @@ import { shopToday } from "../models/shop.server";
 import { unauthenticated } from "../shopify.server";
 import { sendDigestIfDue } from "./digest.server";
 import { checkEmbed } from "./embed.server";
-import { publishShop } from "./publish.server";
+import { publishShop, schedulePublish } from "./publish.server";
+import { collectionIdsIn, resolveCollectionProducts } from "./collections.server";
+import { loadSettings, storeSettings } from "../models/settings.server";
 
 const running = new Map<string, Promise<unknown>>();
 
@@ -71,8 +73,9 @@ export async function daily() {
     try {
       const { admin } = await unauthenticated.admin(s.shop);
       await checkEmbed(s.shop, admin);
+      await refreshCollections(s.shop, admin);
     } catch (e) {
-      console.error("[jobs] embed", s.shop, (e as Error).message);
+      console.error("[jobs] embed/collections", s.shop, (e as Error).message);
     }
   }
   // Stores uninstalled more than 60 days ago without a shop/redact: remove what's left.
@@ -93,6 +96,17 @@ export async function daily() {
     ]);
   }
   return { pruned, checked: shops.length, cleanedUninstalled: gone.length };
+}
+
+/** Products added to or removed from a collection used in product rules: refresh the widget's copy (D-35). */
+async function refreshCollections(shop: string, admin: Parameters<typeof resolveCollectionProducts>[0]) {
+  const { settings } = await loadSettings(shop);
+  const ids = collectionIdsIn(settings.productRules);
+  if (!ids.length) return;
+  const fresh = await resolveCollectionProducts(admin, ids);
+  if (JSON.stringify(fresh) === JSON.stringify(settings.productRules.collectionProducts)) return;
+  await storeSettings(shop, { ...settings, productRules: { ...settings.productRules, collectionProducts: fresh } });
+  schedulePublish(shop);
 }
 
 export function authorized(request: Request): boolean {

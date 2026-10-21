@@ -180,6 +180,11 @@ export async function releaseAfterUpgrade(shop: string, admin: AdminGraphql, cha
   return releaseLimited(shop, admin, zonedToUtc(monthStart, "00:00", row.timeZone || "UTC"));
 }
 
+/** Let a delivery be processed again (its work failed, so Shopify's retry must not be skipped). */
+export async function forgetDelivery(id: string | null) {
+  if (id) await prisma.webhookLog.deleteMany({ where: { id } }).catch(() => {});
+}
+
 /**
  * After an upgrade: orders recorded over the old plan limit this month get their
  * tags and metafield now (D-10). Older limited orders stay as they are.

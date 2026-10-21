@@ -1,5 +1,5 @@
 /** Copy settings between stores: JSON file or a 24-hour share code. */
-import { randomInt } from "node:crypto";
+import { createHash, randomInt } from "node:crypto";
 import prisma from "../db.server";
 import type { Settings, Target } from "../../core/types";
 import { gid, gql, type AdminGraphql } from "./graphql.server";
@@ -15,6 +15,8 @@ export function portable(s: Settings): Settings {
   out.locations = out.locations.map((l) => ({ ...l, shopifyLocationId: null }));
   out.surcharges = out.surcharges.map((f) => ({ ...f, variantId: null }));
   out.productRules.collectionProducts = {};
+  // Email addresses stay in the source store.
+  out.notifications = { ...out.notifications, digest: { ...out.notifications.digest, recipients: [] } };
   return out;
 }
 
@@ -122,24 +124,28 @@ export function prepareImport(current: Settings, doc: unknown): { ok: true; sett
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
 
+/** Only a hash of each code is stored, so the database alone can't be used to import another store's settings. */
+const normalize = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+export const hashCode = (code: string) => createHash("sha256").update(normalize(code)).digest("hex");
+
 export async function createShareCode(shop: string, s: Settings, refs?: Refs) {
   const code = Array.from({ length: 10 }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
   const expiresAt = new Date(Date.now() + 24 * 3600_000);
-  await prisma.shareCode.create({ data: { code, shop, data: exportDocument(shop, s, refs) as object, expiresAt } });
+  await prisma.shareCode.create({ data: { code: hashCode(code), shop, data: exportDocument(shop, s, refs) as object, expiresAt } });
   return { code, expiresAt: expiresAt.toISOString() };
 }
 
 export async function readShareCode(code: string): Promise<unknown | null> {
-  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (clean.length !== 10) return null;
-  const row = await prisma.shareCode.findUnique({ where: { code: clean } });
+  if (normalize(code).length !== 10) return null;
+  const row = await prisma.shareCode.findUnique({ where: { code: hashCode(code) } });
   if (!row || row.expiresAt < new Date() || row.usedAt) return null;
   return row.data;
 }
 
 /** A share code works once. Returns false if someone else used it first. */
-export async function useShareCode(code: string): Promise<boolean> {
-  const clean = code.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const r = await prisma.shareCode.updateMany({ where: { code: clean, usedAt: null, expiresAt: { gt: new Date() } }, data: { usedAt: new Date() } });
-  return r.count === 1;
+export async function consumeShareCode(code: string): Promise<{ from: string } | null> {
+  const where = { code: hashCode(code), usedAt: null, expiresAt: { gt: new Date() } };
+  const row = await prisma.shareCode.findFirst({ where, select: { shop: true } });
+  const r = await prisma.shareCode.updateMany({ where, data: { usedAt: new Date() } });
+  return r.count === 1 && row ? { from: row.shop } : null;
 }

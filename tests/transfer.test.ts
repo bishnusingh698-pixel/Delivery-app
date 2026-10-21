@@ -21,3 +21,11 @@ describe("settings transfer", () => {
     expect(prepareImport(defaultSettings(), { kind: "pickday-settings", settings: { methods: "nope" } })).toEqual({ ok: false, error: "invalid" });
   });
 });
+
+describe("share codes", () => {
+  it("are stored as a hash and match however they're typed", async () => {
+    const { hashCode } = await import("../app/services/transfer.server");
+    expect(hashCode("ABCD-EFGH-JK")).toBe(hashCode("abcdefghjk"));
+    expect(hashCode("ABCDEFGHJK")).toMatch(/^[0-9a-f]{64}$/);
+  });
+});

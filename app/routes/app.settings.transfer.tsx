@@ -9,7 +9,7 @@ import { useT } from "../i18n/react";
 import { logActivity, recentActivity } from "../models/settings.server";
 import { adminContext, saveSettings } from "../services/settings.server";
 import { collectionIdsIn, resolveCollectionProducts } from "../services/collections.server";
-import { createShareCode, exportDocument, prepareImport, readShareCode, refsFor, remapTargets, useShareCode, type Refs } from "../services/transfer.server";
+import { createShareCode, exportDocument, prepareImport, readShareCode, refsFor, remapTargets, consumeShareCode, type Refs } from "../services/transfer.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
@@ -31,7 +31,11 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
   const ctx = await adminContext(request);
   if (!hasFeature(ctx.plan, "importExport")) return { intent: "apply", ok: false, error: "locked" };
   const body = (await request.json()) as { intent: string; doc?: unknown; code?: string };
-  if (body.intent === "share") return { intent: "share", ...(await createShareCode(ctx.shop, ctx.settings, await refsFor(ctx.admin, ctx.settings))) };
+  if (body.intent === "share") {
+    const res = await createShareCode(ctx.shop, ctx.settings, await refsFor(ctx.admin, ctx.settings));
+    await logActivity(ctx.shop, "export", "Created a share code (valid 24 hours, works once)", ctx.actor);
+    return { intent: "share" as const, ...res };
+  }
   const doc = body.code ? await readShareCode(body.code) : body.doc;
   if (body.code && !doc) return { intent: body.intent === "apply" ? "apply" : "preview", ok: false, error: "badCode" };
   const prep = prepareImport(ctx.settings, doc);
@@ -39,9 +43,13 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
   const src = doc as { from?: string; refs?: Refs };
   const { settings: mapped, missing } = await remapTargets(ctx.admin, prep.settings, src.refs, src.from === ctx.shop);
   if (body.intent === "preview") return { intent: "preview", ok: true, changes: prep.changes, productIds: prep.productIds, fees: prep.fees, missing };
-  if (body.code && !(await useShareCode(body.code))) return { intent: "apply", ok: false, error: "badCode" };
-  // Another store's email recipients and Flow switch never come along: keep this store's own.
-  if (src.from !== ctx.shop) mapped.notifications = ctx.settings.notifications;
+  if (body.code) {
+    const used = await consumeShareCode(body.code);
+    if (!used) return { intent: "apply", ok: false, error: "badCode" };
+    if (used.from !== ctx.shop) await logActivity(used.from, "export", `Your share code was used by ${ctx.shop}`, null).catch(() => {});
+  }
+  // Email recipients and the Flow switch never come along: keep this store's own.
+  mapped.notifications = ctx.settings.notifications;
   const cols = collectionIdsIn(mapped.productRules);
   if (cols.length) mapped.productRules.collectionProducts = await resolveCollectionProducts(ctx.admin, cols).catch(() => ({}));
   // Imported fees need this store's own fee variants, or they would never be charged.

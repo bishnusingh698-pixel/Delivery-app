@@ -32,6 +32,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       break;
     }
     case "SHOP_REDACT": {
+      // Sent 48 hours after uninstall. If the store has installed Pickday again since, its data is in use: keep it.
+      const current = await db.shop.findUnique({ where: { shop }, select: { active: true } });
+      if (current?.active) {
+        await logActivity(shop, "privacy", "Shop data deletion request skipped: the app was reinstalled", "Shopify").catch(() => {});
+        break;
+      }
       await db.$transaction([
         db.scheduledItem.deleteMany({ where: { shop } }),
         db.scheduledOrder.deleteMany({ where: { shop } }),
