@@ -16,7 +16,8 @@ import type { Availability, CartLine, MethodId, Selection, StorefrontConfig } fr
 export type Messages = Record<string, Record<string, string>>;
 
 /** tzShift: minutes to add to the shop's local time to get each pickup location's own local time (set at publish, refreshed hourly). */
-export type FunctionConfig = StorefrontConfig & { trimmed?: boolean; avail?: Availability | null; tzShift?: Record<string, number> };
+/** embedOff: the app embed was found switched off in the live theme, so shoppers can't pick a date (never block for a missing one). */
+export type FunctionConfig = StorefrontConfig & { trimmed?: boolean; avail?: Availability | null; tzShift?: Record<string, number>; embedOff?: boolean };
 
 /* ------------------------------------------------------- validation */
 
@@ -130,16 +131,26 @@ export function validate(input: ValidationInput, messages: Messages): Validation
 
   const sel = decodeSelection(input.cart.attribute?.value);
   if (!sel) {
+    if (cfg.embedOff) return [];
     const required = methods.some((id) => cfg.methods.find((m) => m.id === id)?.dateRequired);
     return required ? err(cfg.dateMode === "item" ? "validation.missingItemDate" : "validation.missingDate") : [];
   }
   if (!methods.includes(sel.m)) return err("validation.methodUnavailable");
   const method = cfg.methods.find((m) => m.id === sel.m)!;
+  if (sel.m === "pickup" && cfg.locations.length) {
+    // The pickup location must exist, be switched on and serve the delivery country.
+    const loc = cfg.locations.find((l) => l.id === sel.l);
+    const countryOk = !loc || loc.countries === "all" || !country || loc.countries.map((c) => c.toUpperCase()).includes(country.toUpperCase());
+    if (!loc || !loc.enabled || !countryOk) return err("validation.methodUnavailable");
+  }
 
   const rate = Number(input.presentmentCurrencyRate ?? 1) || 1;
   if (method.minOrder && input.cart.cost?.subtotalAmount) {
     const min = Number(method.minOrder) * rate;
-    if (Number(input.cart.cost.subtotalAmount.amount) < min - 0.005) {
+    // Pickday's own fee lines don't count toward the minimum.
+    let fees = 0;
+    for (const [v, q] of feeQty) fees += Number(cfg.surcharges.find((f) => f.variantId === v)?.amount ?? 0) * q * rate;
+    if (Number(input.cart.cost.subtotalAmount.amount) - fees < min - 0.005) {
       const name = method.names[lang ?? ""] || method.names[matchLocale(lang)] || t(`method.${sel.m}`);
       return err("validation.minOrder", { method: name, amount: `${min.toFixed(2)} ${input.cart.cost.subtotalAmount.currencyCode ?? ""}`.trim() });
     }
@@ -223,6 +234,8 @@ function problem(reason: string, label: string, required: boolean, err: (k: stri
 export interface DeliveryConfig {
   enabled: boolean;
   rename: boolean;
+  /** Rename shipping (carrier) rates too; off unless the merchant switches it on. */
+  renameShipping?: boolean;
   rateMap: { title: string; method: MethodId | "ignore" }[];
   locations: { id: string; name: string }[];
   names: Record<string, Record<string, string>>;
@@ -272,7 +285,7 @@ export function customizeDelivery(input: DeliveryInput, messages: Messages): Del
     if (!keep.length) continue;
     const kept = new Set(keep.map((o) => o.handle));
     for (const o of g.deliveryOptions) if (!kept.has(o.handle) && optionMethod(cfg, o) !== "ignore") ops.push({ deliveryOptionHide: { deliveryOptionHandle: o.handle } });
-    if (cfg.rename && sel.lbl) {
+    if (cfg.rename && sel.lbl && (sel.m !== "shipping" || cfg.renameShipping)) {
       const key = sel.m === "pickup" ? "checkout.renamePickup" : "checkout.renameDate";
       const tpl = textFor(messages, cfg.texts, lang, key);
       for (const o of keep) {

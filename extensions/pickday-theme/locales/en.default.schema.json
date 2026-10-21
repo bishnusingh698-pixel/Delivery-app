@@ -13,6 +13,8 @@
       "name": "Pickday delivery estimate",
       "help": "Shows the earliest delivery or pickup date for this product. Settings are in the Pickday app.",
       "product": "Product (leave empty to use the page's product)",
+      "hideBuyNow": "Hide \"Buy it now\" for products that need a date",
+      "hideBuyNowInfo": "\"Buy it now\" skips the cart, where customers pick their date. Without a date, checkout asks them to go back to the cart.",
       "formId": "Product form ID (advanced)",
       "formIdInfo": "Only needed if a date picker on the product page doesn't save the date. Leave empty to detect it."
     }

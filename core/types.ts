@@ -208,6 +208,8 @@ export interface Surcharge {
 export interface CheckoutMatching {
   enabled: boolean;
   renameWithDate: boolean;
+  /** Also rename carrier/shipping rates (off by default: renaming can break 3PL and rate-name automations). */
+  renameShipping: boolean;
   /** Merchant overrides: delivery option title (lower-case) -> method. */
   rateMap: { title: string; method: MethodId | "ignore" }[];
 }

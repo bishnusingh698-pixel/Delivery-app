@@ -30,9 +30,13 @@ export interface Texts {
 
 const utc = (iso: string) => new Date(Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))));
 
+/**
+ * Always the Gregorian calendar (Thai would otherwise show Buddhist years, some Arabic locales the
+ * Islamic calendar) and Latin digits, so dates match Shopify's checkout and the order.
+ */
 function safeFormatter(locale: string, opts: Intl.DateTimeFormatOptions) {
   try {
-    return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" });
+    return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC", calendar: "gregory", numberingSystem: "latn" });
   } catch {
     return new Intl.DateTimeFormat("en", { ...opts, timeZone: "UTC" });
   }
@@ -53,7 +57,7 @@ export function makeTexts(requestLocale: string, overrides: Record<string, Recor
   const wLong = safeFormatter(locale, { weekday: "long" });
   let nf: Intl.NumberFormat;
   try {
-    nf = new Intl.NumberFormat(locale);
+    nf = new Intl.NumberFormat(locale, { numberingSystem: "latn" });
   } catch {
     nf = new Intl.NumberFormat("en");
   }
@@ -73,7 +77,7 @@ export function makeTexts(requestLocale: string, overrides: Record<string, Recor
     range: (a, b) => `${time(a)}–${time(b)}`,
     money: (amount, currency) => {
       try {
-        return new Intl.NumberFormat(locale, { style: "currency", currency }).format(amount);
+        return new Intl.NumberFormat(locale, { style: "currency", currency, numberingSystem: "latn" }).format(amount);
       } catch {
         return `${amount.toFixed(2)} ${currency}`;
       }

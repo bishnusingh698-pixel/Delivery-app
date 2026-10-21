@@ -67,7 +67,7 @@ export function defaultSettings(country: string | null = null): Settings {
     },
     surcharges: [],
     surchargeTaxable: true,
-    checkoutMatching: { enabled: false, renameWithDate: true, rateMap: [] },
+    checkoutMatching: { enabled: false, renameWithDate: true, renameShipping: false, rateMap: [] },
     widget: {
       theme: "match",
       accent: "#2c6ecb",

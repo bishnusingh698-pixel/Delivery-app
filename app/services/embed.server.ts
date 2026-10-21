@@ -2,7 +2,8 @@
  * Is the Pickday app embed turned on in the live theme? Read-only check of the
  * main theme's settings (read_themes). Used by Home's checklist and alerts.
  */
-import { setFlags } from "../models/shop.server";
+import { flagsOf, requireShop, setFlags } from "../models/shop.server";
+import { schedulePublish } from "./publish.server";
 import { gql, type AdminGraphql } from "./graphql.server";
 
 export function embedEnabledIn(settingsData: string): boolean {
@@ -30,7 +31,10 @@ export async function checkEmbed(shop: string, admin: AdminGraphql): Promise<boo
     const content = d.themes?.nodes?.[0]?.files?.nodes?.[0]?.body?.content;
     if (typeof content !== "string") return null;
     const on = embedEnabledIn(content);
+    const before = flagsOf(await requireShop(shop)).embedDetected;
     await setFlags(shop, { embedDetected: on, embedCheckedAt: new Date().toISOString() });
+    // The checkout Function relaxes "date required" while the embed is off: republish when that changes.
+    if (before !== on) schedulePublish(shop);
     return on;
   } catch (e) {
     console.error("[embed]", shop, (e as Error).message);
