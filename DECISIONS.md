@@ -155,6 +155,8 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-62 Admin reschedules write to Shopify first.** Changing an order's date updates the order in Shopify (attributes, then tags and metafield) before Pickday's record, history and counts. If Shopify refuses, nothing in Pickday changes and the merchant sees the error; if Shopify accepted part of it, trying again repeats the same writes. Bulk moves wait and retry an order up to three times (1, 2 and 4 seconds) when Shopify answers THROTTLED. The Flow trigger still fires last.
 
+**D-63 "Order emails & automations" is now "Automations (Shopify Flow)".** Pickday sends no email (D-57), so the Settings card and page are named after Flow; the description still mentions the snippets for Shopify's own order emails and the calendar feed, which stay on that page. The Settings group is "Automations and tools". Shop details (time zone, currency, languages) are also re-read in the daily job, since Shopify has no app webhook for them; a change republishes the config.
+
 ## Not yet decided / proposed
 
 - **Founding-merchant price lock (proposed, not built).** Stores that subscribe in the first months could keep their price for life when prices rise later. Shopify already keeps an approved subscription's price until the app asks for a new one, so this would mostly be a promise plus a list of stores; the owner decides whether to offer it.

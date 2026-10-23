@@ -46,7 +46,7 @@ const GROUPS: { id: string; cards: Card[] }[] = [
   {
     id: "tools",
     cards: [
-      { key: "notifications", href: "/app/notifications", icon: "email" },
+      { key: "notifications", href: "/app/notifications", icon: "automation" },
       { key: "transfer", href: "/app/settings/transfer", icon: "import", feature: "importExport" },
     ],
   },
