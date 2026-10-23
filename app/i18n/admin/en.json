@@ -971,6 +971,7 @@
   "transfer.createCode": "Create share code",
   "transfer.download": "Download settings file",
   "transfer.error.badCode": "That code doesn't exist or has expired.",
+  "transfer.error.feeProduct": "Shopify didn't accept the extra fees, so nothing was imported. Try again, or check the Extra fees page.",
   "transfer.error.invalid": "The settings in that file aren't valid. It may come from a newer version of Pickday.",
   "transfer.error.locked": "Importing is part of the Starter plan.",
   "transfer.error.notPickday": "That isn't a Pickday settings file.",

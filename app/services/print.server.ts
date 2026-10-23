@@ -8,6 +8,7 @@ import type { MethodId, Settings } from "../../core/types";
 import { gql, gid, type AdminGraphql } from "./graphql.server";
 import { orderRow } from "./orders-query.server";
 import { normalizePostcode } from "../../core/postcode";
+import { isRtl } from "../../core/i18n/locales";
 
 export interface LiveOrder {
   note: string | null;
@@ -35,8 +36,8 @@ export async function liveDetails(admin: AdminGraphql, orderIds: string[]): Prom
 
 const esc = (s: unknown) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-function page(title: string, body: string, lang: string, dir: "ltr" | "rtl" = "ltr") {
-  return `<!doctype html><html lang="${esc(lang)}" dir="${dir}"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+function page(title: string, body: string, lang: string) {
+  return `<!doctype html><html lang="${esc(lang)}" dir="${isRtl(lang) ? "rtl" : "ltr"}"><head><meta charset="utf-8"><title>${esc(title)}</title><style>
   body{font:13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:24px}
   h1{font-size:20px;margin:0 0 4px} h2{font-size:16px;margin:20px 0 6px;border-bottom:2px solid #111;padding-bottom:2px} h3{font-size:14px;margin:12px 0 4px}
   table{border-collapse:collapse;width:100%;margin-bottom:8px} th,td{border:1px solid #bbb;padding:4px 6px;text-align:start;vertical-align:top} th{background:#f2f2f2}

@@ -207,6 +207,8 @@ export interface Earliest {
   minMinutes: number;
   sameDay: boolean;
   cutoffPassed: boolean;
+  /** With same-day: the normal earliest date (and minute) for every day after today. */
+  regular?: { date: string | null; minMinutes: number };
 }
 
 export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earliest {
@@ -249,6 +251,7 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
   }
 
   let sameDay = false;
+  let regular: Earliest["regular"];
   // Same-day skips the day-based lead time only; an hour-based lead still applies to slot start times.
   const sameDayMin = now.minutes + (s.lead.unit === "hours" ? amount * 60 : 0);
   if (
@@ -258,6 +261,7 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
     sameDayMin < 1440 &&
     (!date || date > today)
   ) {
+    regular = { date, minMinutes };
     date = today;
     minMinutes = sameDayMin;
     sameDay = true;
@@ -267,7 +271,7 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
     date = s.notBefore;
     minMinutes = 0;
   }
-  return { date, minMinutes, sameDay, cutoffPassed };
+  return { date, minMinutes, sameDay, cutoffPassed, ...(regular ? { regular } : {}) };
 }
 
 /* ------------------------------------------------------------- capacity */
@@ -379,6 +383,9 @@ export function dayStatus(input: EngineInput, rules: ResolvedRules, earliest: Ea
   const closed = closedInfo(config, rules, date, locationId);
   if (closed) return fail(closed.reason, closed.detail, closed.mayShift);
   if (!earliest.date || date < earliest.date) return fail("tooSoon");
+  // Same-day opens today only, not the days between today and the normal lead time.
+  const reg = earliest.regular;
+  if (reg && date !== now.date && (!reg.date || date < reg.date)) return fail("tooSoon");
 
   const block = blockingRestriction(lines, config.productRules, date);
   if (block) return fail("productUnavailable", block.line.title || block.rule.name);
@@ -419,6 +426,7 @@ export function dayStatus(input: EngineInput, rules: ResolvedRules, earliest: Ea
         const start = toMinutes(slot.start);
         const fee = feesFor(config, rules.method.id, date, slot.id, false).find((f) => f.kind === "slot") ?? null;
         if (date === earliest.date && start < earliest.minMinutes) return { slot, available: false, reason: "past", left: null, fee };
+        if (reg && date === reg.date && start < reg.minMinutes) return { slot, available: false, reason: "past", left: null, fee };
         if (isSameDay && start - hideBefore <= now.minutes) return { slot, available: false, reason: "past", left: null, fee };
         if (slot.max !== null && slot.max !== undefined && !input.ignoreCapacity) {
           const [o, i] = counts.slots[slot.id] ?? [0, 0];

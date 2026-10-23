@@ -971,6 +971,7 @@
   "transfer.createCode": "Freigabecode erstellen",
   "transfer.download": "Einstellungsdatei herunterladen",
   "transfer.error.badCode": "Dieser Code existiert nicht oder ist abgelaufen.",
+  "transfer.error.feeProduct": "Shopify hat die Zusatzgebühren nicht angenommen, deshalb wurde nichts importiert. Versuche es erneut oder prüfe die Seite Zusatzgebühren.",
   "transfer.error.invalid": "Die Einstellungen in dieser Datei sind ungültig. Sie stammt vielleicht aus einer neueren Pickday-Version.",
   "transfer.error.locked": "Import ist Teil des Starter-Tarifs.",
   "transfer.error.notPickday": "Das ist keine Pickday-Einstellungsdatei.",

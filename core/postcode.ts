@@ -1,7 +1,7 @@
 /**
  * Postcode rules: exact codes, prefixes ("SW1*") and numeric ranges
  * ("10115-10999", "10115–10999" or "10115..10999").
- * Matching ignores case, spaces and dashes.
+ * Matching ignores case, spaces and dashes; a US ZIP+4 also matches its 5-digit ZIP.
  */
 
 export type PostcodeRule =
@@ -64,9 +64,10 @@ export function parseRules(lines: string[] | string): ParsedRules {
   return { rules, invalid };
 }
 
-export function matchRule(rule: PostcodeRule, postcode: string): boolean {
-  const pc = normalizePostcode(postcode);
-  if (!pc) return false;
+/** US ZIP+4 ("10001-1234") also matches rules written for its 5-digit ZIP. */
+const ZIP4_RE = /^\s*(\d{5})\s*[-‐-―\s]\s*\d{4}\s*$/;
+
+function matchOne(rule: PostcodeRule, pc: string): boolean {
   switch (rule.kind) {
     case "exact":
       return pc === rule.value;
@@ -78,6 +79,14 @@ export function matchRule(rule: PostcodeRule, postcode: string): boolean {
       return n >= rule.from && n <= rule.to;
     }
   }
+}
+
+export function matchRule(rule: PostcodeRule, postcode: string): boolean {
+  const pc = normalizePostcode(postcode);
+  if (!pc) return false;
+  if (matchOne(rule, pc)) return true;
+  const zip4 = ZIP4_RE.exec(String(postcode ?? ""));
+  return !!zip4 && matchOne(rule, zip4[1]);
 }
 
 export function matchesAny(lines: string[], postcode: string): boolean {

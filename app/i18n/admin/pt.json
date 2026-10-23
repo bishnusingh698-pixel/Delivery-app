@@ -971,6 +971,7 @@
   "transfer.createCode": "Criar código",
   "transfer.download": "Baixar arquivo de configurações",
   "transfer.error.badCode": "Esse código não existe ou expirou.",
+  "transfer.error.feeProduct": "A Shopify não aceitou as taxas extras, então nada foi importado. Tente de novo ou confira a página Taxas extras.",
   "transfer.error.invalid": "As configurações desse arquivo não são válidas. Ele pode ser de uma versão mais nova do Pickday.",
   "transfer.error.locked": "A importação faz parte do plano Starter.",
   "transfer.error.notPickday": "Não é um arquivo de configurações do Pickday.",

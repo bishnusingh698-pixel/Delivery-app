@@ -24,4 +24,13 @@ describe("calendar links and files", () => {
     expect(cal.split("\r\n").every((l) => l.length <= 75)).toBe(true);
     expect(cal.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
   });
+
+  it("folds at 75 octets without splitting UTF-8 characters", () => {
+    const emoji = icsEvent({ uid: "u", stamp: "20260101T000000Z", title: "x".repeat(65) + "🎂 cake", date: "2026-10-20", start: null, end: null, timeZone: null });
+    expect(emoji.replace(/\r\n /g, "")).toContain("🎂 cake");
+    expect(emoji).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
+    const umlaut = icsEvent({ uid: "u", stamp: "s", title: "ä".repeat(80), date: "2026-10-20", start: null, end: null, timeZone: null });
+    expect(Math.max(...umlaut.split("\r\n").map((l) => Buffer.byteLength(l)))).toBeLessThanOrEqual(75);
+    expect(umlaut.replace(/\r\n /g, "")).toContain("SUMMARY:" + "ä".repeat(80));
+  });
 });

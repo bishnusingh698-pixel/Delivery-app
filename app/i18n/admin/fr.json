@@ -971,6 +971,7 @@
   "transfer.createCode": "Créer un code de partage",
   "transfer.download": "Télécharger le fichier de paramètres",
   "transfer.error.badCode": "Ce code n'existe pas ou a expiré.",
+  "transfer.error.feeProduct": "Shopify n'a pas accepté les frais supplémentaires, rien n'a donc été importé. Réessayez ou vérifiez la page Frais supplémentaires.",
   "transfer.error.invalid": "Les paramètres de ce fichier ne sont pas valides. Il provient peut-être d'une version plus récente de Pickday.",
   "transfer.error.locked": "L'import fait partie du forfait Starter.",
   "transfer.error.notPickday": "Ce n'est pas un fichier de paramètres Pickday.",

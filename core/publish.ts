@@ -43,11 +43,12 @@ export function applyPlan(s: Settings, plan: PlanId, today?: string): Settings {
   }
   if (!f.has("slots")) for (const m of Object.values(out.methods)) m.slotsEnabled = false;
   if (!f.has("capacity")) {
-    for (const m of Object.values(out.methods)) {
-      m.capacity.maxPerDay = null;
-      m.capacity.maxPerWeekday = null;
-      m.capacity.overrides = [];
-      m.capacity.slots = m.capacity.slots.map((x) => ({ ...x, max: null }));
+    const caps = [...Object.values(out.methods).map((m) => m.capacity), ...out.locations.flatMap((l) => (l.custom ? [l.custom.capacity] : []))];
+    for (const c of caps) {
+      c.maxPerDay = null;
+      c.maxPerWeekday = null;
+      c.overrides = [];
+      c.slots = c.slots.map((x) => ({ ...x, max: null }));
     }
   }
   if (!f.has("specialDays")) out.specialDays = [];

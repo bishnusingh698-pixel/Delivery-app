@@ -48,22 +48,25 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
   const src = doc as { from?: string; refs?: Refs };
   const { settings: mapped, missing } = await remapTargets(ctx.admin, prep.settings, src.refs, src.from === ctx.shop);
   if (body.intent === "preview") return { intent: "preview", ok: true, changes: prep.changes, productIds: prep.productIds, fees: prep.fees, missing };
-  if (body.code) {
-    const used = await consumeShareCode(body.code);
-    if (!used) return { intent: "apply", ok: false, error: "badCode" };
-    if (used.from !== ctx.shop) await logActivity(used.from, "export", `Your share code was used by ${ctx.shop}`, null).catch(() => {});
-  }
   // Notification settings (daily summary, feed, Flow switch) never come along: keep this store's own.
   mapped.notifications = ctx.settings.notifications;
   const cols = collectionIdsIn(mapped.productRules);
   if (cols.length) mapped.productRules.collectionProducts = await resolveCollectionProducts(ctx.admin, cols).catch(() => ({}));
-  // Imported fees need this store's own fee variants, or they would never be charged.
+  // Imported fees need this store's own fee variants, or they would never be charged:
+  // if Shopify refuses them, import nothing (and keep the share code usable).
   let next = mapped;
   if (hasFeature(ctx.plan, "surcharges") && mapped.surcharges.length) {
-    next = await syncFeeProduct(ctx.admin, ctx.shop, mapped).catch((e) => {
+    try {
+      next = await syncFeeProduct(ctx.admin, ctx.shop, mapped);
+    } catch (e) {
       console.error("[transfer] fee product", (e as Error).message);
-      return mapped;
-    });
+      return { intent: "apply", ok: false, error: "feeProduct" };
+    }
+  }
+  if (body.code) {
+    const used = await consumeShareCode(body.code);
+    if (!used) return { intent: "apply", ok: false, error: "badCode" };
+    if (used.from !== ctx.shop) await logActivity(used.from, "export", `Your share code was used by ${ctx.shop}`, null).catch(() => {});
   }
   const r = await saveSettings(ctx, next, `Imported settings${body.code ? " (share code)" : " (file)"}`);
   if (!r.ok) return { intent: "apply", ok: false, error: "invalid" };

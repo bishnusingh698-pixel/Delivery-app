@@ -971,6 +971,7 @@
   "transfer.createCode": "共有コードを作成",
   "transfer.download": "設定ファイルをダウンロード",
   "transfer.error.badCode": "そのコードは存在しないか、有効期限が切れています。",
+  "transfer.error.feeProduct": "Shopifyが追加料金を受け付けなかったため、何もインポートされませんでした。もう一度試すか、追加料金ページを確認してください。",
   "transfer.error.invalid": "このファイルの設定は無効です。新しいバージョンのPickdayで作成された可能性があります。",
   "transfer.error.locked": "インポートはStarterプランの機能です。",
   "transfer.error.notPickday": "Pickdayの設定ファイルではありません。",

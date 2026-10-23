@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultSettings } from "../core/defaults";
+import { defaultCapacity, defaultSchedule, defaultSettings } from "../core/defaults";
 import {
   ALL_BILLING_NAMES,
   GRACE_FRACTION,
@@ -18,7 +18,7 @@ import {
   yearlyPerMonth,
 } from "../core/plans";
 import { applyPlan, hasFeature, PLAN_ORDER_LIMIT } from "../core/publish";
-import type { Closure } from "../core/types";
+import type { Closure, Settings } from "../core/types";
 
 const ROOT = join(__dirname, "..");
 
@@ -104,6 +104,25 @@ describe("plans", () => {
     const starter = applyPlan(s, "starter", "2026-03-01");
     expect(starter.closures).toHaveLength(14);
     expect(starter.specialDays).toHaveLength(1);
+  });
+
+  it("Free drops capacity limits on a pickup location's own rules too", () => {
+    const s = defaultSettings("US");
+    s.locations = [
+      {
+        id: "L1", shopifyLocationId: null, name: "Shop", address: "", mapUrl: "", instructions: {}, timeZone: null, enabled: true, countries: "all",
+        custom: {
+          schedule: defaultSchedule(),
+          capacity: { ...defaultCapacity(), maxPerDay: 1, maxPerWeekday: [1, 1, 1, 1, 1, 1, 1], overrides: [{ date: "2026-12-24", maxPerDay: 1, slots: null }], slots: [{ id: "am", start: "09:00", end: "12:00", weekdays: [], max: 2 }] },
+        },
+      } as Settings["locations"][number],
+    ];
+    const cap = applyPlan(s, "free").locations[0].custom!.capacity;
+    expect(cap.maxPerDay).toBeNull();
+    expect(cap.maxPerWeekday).toBeNull();
+    expect(cap.overrides).toEqual([]);
+    expect(cap.slots[0].max).toBeNull();
+    expect(applyPlan(s, "starter").locations[0].custom!.capacity.maxPerDay).toBe(1);
   });
 
   it("splits product rules: exclusions and extra lead on Starter, the rest on Pro", () => {

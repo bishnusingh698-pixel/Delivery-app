@@ -117,6 +117,20 @@ describe("lead time and cutoffs", () => {
     expect(firstAvailableDate(input(cfg, { now: { date: "2026-10-14", minutes: 10 * 60 } }))).toBe("2026-10-15");
   });
 
+  it("same-day opens today only, not the days before the normal lead time", () => {
+    const cfg = config((s) => {
+      s.methods.shipping.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
+      s.methods.shipping.schedule.lead = { amount: 3, unit: "days", workingDays: true };
+      s.methods.shipping.schedule.sameDay = { allowed: true, cutoff: "10:00" };
+    });
+    const open = (min: number) =>
+      buildCalendar(input(cfg, { now: { date: "2026-10-14", minutes: min } }), "2026-10-14", "2026-10-19")
+        .days.filter((d) => d.available)
+        .map((d) => d.date);
+    expect(open(9 * 60)).toEqual(["2026-10-14", "2026-10-17", "2026-10-18", "2026-10-19"]);
+    expect(open(10 * 60)).toEqual(["2026-10-17", "2026-10-18", "2026-10-19"]);
+  });
+
   it("product extra lead time (longest wins) pushes the earliest date", () => {
     const cfg = config((s) => {
       s.productRules.extraLead = [
@@ -331,6 +345,16 @@ describe("countries, methods and areas", () => {
     expect(areaCovered(cfg, { country: "DE", postcode: "80331" })).toBe(false);
     expect(areaCovered(cfg, { country: "AE", areaId: "marina" })).toBe(true);
     expect(areaCovered(cfg, { country: "FR", postcode: "75001" })).toBeNull();
+  });
+
+  it("a US ZIP+4 matches rules written for its 5-digit ZIP", () => {
+    const us = config((s) => {
+      s.areas = [{ country: "US", mode: "postcode", postcodes: ["10001", "10002-10099", "112*"], areas: [], regions: [], askFirst: true }];
+    });
+    expect(areaCovered(us, { country: "US", postcode: "10001-1234" })).toBe(true);
+    expect(areaCovered(us, { country: "US", postcode: "10050 0001" })).toBe(true);
+    expect(areaCovered(us, { country: "US", postcode: "11201-0001" })).toBe(true);
+    expect(areaCovered(us, { country: "US", postcode: "10100-1234" })).toBe(false);
   });
 
   it("zones are scoped by country and override weekdays", () => {

@@ -971,6 +971,7 @@
   "transfer.createCode": "Deelcode aanmaken",
   "transfer.download": "Instellingenbestand downloaden",
   "transfer.error.badCode": "Die code bestaat niet of is verlopen.",
+  "transfer.error.feeProduct": "Shopify heeft de extra kosten niet geaccepteerd, dus er is niets geïmporteerd. Probeer het opnieuw of bekijk de pagina Extra kosten.",
   "transfer.error.invalid": "De instellingen in dat bestand zijn niet geldig. Misschien komt het uit een nieuwere versie van Pickday.",
   "transfer.error.locked": "Importeren zit in het Starter-abonnement.",
   "transfer.error.notPickday": "Dat is geen instellingenbestand van Pickday.",
