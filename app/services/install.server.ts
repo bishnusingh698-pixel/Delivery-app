@@ -8,7 +8,7 @@ import prisma from "../db.server";
 import { defaultSettings } from "../../core/defaults";
 import { storeSettings } from "../models/settings.server";
 import { gql, type AdminGraphql } from "./graphql.server";
-import { publishShop } from "./publish.server";
+import { publishShop, schedulePublish } from "./publish.server";
 
 export interface ShopInfo {
   name: string;
@@ -49,6 +49,19 @@ export async function syncShopInfo(shop: string, admin: AdminGraphql) {
     create: { shop, ...fields, feedToken: randomBytes(24).toString("hex") },
     update: fields,
   });
+}
+
+/**
+ * Daily: pick up changes the merchant made in Shopify (time zone, currency, languages),
+ * since there is no webhook for them. Republishes when the storefront config depends on them.
+ */
+export async function refreshShopInfo(shop: string, admin: AdminGraphql): Promise<boolean> {
+  const before = await prisma.shop.findUnique({ where: { shop } });
+  const after = await syncShopInfo(shop, admin);
+  const key = (r: typeof after | null) => JSON.stringify(r && [r.timeZone, r.currency, r.primaryLocale, r.locales, r.isDevStore]);
+  const changed = key(before) !== key(after);
+  if (changed) schedulePublish(shop);
+  return changed;
 }
 
 export async function onInstall(session: Session, admin: AdminGraphql) {

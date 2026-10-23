@@ -9,7 +9,7 @@ import { areaConfig, areaCovered, datedLines, findZone, locationsFor, methodsFor
 import { ATTR_KEY, READABLE_KEYS, decodeItemSelection, decodeSelection, encodeSelection } from "../../core/selection";
 import { nowInZone, zoneDiffersFromDevice, zoneDisplayName } from "../../core/tz";
 import type { Availability, CartLine, DayStatus, LocalNow, MethodId, Selection, StorefrontConfig, Surcharge } from "../../core/types";
-import { addVariant, changeLine, getCart, notifyTheme, productTags, updateAttributes, type Cart } from "./cart";
+import { addVariant, changeLine, getCart, minOrderSubtotal, notifyTheme, productTags, updateAttributes, type Cart } from "./cart";
 import { h, nextId, swap } from "./dom";
 import { makeTexts, type Texts } from "./i18n";
 
@@ -180,10 +180,8 @@ export class Pickday {
     const m = this.cfg.methods.find((x) => x.id === id);
     if (!m?.minOrder || !this.cart) return null;
     const min = Number(m.minOrder) * (this.boot.rate || 1);
-    // Pickday's own fee lines don't count toward the minimum.
-    const fees = this.surchargeVariants();
-    const feeCents = this.cart.items.filter((i) => fees.has(String(i.variant_id))).reduce((n, i) => n + (i.final_line_price ?? 0), 0);
-    if ((this.cart.total_price - feeCents) / 100 >= min) return null;
+    // Same amount the checkout Function checks: before order discounts, without Pickday's fee lines.
+    if (minOrderSubtotal(this.cart, this.surchargeVariants()) / 100 >= min) return null;
     return this.tx.t("minOrder", { method: this.methodName(id), amount: this.tx.money(min, this.boot.currency) });
   }
 

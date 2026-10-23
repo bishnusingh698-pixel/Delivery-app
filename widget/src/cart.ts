@@ -30,29 +30,36 @@ export interface Cart {
   items: CartItem[];
   attributes: Record<string, string>;
   total_price: number;
+  /** Lines after their own discounts, before order discounts (what checkout's subtotal shows). */
+  items_subtotal_price?: number;
   currency: string;
+}
+
+/**
+ * Cart amount for minimum-order checks, in cents: like the checkout Function's
+ * subtotal (before order-level discounts), without Pickday's own fee lines.
+ */
+export function minOrderSubtotal(cart: Pick<Cart, "items" | "total_price" | "items_subtotal_price">, feeVariants: Set<string>): number {
+  const fees = cart.items.filter((i) => feeVariants.has(String(i.variant_id))).reduce((n, i) => n + (i.final_line_price ?? 0), 0);
+  return (cart.items_subtotal_price ?? cart.total_price) - fees;
 }
 
 const root = () => (window as any).Shopify?.routes?.root ?? "/";
 
 const CART_PATHS = /\/cart\/(add|change|update|clear)(\.js|\.json)?(\?|$)/;
 
-let ownRequest = 0;
+/** Marks the widget's own cart requests, so the theme's requests made at the same time still count. */
+const OWN_HEADER = "X-Pickday";
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
-  ownRequest++;
-  try {
-    const res = await fetch(root() + path, {
-      method: body ? "POST" : "GET",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: "same-origin",
-    });
-    if (!res.ok) throw new Error(`cart ${path} ${res.status}`);
-    return (await res.json()) as T;
-  } finally {
-    ownRequest--;
-  }
+  const res = await fetch(root() + path, {
+    method: body ? "POST" : "GET",
+    headers: { "Content-Type": "application/json", Accept: "application/json", [OWN_HEADER]: "1" },
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw new Error(`cart ${path} ${res.status}`);
+  return (await res.json()) as T;
 }
 
 export const getCart = () => call<Cart>("cart.js");
@@ -98,12 +105,13 @@ export function onCartChange(cb: () => void) {
   window.fetch = function (this: unknown, input: RequestInfo | URL, init?: RequestInit) {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     const p = origFetch.call(this, input as RequestInfo, init);
-    if (CART_PATHS.test(url) && ownRequest === 0) p.then(fire, () => {});
+    const own = !!init?.headers && new Headers(init.headers).has(OWN_HEADER);
+    if (CART_PATHS.test(url) && !own) p.then(fire, () => {});
     return p;
   } as typeof window.fetch;
   const origOpen = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, method: string, url: string | URL, ...rest: any[]) {
-    if (CART_PATHS.test(String(url))) this.addEventListener("load", () => ownRequest === 0 && fire());
+    if (CART_PATHS.test(String(url))) this.addEventListener("load", fire);
     return (origOpen as any).call(this, method, url, ...rest);
   } as typeof XMLHttpRequest.prototype.open;
   for (const ev of ["cart:updated", "cart:refresh", "cart:change", "theme:cart:change", "cart-drawer:open", "ajaxCart.afterCartLoad", "on:cart:add"]) {

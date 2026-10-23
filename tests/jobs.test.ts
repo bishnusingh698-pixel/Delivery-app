@@ -27,7 +27,14 @@ describe("theme app embed detection", () => {
     `/* auto-generated */\n${JSON.stringify({ current: { blocks: { "123": { type: "shopify://apps/pickday-delivery-date-picker/blocks/app-embed/abc-123", disabled, settings: {} } } } })}`;
   it("finds an enabled embed", () => expect(embedEnabledIn(data(false))).toBe(true));
   it("ignores a disabled embed", () => expect(embedEnabledIn(data(true))).toBe(false));
-  it("survives bad JSON", () => expect(embedEnabledIn("{nope")).toBe(false));
+  it("reports unknown (not off) for unreadable settings", () => {
+    expect(embedEnabledIn("{nope")).toBeNull();
+    expect(embedEnabledIn(JSON.stringify({ current: "Missing preset", presets: {} }))).toBeNull();
+  });
+  it("reads a preset named by current", () => {
+    const block = { type: "shopify://apps/pickday-delivery-date-picker/blocks/app-embed/abc-123", disabled: false };
+    expect(embedEnabledIn(JSON.stringify({ current: "Default", presets: { Default: { blocks: { "1": block } } } }))).toBe(true);
+  });
 });
 
 describe("hourly republish for pickup locations in other time zones", () => {

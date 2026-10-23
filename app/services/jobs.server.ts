@@ -10,6 +10,7 @@ import { requireShop, shopToday } from "../models/shop.server";
 import { unauthenticated } from "../shopify.server";
 import { sendDigestIfDue } from "./digest.server";
 import { checkEmbed } from "./embed.server";
+import { refreshShopInfo } from "./install.server";
 import { publishShop, schedulePublish, timeShiftsChanged } from "./publish.server";
 import { collectionIdsIn, resolveCollectionProducts, resolveTagProducts, tagsIn } from "./collections.server";
 import { recountFuture } from "./counts.server";
@@ -79,6 +80,7 @@ export async function daily() {
     pruned.orders += (await prisma.scheduledOrder.deleteMany({ where: { shop: s.shop, date: { lt: old } } })).count;
     try {
       const { admin } = await unauthenticated.admin(s.shop);
+      await refreshShopInfo(s.shop, admin).catch((e) => console.error("[jobs] shop info", s.shop, (e as Error).message));
       await checkEmbed(s.shop, admin);
       await refreshCollections(s.shop, admin);
     } catch (e) {
