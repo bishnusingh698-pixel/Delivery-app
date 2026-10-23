@@ -62,7 +62,8 @@ export interface ResolvedRules {
   workWeekdays: number[];
 }
 
-const MAX_SCAN = 400;
+/** Days the engine looks ahead at most (also the longest booking window allowed). */
+export const MAX_SCAN = 400;
 
 /* ------------------------------------------------------------- resolving */
 
@@ -201,11 +202,17 @@ export function cutoffFor(schedule: Schedule, date: string): string | null {
 }
 
 export interface Earliest {
-  /** Earliest civil date (null = nothing within a year). */
+  /** Earliest civil date after the normal lead time (null = nothing within a year). */
   date: string | null;
   /** On `date`, slots must start at or after this minute. */
   minMinutes: number;
+  /**
+   * Same-day express: today is bookable even though the normal lead time is longer.
+   * Only today opens; the days between today and `date` stay closed.
+   */
   sameDay: boolean;
+  /** With `sameDay`, today's slots must start at or after this minute. */
+  sameDayMinutes: number;
   cutoffPassed: boolean;
 }
 
@@ -229,7 +236,7 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
       startDate = nextWorkingDay(config, rules, today, locationId);
       startMin = 0;
     }
-    if (!startDate) return { date: null, minMinutes: 0, sameDay: false, cutoffPassed };
+    if (!startDate) return { date: null, minMinutes: 0, sameDay: false, sameDayMinutes: 0, cutoffPassed };
     const total = startMin + amount * 60;
     date = addDays(startDate, Math.floor(total / 1440));
     minMinutes = total % 1440;
@@ -238,7 +245,7 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
     if (cutoffPassed || (work && !isWorkingDay(config, rules, today, locationId))) {
       start = nextWorkingDay(config, rules, today, locationId);
     }
-    if (!start) return { date: null, minMinutes: 0, sameDay: false, cutoffPassed };
+    if (!start) return { date: null, minMinutes: 0, sameDay: false, sameDayMinutes: 0, cutoffPassed };
     date = work ? addWorkingDays(config, rules, start, amount, locationId) : addDays(start, amount);
     if (date === today) minMinutes = now.minutes;
   }
@@ -248,26 +255,22 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
     minMinutes = 0;
   }
 
-  let sameDay = false;
-  // Same-day skips the day-based lead time only; an hour-based lead still applies to slot start times.
-  const sameDayMin = now.minutes + (s.lead.unit === "hours" ? amount * 60 : 0);
-  if (
-    s.sameDay.allowed &&
-    extra === 0 &&
-    now.minutes < toMinutes(s.sameDay.cutoff || "00:00") &&
-    sameDayMin < 1440 &&
-    (!date || date > today)
-  ) {
-    date = today;
-    minMinutes = sameDayMin;
-    sameDay = true;
-  }
-
   if (date && s.notBefore && s.notBefore > date) {
     date = s.notBefore;
     minMinutes = 0;
   }
-  return { date, minMinutes, sameDay, cutoffPassed };
+
+  // Same-day express opens today only (never the days in between), before its own cutoff,
+  // when no product needs extra time. An hour-based lead still applies to slot start times.
+  const sameDayMinutes = now.minutes + (s.lead.unit === "hours" ? amount * 60 : 0);
+  const sameDay =
+    s.sameDay.allowed &&
+    extra === 0 &&
+    now.minutes < toMinutes(s.sameDay.cutoff || "00:00") &&
+    sameDayMinutes < 1440 &&
+    (!s.notBefore || s.notBefore <= today) &&
+    (!date || date > today);
+  return { date, minMinutes, sameDay, sameDayMinutes: sameDay ? sameDayMinutes : 0, cutoffPassed };
 }
 
 /* ------------------------------------------------------------- capacity */
@@ -304,6 +307,15 @@ export function slotsForDate(capacity: Capacity, date: string, special: SpecialD
   if (special?.slots) return special.slots;
   const wd = weekday(date);
   return capacity.slots.filter((s) => !s.weekdays.length || s.weekdays.includes(wd)).sort((a, b) => (a.start < b.start ? -1 : 1));
+}
+
+/** A slot by id as it applies on `date` (date overrides and special days included), or null. */
+export function findSlot(config: EngineConfig, method: MethodId, locationId: string | null, zoneId: string | null, date: string, slotId: string | null): Slot | null {
+  if (!slotId) return null;
+  const rules = resolveRules(config, method, locationId, zoneId);
+  if (!rules) return null;
+  const special = specialDayFor(config, date, method, locationId);
+  return slotsForDate(rules.capacity, date, special).find((s) => s.id === slotId) ?? rules.capacity.slots.find((s) => s.id === slotId) ?? null;
 }
 
 /* ------------------------------------------------------------ surcharges */
@@ -378,7 +390,8 @@ export function dayStatus(input: EngineInput, rules: ResolvedRules, earliest: Ea
   if (s.notBefore && date < s.notBefore) return fail("notYetOpen");
   const closed = closedInfo(config, rules, date, locationId);
   if (closed) return fail(closed.reason, closed.detail, closed.mayShift);
-  if (!earliest.date || date < earliest.date) return fail("tooSoon");
+  const sameDayOpen = earliest.sameDay && date === now.date;
+  if (!sameDayOpen && (!earliest.date || date < earliest.date)) return fail("tooSoon");
 
   const block = blockingRestriction(lines, config.productRules, date);
   if (block) return fail("productUnavailable", block.line.title || block.rule.name);
@@ -409,7 +422,7 @@ export function dayStatus(input: EngineInput, rules: ResolvedRules, earliest: Ea
   }
 
   const isSameDay = date === now.date;
-  const result: DayStatus = { ...base, available: true, left, fee: dayFee(config, rules.method.id, date, isSameDay && earliest.sameDay) };
+  const result: DayStatus = { ...base, available: true, left, fee: dayFee(config, rules.method.id, date, sameDayOpen) };
 
   if (rules.method.slotsEnabled) {
     const slots = slotsForDate(rules.capacity, date, special);
@@ -418,7 +431,7 @@ export function dayStatus(input: EngineInput, rules: ResolvedRules, earliest: Ea
       result.slots = slots.map((slot): SlotStatus => {
         const start = toMinutes(slot.start);
         const fee = feesFor(config, rules.method.id, date, slot.id, false).find((f) => f.kind === "slot") ?? null;
-        if (date === earliest.date && start < earliest.minMinutes) return { slot, available: false, reason: "past", left: null, fee };
+        if (sameDayOpen ? start < earliest.sameDayMinutes : date === earliest.date && start < earliest.minMinutes) return { slot, available: false, reason: "past", left: null, fee };
         if (isSameDay && start - hideBefore <= now.minutes) return { slot, available: false, reason: "past", left: null, fee };
         if (slot.max !== null && slot.max !== undefined && !input.ignoreCapacity) {
           const [o, i] = counts.slots[slot.id] ?? [0, 0];
@@ -463,9 +476,10 @@ export function firstAvailableDate(input: EngineInput): string | null {
   const rules = resolveRules(input.config, input.method, input.locationId, input.zoneId);
   if (!rules) return null;
   const earliest = computeEarliest(input, rules);
-  if (!earliest.date) return null;
+  const start = earliest.sameDay ? input.now.date : earliest.date;
+  if (!start) return null;
   const last = addDays(input.now.date, Math.max(0, rules.schedule.windowDays));
-  for (let d = earliest.date; d <= last; d = addDays(d, 1)) {
+  for (let d = start; d <= last; d = addDays(d, 1)) {
     if (dayStatus(input, rules, earliest, d).available) return d;
   }
   return null;

@@ -137,8 +137,9 @@ export function validate(input: ValidationInput, messages: Messages): Validation
   }
   if (!methods.includes(sel.m)) return err("validation.methodUnavailable");
   const method = cfg.methods.find((m) => m.id === sel.m)!;
-  if (sel.m === "pickup" && cfg.locations.length) {
-    // The pickup location must exist, be switched on and serve the delivery country.
+  if (sel.m === "pickup" && (sel.l || cfg.locations.some((l) => l.enabled))) {
+    // A chosen location must exist, be switched on and serve the delivery country; with locations set up, one must be chosen.
+    // Without any location, pickup is at the store itself.
     const loc = cfg.locations.find((l) => l.id === sel.l);
     const countryOk = !loc || loc.countries === "all" || !country || loc.countries.map((c) => c.toUpperCase()).includes(country.toUpperCase());
     if (!loc || !loc.enabled || !countryOk) return err("validation.methodUnavailable");

@@ -25,19 +25,19 @@ Severity: **C** critical (wrong dates, stuck shoppers, broken install), **M** ma
 
 | # | Sev | File:line | Bug | Root cause | Status |
 |---|---|---|---|---|---|
-| B1 | C | `core/engine.ts:251-264` | "Same-day" opens **every day** between today and the normal earliest date, and opens the week after a closed day early (e.g. lead 3 working days, Wed 10:00 → Thu/Fri wrongly bookable; on a closed Sunday Mon–Wed wrongly bookable). Same bug in the checkout Function (shares the engine). | `earliest.date` is overwritten with today, so `dayStatus` treats every later date as past the lead time. | ⬜ |
+| B1 | C | `core/engine.ts:251-264` | "Same-day" opens **every day** between today and the normal earliest date, and opens the week after a closed day early (e.g. lead 3 working days, Wed 10:00 → Thu/Fri wrongly bookable; on a closed Sunday Mon–Wed wrongly bookable). Same bug in the checkout Function (shares the engine). | `earliest.date` is overwritten with today, so `dayStatus` treats every later date as past the lead time. | ✅ |
 | B2 | C | `widget/src/widget.ts` `view()` / `canCheckout()` | Store pickup **without any pickup location** (what the Bakery/Florist/… presets switch on) shows no date picker but still requires a date: the shopper can never check out. | Date picker only renders when `locationId` is set; there is no location to set. | ⬜ |
 | B3 | C | `app/services/publish.server.ts:25-36` | After **uninstall + reinstall**, every publish fails until the server restarts: storefront has no config, checkout Functions keep stale rules. | App-installation id cached in memory forever; a reinstall gets a new installation id. | ⬜ |
 | B4 | C | `shopify.app.toml`, `.env.example`, `render.yaml` scopes | Install hook queries `shopLocales` which needs `read_locales`; without it `syncShopInfo` throws, the store keeps the UTC time zone and nothing is published on install. | Missing scope. | ⬜ |
-| B5 | M | `app/services/counts.server.ts:393-395` | Pickup daily/slot limits never apply when no location is set (counts stored under `pickup:_`, engine reads `pickup`). | Capacity key mismatch. | ⬜ |
-| B6 | M | `core/postcode.ts` | US ZIP+4 (`10115-1234`) never matches a 5-digit rule or range: US shoppers who type the full ZIP are told "we don't deliver there", and checkout blocks them. | Normalisation keeps all 9 digits. | ⬜ |
+| B5 | M | `app/services/counts.server.ts:393-395` | Pickup daily/slot limits never apply when no location is set (counts stored under `pickup:_`, engine reads `pickup`). | Capacity key mismatch. | ✅ |
+| B6 | M | `core/postcode.ts` | US ZIP+4 (`10115-1234`) never matches a 5-digit rule or range: US shoppers who type the full ZIP are told "we don't deliver there", and checkout blocks them. | Normalisation keeps all 9 digits. | ✅ |
 | B7 | M | `widget/src/main.ts` gate | When a theme's cart drawer isn't recognised, clicking checkout in the drawer is silently blocked (the error is rendered where nobody can see it). | Gate blocks even when no widget is visible. Now: send the shopper to the cart page, where the picker is always placed; never trap them. | ⬜ |
-| B8 | M | `core/rules.ts methodsFor` | Pickup is offered in countries where no pickup location serves; the shopper picks it and then has no location to choose. | Location country filter not applied to the method list. | ⬜ |
+| B8 | M | `core/rules.ts methodsFor` | Pickup is offered in countries where no pickup location serves; the shopper picks it and then has no location to choose. | Location country filter not applied to the method list. | ✅ |
 | B9 | M | `webhooks.app.uninstalled.tsx` | Flags survive uninstall (`embedDetected: true`), so after reinstall Home says the embed is on and the checkout Function enforces dates before the embed is checked again. | Flags not reset. | ⬜ |
 | B10 | M | Store time zone / currency / languages | Only synced on auth; a merchant who changes the store time zone keeps the old cutoffs until they reopen the app. | No `shop/update` webhook, no periodic sync. | ⬜ |
 | B11 | M | Settings strings | A merchant text or label containing `</script>` breaks out of the storefront's JSON `<script>` block (self-XSS, theme breakage). | No check on `</` in published strings. | ⬜ |
-| B12 | M | `services/reschedule.server.ts:96` | Changing an order's slot in a delivery **zone** with its own slots saves no slot label. | Slot lookup ignores zone slots. | ⬜ |
-| B13 | M | `core/engine.ts` + schema | Booking window can be set up to 730 days but the engine only scans 400. | Limits disagree. | ⬜ |
+| B12 | M | `services/reschedule.server.ts:96` | Changing an order's slot in a delivery **zone** with its own slots saves no slot label. | Slot lookup ignores zone slots. | ✅ |
+| B13 | M | `core/engine.ts` + schema | Booking window can be set up to 730 days but the engine only scans 400. | Limits disagree. | ✅ |
 | B14 | m | `app.settings.closures.tsx:142,293` | "View them" links ignore the dates (missing `range=custom`). | Link format. | ⬜ |
 | B15 | m | `prisma/schema.prisma` | `ProductCount` has no `(shop, date)` index; recounts/prunes scan the table. | Missing index. | ⬜ |
 | B16 | m | `services/jobs.server.ts` | Orders without a date (date not required) are never pruned. | `date < x` excludes NULL. | ⬜ |
@@ -95,7 +95,7 @@ App Store reviewer view
 ## 4. Order of work
 
 1. ✅ Audit (this file).
-2. ⬜ Critical/major engine + server bugs B1–B6, B8, B12, B13 with tests.
+2. ✅ Critical/major engine + server bugs B1–B6, B8, B12, B13 with tests.
 3. ⬜ Data/infra: scopes (B4), uninstall/reinstall (B3, B9), `shop/update` (B10), schema index (B15), pruning (B16), GDPR (B17), `</` guard (B11), Neon docs (B20), fresh single migration.
 4. ⬜ Regional defaults + date format + holidays one-click (core + server).
 5. ⬜ Widget: B2, B7, date format, delivery instructions; rebuild assets; storefront translations (28 languages).

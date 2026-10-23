@@ -23,8 +23,9 @@ export interface StoredItem {
   needsDate?: boolean;
 }
 
-export function capacityKey(settings: Pick<Settings, "zones">, method: string, locationId: string | null, zoneId: string | null): string {
-  if (method === "pickup") return `pickup:${locationId || "_"}`;
+/** Same keys as the engine's resolveRules(): a known pickup location has its own counts, otherwise "pickup". */
+export function capacityKey(settings: Pick<Settings, "zones" | "locations">, method: string, locationId: string | null, zoneId: string | null): string {
+  if (method === "pickup") return locationId && settings.locations.some((l) => l.id === locationId) ? `pickup:${locationId}` : "pickup";
   if (method === "delivery" && zoneId) {
     const z = settings.zones.find((x) => x.id === zoneId);
     if (z?.capacity) return `delivery:z:${z.id}`;

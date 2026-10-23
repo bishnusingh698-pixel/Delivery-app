@@ -5,6 +5,7 @@ import { datedLines, methodsFor, areaCovered, findZone } from "../core/rules";
 import { nowInZone, zonedToUtc } from "../core/tz";
 import type { Availability } from "../core/types";
 import { config, input, line } from "./helpers";
+import { matchesAny } from "../core/postcode";
 
 // 2026-10-14 is a Wednesday. Default schedule: Mon–Fri, lead 1 working day, cutoff 14:00, 30-day window.
 
@@ -364,7 +365,81 @@ describe("surcharges", () => {
     });
     const inp = input(cfg, { now: { date: "2026-10-14", minutes: 9 * 60 } });
     const e = computeEarliest(inp, resolveRules(cfg, "shipping", null, null)!);
-    expect(e.date).toBe("2026-10-14");
-    expect(e.minMinutes).toBe(12 * 60);
+    // Normal lead: cutoff passed, so tomorrow 03:00. Same-day express opens today from 12:00.
+    expect(e.date).toBe("2026-10-15");
+    expect(e.sameDay).toBe(true);
+    expect(e.sameDayMinutes).toBe(12 * 60);
+  });
+});
+
+describe("same-day express (regression B1)", () => {
+  const cfg = config((s) => {
+    s.methods.shipping.schedule.lead = { amount: 3, unit: "days", workingDays: true };
+    s.methods.shipping.schedule.sameDay = { allowed: true, cutoff: "12:00" };
+  });
+  const open = (from: string, to: string, now: { date: string; minutes: number }) =>
+    buildCalendar(input(cfg, { now }), from, to).days.filter((d) => d.available).map((d) => d.date);
+
+  it("opens today only, not the days before the normal earliest date", () => {
+    // Wed 14 Oct 10:00, lead 3 working days => normal earliest Mon 19 Oct.
+    expect(open("2026-10-14", "2026-10-20", { date: "2026-10-14", minutes: 600 })).toEqual(["2026-10-14", "2026-10-19", "2026-10-20"]);
+  });
+
+  it("after the same-day cutoff, today closes and the normal lead time applies", () => {
+    expect(open("2026-10-14", "2026-10-20", { date: "2026-10-14", minutes: 13 * 60 })).toEqual(["2026-10-19", "2026-10-20"]);
+  });
+
+  it("on a closed day it opens nothing early", () => {
+    // Sun 18 Oct (closed): normal earliest = Mon start + 3 working days = Thu 22.
+    expect(open("2026-10-18", "2026-10-23", { date: "2026-10-18", minutes: 600 })).toEqual(["2026-10-22", "2026-10-23"]);
+  });
+
+  it("does not apply when a product needs extra preparation time", () => {
+    const c = config((s) => {
+      s.methods.shipping.schedule.lead = { amount: 1, unit: "days", workingDays: true };
+      s.methods.shipping.schedule.sameDay = { allowed: true, cutoff: "12:00" };
+      s.productRules.extraLead = [{ id: "x", target: { products: ["1"], variants: [], collections: [], tags: [] }, days: 1 }];
+    });
+    expect(firstAvailableDate(input(c, { now: { date: "2026-10-14", minutes: 600 } }))).toBe("2026-10-16");
+  });
+
+  it("checkout validation agrees: tomorrow is not bookable with a 3-day lead", () => {
+    expect(checkSelection(input(cfg, { now: { date: "2026-10-14", minutes: 600 } }), "2026-10-15", null).ok).toBe(false);
+    expect(checkSelection(input(cfg, { now: { date: "2026-10-14", minutes: 600 } }), "2026-10-14", null).ok).toBe(true);
+  });
+});
+
+describe("postcodes (regression B6)", () => {
+  it("a US ZIP+4 matches its 5-digit ZIP, ranges and prefixes", () => {
+    expect(matchesAny(["10115"], "10115-1234")).toBe(true);
+    expect(matchesAny(["10000-10999"], "10115-1234")).toBe(true);
+    expect(matchesAny(["101*"], "10115 1234")).toBe(true);
+    expect(matchesAny(["10116"], "10115-1234")).toBe(false);
+    // 8-digit Brazilian CEP stays exact.
+    expect(matchesAny(["01310100"], "01310-100")).toBe(true);
+    expect(matchesAny(["01310"], "01310-100")).toBe(false);
+  });
+});
+
+describe("pickup without / with locations (regressions B5, B8)", () => {
+  it("is offered without any location, and only where a location serves when there are some", () => {
+    const none = config((s) => (s.methods.pickup.enabled = true));
+    expect(methodsFor(none, "US", [line()])).toContain("pickup");
+    const de = config((s) => {
+      s.methods.pickup.enabled = true;
+      s.locations = [{ id: "l1", shopifyLocationId: null, name: "Berlin", address: "", mapUrl: "", instructions: {}, timeZone: null, enabled: true, countries: ["DE"], custom: null }];
+    });
+    expect(methodsFor(de, "DE", [line()])).toContain("pickup");
+    expect(methodsFor(de, "US", [line()])).not.toContain("pickup");
+  });
+
+  it("uses the method's own capacity key without a location", () => {
+    const cfg = config((s) => {
+      s.methods.pickup.enabled = true;
+      s.methods.pickup.capacity.maxPerDay = 1;
+    });
+    const avail: Availability = { v: 1, at: "", c: { pickup: { "2026-10-15": [1, 1] } }, p: {} };
+    expect(resolveRules(cfg, "pickup", null, null)!.capacityKey).toBe("pickup");
+    expect(checkSelection(input(cfg, { method: "pickup", availability: avail }), "2026-10-15", null)).toMatchObject({ ok: false, reason: "full" });
   });
 });

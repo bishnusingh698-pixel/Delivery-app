@@ -15,7 +15,7 @@ import { flowTrigger } from "./flow.server";
 import { assertNoUserErrors, gid, gql, numericId, type AdminGraphql } from "./graphql.server";
 import { writeToShopify } from "./orders.server";
 import { storefrontConfigFor, schedulePublish } from "./publish.server";
-import { engineTimeZone } from "../../core/engine";
+import { engineTimeZone, findSlot } from "../../core/engine";
 
 export interface ScheduleChoice {
   method: MethodId;
@@ -93,7 +93,7 @@ export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderI
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
   }
   const method = config.methods.find((m) => m.id === choice.method);
-  const slot = method?.capacity.slots.find((s) => s.id === choice.slotId) ?? config.locations.find((l) => l.id === choice.locationId)?.custom?.capacity.slots.find((s) => s.id === choice.slotId) ?? null;
+  const slot = findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, existing?.zoneId ?? null, choice.date, choice.slotId);
   const slotLabel = slot ? `${slot.start}-${slot.end}` : null;
   const history = [
     ...(((existing?.history as unknown as unknown[]) ?? []) as unknown[]),
@@ -170,7 +170,7 @@ export async function scheduleDraftOrder(shop: string, admin: AdminGraphql, draf
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
   }
   const method = config.methods.find((m) => m.id === choice.method);
-  const slot = method?.capacity.slots.find((s) => s.id === choice.slotId) ?? config.locations.find((l) => l.id === choice.locationId)?.custom?.capacity.slots.find((s) => s.id === choice.slotId) ?? null;
+  const slot = findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, null, choice.date, choice.slotId);
   const sel: Selection = { v: 1, m: choice.method, d: choice.date, s: slot?.id ?? null, t: slot ? `${slot.start}-${slot.end}` : null, l: choice.method === "pickup" ? choice.locationId : null, z: null, a: null, c: null, lbl: null, lc: config.primaryLocale, f: null };
   const merged = new Map<string, string>((d.draftOrder.customAttributes as { key: string; value: string }[]).map((a) => [a.key, a.value]));
   merged.set(ATTR_KEY, encodeSelection(sel));

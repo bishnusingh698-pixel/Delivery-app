@@ -132,7 +132,7 @@ export function ScheduleEditor(p: { value: Schedule; onChange: (s: Schedule) => 
           details={t("schedule.windowHelp")}
           suffix={t("schedule.days")}
           min={1}
-          max={730}
+          max={400}
           value={s.windowDays}
           error={p.errorFor(`${p.path}.windowDays`)}
           onChange={(v) => set((x) => (x.windowDays = v ?? 1))}

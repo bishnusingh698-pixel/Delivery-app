@@ -64,20 +64,30 @@ export function parseRules(lines: string[] | string): ParsedRules {
   return { rules, invalid };
 }
 
-export function matchRule(rule: PostcodeRule, postcode: string): boolean {
+/**
+ * The shopper's postcode and the forms it may be written in. A US ZIP+4
+ * ("10115-1234") also counts as its 5-digit ZIP ("10115").
+ */
+function forms(postcode: string): string[] {
   const pc = normalizePostcode(postcode);
-  if (!pc) return false;
-  switch (rule.kind) {
-    case "exact":
-      return pc === rule.value;
-    case "prefix":
-      return pc.startsWith(rule.value);
-    case "range": {
-      if (!/^\d+$/.test(pc) || pc.length !== rule.len) return false;
-      const n = Number(pc);
-      return n >= rule.from && n <= rule.to;
+  if (!pc) return [];
+  return /^\d{9}$/.test(pc) ? [pc, pc.slice(0, 5)] : [pc];
+}
+
+export function matchRule(rule: PostcodeRule, postcode: string): boolean {
+  return forms(postcode).some((pc) => {
+    switch (rule.kind) {
+      case "exact":
+        return pc === rule.value;
+      case "prefix":
+        return pc.startsWith(rule.value);
+      case "range": {
+        if (!/^\d+$/.test(pc) || pc.length !== rule.len) return false;
+        const n = Number(pc);
+        return n >= rule.from && n <= rule.to;
+      }
     }
-  }
+  });
 }
 
 export function matchesAny(lines: string[], postcode: string): boolean {

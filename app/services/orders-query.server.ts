@@ -142,7 +142,9 @@ export async function dayCounts(shop: string, config: StorefrontConfig, from: st
     if (!m.enabled) continue;
     const keys =
       m.id === "pickup"
-        ? config.locations.filter((l) => l.enabled).map((l) => ({ key: `pickup:${l.id}`, loc: l.id as string | null, zone: null as string | null }))
+        ? config.locations.some((l) => l.enabled)
+          ? config.locations.filter((l) => l.enabled).map((l) => ({ key: `pickup:${l.id}`, loc: l.id as string | null, zone: null as string | null }))
+          : [{ key: "pickup", loc: null as string | null, zone: null as string | null }]
         : [
             { key: m.id as string, loc: null as string | null, zone: null as string | null },
             // Delivery zones with their own limit are counted under their own key.

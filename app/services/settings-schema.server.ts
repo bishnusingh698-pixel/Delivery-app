@@ -7,6 +7,7 @@ import { bracesBalanced } from "../../core/texts-ui";
 import { postcodeProblems } from "../../core/areas-ui";
 import { z } from "zod";
 import { defaultSettings } from "../../core/defaults";
+import { MAX_SCAN } from "../../core/engine";
 import type { Settings } from "../../core/types";
 
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24-hour)");
@@ -43,7 +44,7 @@ const schedule = z.object({
   lead: z.object({ amount: z.number().int().min(0).max(365 * 24), unit: z.enum(["hours", "days"]), workingDays: z.boolean() }),
   cutoff: z.object({ time: time.nullable(), perWeekday: z.array(time.nullable()).length(7).nullable() }),
   sameDay: z.object({ allowed: z.boolean(), cutoff: time }),
-  windowDays: z.number().int().min(1).max(730),
+  windowDays: z.number().int().min(1).max(MAX_SCAN),
   notBefore: date.nullable(),
   todayTomorrowLabels: z.boolean(),
 });
