@@ -1,0 +1,43 @@
+[[extensions]]
+name = "Daily summary ready"
+handle = "pickday-flow-daily-summary"
+type = "flow_trigger"
+description = "Pickday's daily summary of tomorrow's orders is ready (Pro). Add \"Send internal email\", a Slack message or any other action to receive it."
+
+[settings]
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date"
+  description = "The day summarized, YYYY-MM-DD"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date label"
+  description = "The day summarized, written out in the admin language"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Total orders"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Deliveries"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Pickups"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Shipping"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Summary"
+  description = "Plain text, one line per entry: orders per method and time slot, production list, days filling up"
+
+  [[settings.fields]]
+  type = "url"
+  key = "Orders link"
+  description = "Pickday orders page for that day"

@@ -37,3 +37,17 @@ export async function flowTrigger(shop: string, admin: AdminGraphql, event: Flow
   );
 }
 
+
+export const DAILY_SUMMARY_HANDLE = "pickday-flow-daily-summary";
+
+/** Shop-level "Daily summary ready" trigger. The caller checks the plan and the digest settings. */
+export async function flowDailySummary(admin: AdminGraphql, payload: Record<string, unknown>): Promise<boolean> {
+  const data = await gql<{ flowTriggerReceive: { userErrors: { field?: string[] | null; message: string }[] } }>(
+    admin,
+    `mutation($handle: String!, $payload: JSON!) { flowTriggerReceive(handle: $handle, payload: $payload) { userErrors { field message } } }`,
+    { handle: DAILY_SUMMARY_HANDLE, payload },
+  );
+  const errs = data?.flowTriggerReceive?.userErrors ?? [];
+  if (errs.length) console.error("[flow] daily summary", errs.map((e) => e.message).join("; "));
+  return !errs.length;
+}

@@ -2,9 +2,9 @@
 
 *Let customers pick the day. Set daily limits and stop most overbooking. Counts update within about a minute of each order.*
 
-Pickday is a public Shopify app. Shoppers choose a delivery date, pickup date or shipping dispatch date (and optionally a time slot) in the cart, cart drawer or on the product page. Checkout then shows only the matching shipping option and blocks the order if the date is missing or no longer valid. Merchants see their orders by day, print day sheets, route sheets and production lists, and get a daily summary email.
+Pickday is a public Shopify app. Shoppers choose a delivery date, pickup date or shipping dispatch date (and optionally a time slot) in the cart, cart drawer or on the product page. Checkout then shows only the matching shipping option and blocks the order if the date is missing or no longer valid. Merchants see their orders by day, print day sheets, route sheets and production lists, and get a daily summary in Shopify Flow (send it to email, Slack and more).
 
-It is built to run for **$0 a month for up to about 100 stores**: one free Render web service, a free Neon Postgres database, free cron-job.org pings and the free Brevo email plan. The storefront and checkout never call the server (settings are saved inside each store as app-owned metafields), so shoppers are never affected when the free server is asleep.
+It is built to run for **$0 a month for up to about 100 stores**: one free Render web service, a free Neon Postgres database, free cron-job.org pings and (optional) the free Brevo email plan. The storefront and checkout never call the server (settings are saved inside each store as app-owned metafields), so shoppers are never affected when the free server is asleep.
 
 Other documents:
 
@@ -33,7 +33,7 @@ These are the steps only you can do (they need your accounts). Do them in this o
 2. **Create the database (Neon, free).**
    1. Sign up at [neon.tech](https://neon.tech) → **New project** → name `pickday`, region close to your Render region (Frankfurt = `aws-eu-central-1`).
    2. On the project dashboard click **Connect**. Copy the connection string with **Pooled connection** turned on: that's `DATABASE_URL`. Turn **Pooled connection** off and copy again: that's `DIRECT_URL`.
-3. **Create the email account (Brevo, free, optional).** Only needed for the merchant daily summary email.
+3. **Create the email account (Brevo, free, optional; you can skip it).** The daily summary already reaches merchants through Shopify Flow (they add "Send internal email", Slack, etc. in Flow), and that needs no email setup. Brevo only adds an extra "email from Pickday" option, and only works if you have your own domain to verify. Skip this step if you don't.
    1. Sign up at [brevo.com](https://www.brevo.com). Go to **Senders, Domains & Dedicated IPs** → **Domains** → add your domain and follow the DNS steps (so emails aren't marked as spam).
    2. Go to **SMTP & API** → **API Keys** → **Generate a new API key**. Copy it: that's `BREVO_API_KEY`. Your sender address (e.g. `digest@yourdomain.com`) is `EMAIL_FROM`.
 4. **Put the server online (Render, free).**
@@ -108,7 +108,7 @@ GitHub Actions runs all of these on every push (see `.github/workflows/ci.yml`),
 | Render web service | 750 instance hours/month, sleeps after 15 min idle | One service, kept awake by a 10-minute ping (about 744 h/month) |
 | Neon Postgres | 0.5 GB storage, 190 compute hours/month, scales to zero | Small JSON settings per store, one row per order, old rows pruned daily; the keep-awake ping never touches the database |
 | cron-job.org | Unlimited jobs | 3 jobs |
-| Brevo | 300 emails/day | At most 1 email per store per day (100) |
+| Brevo | 300 emails/day | Optional. At most 1 email per store per day (100); the daily summary normally goes through Shopify Flow instead |
 
 ## Support
 

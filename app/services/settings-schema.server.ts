@@ -226,6 +226,8 @@ export const settingsSchema = z
         time,
         recipients: z.array(z.string().email()).max(3),
         includeProduction: z.boolean(),
+        flow: z.boolean(),
+        email: z.boolean(),
       }),
       emailSnippetConfirmed: z.boolean(),
       calendarFeed: z.object({ mode: z.enum(["order", "day"]), includeDetails: z.boolean() }),
@@ -256,7 +258,7 @@ export function deepMerge<T>(base: T, value: unknown): T {
 export type SettingsIssue = { path: string; message: string };
 
 export function validateSettings(input: unknown): { ok: true; data: Settings } | { ok: false; issues: SettingsIssue[] } {
-  const merged = deepMerge(defaultSettings(), input);
+  const merged = deepMerge(defaultSettings(), migrateStored(input));
   const res = settingsSchema.safeParse(merged);
   if (res.success) {
     // The pages check these too; repeated here so an imported file can't publish them.
@@ -288,7 +290,19 @@ function contentIssues(s: Settings): SettingsIssue[] {
 
 /** Lenient read of a stored document (old versions, partial data). */
 export function readSettings(stored: unknown): Settings {
-  const merged = deepMerge(defaultSettings(), stored ?? {});
+  const merged = deepMerge(defaultSettings(), migrateStored(stored));
   const res = settingsSchema.safeParse(merged);
   return (res.success ? res.data : merged) as Settings;
+}
+
+/**
+ * Older saved settings: the digest had no channel switches and was email only (D-56).
+ * Keep email on for stores that had recipients; Flow is on for everyone (deepMerge default).
+ */
+export function migrateStored(stored: unknown): unknown {
+  const n = (stored as { notifications?: { digest?: Record<string, unknown> } } | null)?.notifications;
+  const d = n?.digest;
+  if (!d || typeof d !== "object" || "email" in d) return stored ?? {};
+  const hadRecipients = Array.isArray(d.recipients) && d.recipients.length > 0;
+  return { ...(stored as object), notifications: { ...n, digest: { ...d, email: hadRecipients } } };
 }

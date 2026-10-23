@@ -47,10 +47,13 @@ export default function NotificationsPage() {
   const t = useT();
   const shopify = useAppBridge();
   const form = useSettingsForm(initial, {
-    validate: (d) =>
-      d.notifications.digest.enabled && !d.notifications.digest.recipients.length
-        ? [{ path: "notifications.digest.recipients", message: t("notifications.recipientsRequired") }]
-        : [],
+    validate: (d) => {
+      const g = d.notifications.digest;
+      if (!g.enabled) return [];
+      if (!g.flow && !g.email) return [{ path: "notifications.digest.flow", message: t("notifications.channelRequired") }];
+      if (g.email && !g.recipients.length) return [{ path: "notifications.digest.recipients", message: t("notifications.recipientsRequired") }];
+      return [];
+    },
   });
   const { draft, update, errorFor } = form;
   const n = draft.notifications;
@@ -92,13 +95,12 @@ export default function NotificationsPage() {
 
   return (
     <Page title={t("notifications.title")} subtitle={t("notifications.subtitle")}>
-      <SettingsChrome form={form} fieldLabels={{ "notifications.digest.recipients": t("notifications.recipients") }} />
+      <SettingsChrome form={form} fieldLabels={{ "notifications.digest.recipients": t("notifications.recipients"), "notifications.digest.flow": t("notifications.digestFlow") }} />
 
       <Section heading={t("notifications.digestHeading")}>
         {!pro ? <Locked plan="Pro" label={t("notifications.digestLocked")} upgradeLabel={t("common.upgrade")} /> : null}
         <Stack gap="base">
           <s-text color="subdued">{t("notifications.digestHelp")}</s-text>
-          {pro && !emailReady ? <s-banner tone="warning">{t("notifications.emailNotConfigured")}</s-banner> : null}
           <Switch label={t("notifications.digestEnabled")} checked={n.digest.enabled} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.enabled = v))} />
           <s-grid gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))" gap="base">
             <TimeSelect
@@ -110,6 +112,39 @@ export default function NotificationsPage() {
               disabled={!pro}
               onChange={(v) => update((d) => (d.notifications.digest.time = v ?? "18:00"))}
             />
+          </s-grid>
+          <Checkbox label={t("notifications.includeProduction")} checked={n.digest.includeProduction} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.includeProduction = v))} />
+
+          <s-heading>{t("notifications.digestFlowHeading")}</s-heading>
+          <Checkbox
+            label={t("notifications.digestFlow")}
+            details={t("notifications.digestFlowHelp")}
+            checked={n.digest.flow}
+            disabled={!pro}
+            error={errorFor("notifications.digest.flow")}
+            onChange={(v) => update((d) => (d.notifications.digest.flow = v))}
+          />
+          <s-box background="subdued" borderRadius="base" padding="base">
+            <Stack gap="small-200">
+              <s-text type="strong">{t("notifications.digestHowToHeading")}</s-text>
+              <s-ordered-list>
+                <s-list-item>{t("notifications.digestHowTo1")}</s-list-item>
+                <s-list-item>{t("notifications.digestHowTo2")}</s-list-item>
+                <s-list-item>{t("notifications.digestHowTo3")}</s-list-item>
+              </s-ordered-list>
+            </Stack>
+          </s-box>
+
+          <s-heading>{t("notifications.digestEmailHeading")}</s-heading>
+          {pro && !emailReady ? <s-banner tone="info">{t("notifications.emailNotConfigured")}</s-banner> : null}
+          <Checkbox
+            label={t("notifications.digestEmail")}
+            details={t("notifications.digestEmailHelp")}
+            checked={n.digest.email}
+            disabled={!pro}
+            onChange={(v) => update((d) => (d.notifications.digest.email = v))}
+          />
+          {n.digest.email ? (
             <TextField
               id="f-notifications-digest-recipients"
               label={t("notifications.recipients")}
@@ -122,8 +157,7 @@ export default function NotificationsPage() {
                 update((d) => (d.notifications.digest.recipients = v.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean).slice(0, 3)));
               }}
             />
-          </s-grid>
-          <Checkbox label={t("notifications.includeProduction")} checked={n.digest.includeProduction} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.includeProduction = v))} />
+          ) : null}
         </Stack>
       </Section>
 
