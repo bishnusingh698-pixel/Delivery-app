@@ -20,6 +20,8 @@ Source of truth for this round of work. Updated as items land (✅ done, ⏳ in 
 
 Baseline checks before this round: `npm run typecheck` ✅, `npm run lint` ✅ (0 errors, 21 warnings), `npm test` ✅ (278 passed, 9 DB tests skipped without a database), `npm run build` ✅.
 
+Final checks after this round: `npm run typecheck` ✅ (app + extensions), `npm run lint` ✅ (0 errors, 20 warnings), `npm test` ✅ (324 passed, including the 9 database tests against Postgres), `npm run build` ✅ (widget 22.2 KB gzipped of a 35 KB budget), browser tests ✅ (38 widget checks + admin live preview), `prisma migrate deploy` on an empty database ✅.
+
 ## 1. Bugs
 
 Severity: **C** critical (wrong dates, stuck shoppers, broken install), **M** major, **m** minor.
@@ -113,5 +115,5 @@ App Store reviewer view
 4. ✅ Widget: B2, B7, B21, B22, B24, notes, date format, week start, position; rebuild; 28 storefront languages for new text.
 5. ✅ Admin redesign: icon nav, wizard, Home chart + close a day, Delivery, Pickup, Days off, Appearance (live widget preview), Settings; remove merged pages.
 6. ✅ Admin translations (8 languages) for new text.
-7. ⏳ Docs: README (Render + Neon + Partner Dashboard), DECISIONS, CHECKLIST, PRIVACY, `.env.example`, `render.yaml`.
-8. ⏳ Verification: re-read changed files, tricky date tests (time zones, DST, holidays, cutoff boundary, month/year ends, leap day), full install → order flow review, typecheck, lint, tests (incl. DB), build, browser test.
+7. ✅ Docs: README (Render + Neon + Partner Dashboard), DECISIONS, CHECKLIST, PRIVACY, `.env.example`, `render.yaml`.
+8. ✅ Verification: re-read changed files, tricky date tests (time zones, DST, holidays, cutoff boundary, month/year ends, leap day), full install → order flow review, typecheck, lint, tests (incl. DB), build, browser test.
