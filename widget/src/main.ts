@@ -184,6 +184,10 @@ function setupProduct(pd: Pickday) {
       el.hidden = true;
       continue;
     }
+    // "Buy it now" skips the cart, so the shopper could never pick a date: hide it for this product.
+    if (el.dataset.hideBuyNow === "1" && methodsFor(pd.cfg, pd.country, [line]).some((id) => pd.cfg.methods.find((m) => m.id === id)?.dateRequired)) {
+      hideBuyNow(el.dataset.form ?? "");
+    }
     const render = () => {
       const msg = pd.productMessage(line);
       const parts: Node[] = [];
@@ -198,6 +202,14 @@ function setupProduct(pd: Pickday) {
       if (!el.contains(document.activeElement)) render();
     }, 60_000);
   }
+}
+
+function hideBuyNow(formId: string) {
+  const form = formId ? document.getElementById(formId) : null;
+  const scope = form ? `#${CSS.escape(formId)} ` : "";
+  const style = document.createElement("style");
+  style.textContent = `${scope}.shopify-payment-button{display:none!important}`;
+  document.head.append(style);
 }
 
 function productPicker(pd: Pickday, el: HTMLElement, line: CartLine): Node {

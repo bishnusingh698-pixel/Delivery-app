@@ -1,6 +1,6 @@
 # Pickday: Delivery Date Picker
 
-*Let customers pick the day. Never get more orders than you can handle.*
+*Let customers pick the day. Set daily limits and stop most overbooking. Counts update within about a minute of each order.*
 
 Pickday is a public Shopify app. Shoppers choose a delivery date, pickup date or shipping dispatch date (and optionally a time slot) in the cart, cart drawer or on the product page. Checkout then shows only the matching shipping option and blocks the order if the date is missing or no longer valid. Merchants see their orders by day, print day sheets, route sheets and production lists, and get a daily summary email.
 
@@ -57,7 +57,7 @@ These are the steps only you can do (they need your accounts). Do them in this o
    | Pickday hourly | `https://<your-service>.onrender.com/jobs/hourly` | Every hour at minute 2 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
    | Pickday daily | `https://<your-service>.onrender.com/jobs/daily` | Every day at 03:10 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
    Click **Test run** on each: the keep-awake job answers `ok`, the other two `started` (status 202). A 403 means the secret doesn't match.
-7. **Ask for access to order addresses (for the printed sheets).** Partner Dashboard → your app → **API access** → **Protected customer data access** → **Request access**. Select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason "Printed delivery day sheets and route sheets; the data is read live when the merchant prints and never stored." Fill in the data protection questions (answers are in `PRIVACY.md`). Without this, sheets still print but without addresses.
+7. **Ask for access to order addresses (for the printed sheets).** Partner Dashboard → your app → **API access** → **Protected customer data access** → **Request access**. Select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason "Printed delivery day sheets and route sheets. Addresses and phone numbers are read live when the merchant prints and never stored; only the order number and the customer's first name are stored." Fill in the data protection questions (answers are in `PRIVACY.md`). Without this, sheets still print but without addresses.
 8. **Test on a development store.** Partner Dashboard → **Stores** → **Add store** → **Development store**. Then in your app → **Test your app** → choose the store → **Install**. Follow `CHECKLIST.md` → "How to test" P1 to P6 (development stores get every Pro feature for free).
 9. **Before submitting to the App Store:**
    1. In Render, make sure `BILLING_TEST` is `false`.

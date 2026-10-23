@@ -20,6 +20,7 @@ export interface CartItem {
   gift_card: boolean;
   requires_shipping: boolean;
   properties: Record<string, string> | null;
+  final_line_price?: number;
   url?: string;
 }
 

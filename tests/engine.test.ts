@@ -355,4 +355,16 @@ describe("surcharges", () => {
     expect(sun.ok && sun.fees.map((f) => f.id)).toEqual(["sun"]);
     expect(mon.ok && mon.fees).toEqual([]);
   });
+
+  it("keeps an hour-based lead time for same-day slot start", () => {
+    const cfg = config((s) => {
+      s.methods.shipping.schedule.lead = { amount: 3, unit: "hours", workingDays: false };
+      s.methods.shipping.schedule.cutoff.time = "08:00";
+      s.methods.shipping.schedule.sameDay = { allowed: true, cutoff: "12:00" };
+    });
+    const inp = input(cfg, { now: { date: "2026-10-14", minutes: 9 * 60 } });
+    const e = computeEarliest(inp, resolveRules(cfg, "shipping", null, null)!);
+    expect(e.date).toBe("2026-10-14");
+    expect(e.minMinutes).toBe(12 * 60);
+  });
 });

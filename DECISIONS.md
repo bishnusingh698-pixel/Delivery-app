@@ -6,7 +6,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-01 Template and UI kit.** Built on Shopify's current official template (`shopify-app-template-react-router`, React Router 7, `@shopify/shopify-app-react-router` 3.x, API version 2026-10). The template now uses **Polaris web components** (`<s-page>`, `<s-section>`, …) loaded by App Bridge instead of the older `@shopify/polaris` React package. That is what Shopify calls Polaris today and what "Built for Shopify" reviews expect, so the admin uses it. No other CSS framework is used. React 18 does not forward custom-element events, so `app/components/polaris.tsx` wraps each interactive component and wires events through refs.
 
-**D-02 Functions in JavaScript.** Both Functions are JavaScript (compiled to WebAssembly by the Shopify CLI) instead of Rust, so they can bundle the exact same date-engine code the widget and admin use (`core/`). The engine avoids `Intl` and `Date` time zones because Function runtimes have no `Intl`; "now" in the store's zone comes from `shop.localTime` (date + 48 `timeAfter` checks, giving the time to the half hour).
+**D-02 Functions in JavaScript.** Both Functions are JavaScript (compiled to WebAssembly by the Shopify CLI) instead of Rust, so they can bundle the exact same date-engine code the widget and admin use (`core/`). The engine avoids `Intl` and `Date` time zones because Function runtimes have no `Intl`; "now" in the store's zone comes from `shop.localTime` (date + 23 hourly `timeAfter` checks, see D-38, giving the time to the half hour).
 
 **D-03 Function API versions.** Validation uses the new `cart.validations.generate.run` target and delivery customization uses `cart.delivery-options.transform.run` (`deliveryOptionHide` / `deliveryOptionRename`), API 2026-07.
 
@@ -58,9 +58,9 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 ## Checkout and orders (P4)
 
-**D-24 The validation Function is lenient by design.** It is a backstop, so when in doubt it lets the order through: the current time is read to the hour (Functions have no clock, only "is it after HH:00?" checks), pickup locations in another time zone are checked in the store's zone, and when the published counts don't fit the Function input the "full" check is skipped. The widget enforces the exact rules before checkout.
+**D-24 The validation Function is lenient by design.** It is a backstop, so when in doubt it lets the order through: the current time is read to the hour (Functions have no clock, only "is it after HH:00?" checks), pickup locations in another time zone are checked with their own offset (D-38), and when the published counts don't fit the Function input the "full" check is skipped. The widget enforces the exact rules before checkout.
 
-**D-25 A required date also blocks "Buy it now".** Buy-it-now and express buttons skip the cart, so the validation Function stops them at checkout with "Please choose a delivery or pickup date in your cart". Merchants who sell mostly through Buy it now should turn "date required" off or remove the button.
+**D-25 "Buy it now" and a required date.** Buy-it-now and express buttons skip the cart, so no date is chosen. The product page block has a setting "Hide 'Buy it now' for products that need a date" (on by default) that hides Shopify's dynamic checkout button with CSS for those products only; no theme code is edited. Without the block on the product page, the validation Function stops such orders at checkout with "Please choose a delivery or pickup date in your cart". Express checkout buttons in the cart are never intercepted (D-18).
 
 **D-26 Admin changes win.** After a merchant changes an order's date (order page or Orders page), later order updates from Shopify keep that date. The order's own attributes are rewritten too, so packing slips and other apps show the new date.
 
@@ -96,7 +96,32 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-40 Importing settings from another store keeps your own notifications.** Digest recipients, the calendar feed and the Flow switch are never copied from another store. Imported fees get this store's own fee variants straight away.
 
-**D-41 Known limit: date per item and capacity.** In date-per-item mode each line is checked on its own at checkout, so two lines on the same nearly-full day can together go over the limit by one order. Zone limits and tag-based product limits also aren't applied per item. The daily counts stay correct (the day shows as full afterwards); a fix is on the roadmap.
+**D-41 Known limit: date per item and capacity.** In date-per-item mode each line is checked on its own at checkout, so two lines on the same nearly-full day can together go over the limit by one order. Zone limits and tag-based product limits also aren't applied per item, and surcharges are not added in date-per-item mode. The daily counts stay correct (the day shows as full afterwards); a fix is on the roadmap.
+
+
+**D-42 No date required while the app embed is off.** The app checks daily (and whenever Home or the Widget page opens) whether the Pickday app embed is on in the live theme. While it is found off, the published checkout config says so and the validation Function no longer blocks for a missing date, because shoppers have no way to pick one. Home shows a critical alert. An unknown state (never checked) keeps the normal rule.
+
+**D-43 Checkout checks the pickup location and leaves fees out of the minimum.** A pickup choice must name a location that exists, is switched on and serves the delivery country. Pickday's own fee lines don't count toward a method's minimum order, in the widget and at checkout.
+
+**D-44 Shipping rates are not renamed unless the merchant asks.** Adding the date to the rate name applies to Local delivery and Pickup by default. Renaming carrier/shipping rates is a separate switch, off by default, because 3PL and rate-name automations can depend on the original name.
+
+**D-45 Order webhooks are recorded before answering when possible.** The webhook waits up to 3.5 seconds for the order to be recorded. If recording fails, it answers with an error and forgets the delivery id so Shopify's retry is processed. If the database is slow, it answers and finishes in the background (the small remaining risk is a restart during that time).
+
+**D-46 A shop that reinstalled keeps its data.** `shop/redact` arrives 48 hours after an uninstall. If the shop has installed Pickday again by then, the request is logged and nothing is deleted.
+
+**D-47 Share codes are stored as a SHA-256 hash.** The code itself is shown once. Creating a code and its use are logged in the source store's activity log, the import in the importing store's. Digest email recipients are never part of an export. No extra attempt limit: entering a code needs a logged-in admin and a 10-character code has about 50 bits.
+
+**D-48 Production server.** `server.mjs` replaces `react-router-serve` with the same Express setup plus two changes: request logs hide calendar feed tokens, and `/feeds` and `/ics` are limited to 30 requests per minute per IP (in memory, enough for one instance).
+
+**D-49 Dates always Gregorian with Latin digits** in the widget, so Thai, Arabic and other locales match Shopify's checkout and the order. A "use local digits" option is not offered yet.
+
+**D-50 Some document requests not followed.** From the October 2026 repair document:
+- Capacity stays checked at checkout when the counts fit (D-24) instead of an opt-in "strict capacity" switch: blocking a full day is the point of limits, and the check already lets orders through when it can't be sure.
+- No app proxy (D-06): the storefront never calls the server.
+- No product rule index: tags are read from Liquid and `/products/<handle>.js`, collections from the list refreshed on save and daily (D-35).
+- A zone with its own limit has a separate limit from the method's daily limit; a location's own schedule replaces the method's entirely.
+- Special open days win over vacation mode, and calendar-day lead time after the cutoff counts from the next working day (D-12).
+- Test orders count toward capacity, so a test order can be used to check the setup.
 
 ## Not yet decided / proposed
 

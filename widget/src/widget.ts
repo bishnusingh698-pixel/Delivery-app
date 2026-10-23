@@ -180,7 +180,10 @@ export class Pickday {
     const m = this.cfg.methods.find((x) => x.id === id);
     if (!m?.minOrder || !this.cart) return null;
     const min = Number(m.minOrder) * (this.boot.rate || 1);
-    if (this.cart.total_price / 100 >= min) return null;
+    // Pickday's own fee lines don't count toward the minimum.
+    const fees = this.surchargeVariants();
+    const feeCents = this.cart.items.filter((i) => fees.has(String(i.variant_id))).reduce((n, i) => n + (i.final_line_price ?? 0), 0);
+    if ((this.cart.total_price - feeCents) / 100 >= min) return null;
     return this.tx.t("minOrder", { method: this.methodName(id), amount: this.tx.money(min, this.boot.currency) });
   }
 
@@ -689,7 +692,7 @@ export class Pickday {
             "div",
             { class: "pd-instructions" },
             instructions ? h("p", null, h("strong", null, this.tx.t("location.instructions")), " ", instructions) : null,
-            cur.mapUrl ? h("a", { href: cur.mapUrl, target: "_blank", rel: "noopener" }, this.tx.t("location.map")) : null,
+            cur.mapUrl && /^https?:\/\//i.test(cur.mapUrl) ? h("a", { href: cur.mapUrl, target: "_blank", rel: "noopener" }, this.tx.t("location.map")) : null,
           )
         : null,
     );

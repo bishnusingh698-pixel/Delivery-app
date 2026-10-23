@@ -6,7 +6,7 @@
 export const BRAND = {
   name: "Pickday",
   appStoreName: "Pickday: Delivery Date Picker",
-  tagline: "Let customers pick the day. Never get more orders than you can handle.",
+  tagline: "Let customers pick the day. Set daily limits and stop most overbooking.",
   supportEmail: process.env.SUPPORT_EMAIL || "support@pickday.app",
   website: "https://pickday.app",
   /** Primary colour used in admin illustrations and emails. */

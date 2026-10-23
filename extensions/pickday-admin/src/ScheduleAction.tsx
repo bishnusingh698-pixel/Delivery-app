@@ -59,11 +59,11 @@ function ScheduleAction() {
       <s-stack direction="block" gap="base">
         {message ? <s-banner tone="critical">{message}</s-banner> : null}
         <s-select label={t("method")} value={method} onChange={(e: any) => { setMethod(e.currentTarget.value); setDate(""); setSlot(""); }}>
-          {state.methods.map((m) => <s-option value={m.id}>{m.name}</s-option>)}
+          {state.methods.map((m) => <s-option key={m.id} value={m.id}>{m.name}</s-option>)}
         </s-select>
         {method === "pickup" && state.locations.length ? (
           <s-select label={t("location")} value={location ?? ""} onChange={(e: any) => { setLocation(e.currentTarget.value || null); setDate(""); setSlot(""); }}>
-            {state.locations.map((l) => <s-option value={l.id}>{l.name}</s-option>)}
+            {state.locations.map((l) => <s-option key={l.id} value={l.id}>{l.name}</s-option>)}
           </s-select>
         ) : null}
         <s-select label={t("date")} value={date} onChange={(e: any) => { setDate(e.currentTarget.value); setSlot(""); }}>
@@ -71,7 +71,7 @@ function ScheduleAction() {
           {state.days
             .filter((d) => d.available || force)
             .map((d) => (
-              <s-option value={d.date}>
+              <s-option key={d.date} value={d.date}>
                 {fmt(d.date)}
                 {d.available ? (d.left !== null ? ` · ${t("left", { count: d.left })}` : "") : ` · ${reason(d.reason)}`}
               </s-option>
@@ -82,7 +82,7 @@ function ScheduleAction() {
             <s-option value="">{t("chooseSlot")}</s-option>
             {day.slots
               .filter((s) => s.available || force)
-              .map((s) => <s-option value={s.id}>{s.label}{s.available ? "" : ` · ${t("full")}`}</s-option>)}
+              .map((s) => <s-option key={s.id} value={s.id}>{s.label}{s.available ? "" : ` · ${t("full")}`}</s-option>)}
           </s-select>
         ) : null}
         <s-checkbox label={t("override")} checked={force} onChange={(e: any) => setForce(e.currentTarget.checked)} />

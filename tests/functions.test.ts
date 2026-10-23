@@ -144,6 +144,37 @@ describe("validation Function", () => {
     expect(shiftTime({ date: "2026-10-14", minutes: 60 }, -120)).toEqual({ date: "2026-10-13", minutes: 1380 });
     expect(shiftTime({ date: "2026-10-14", minutes: 1400 }, 59)).toEqual({ date: "2026-10-15", minutes: 19 });
   });
+
+  it("doesn't require a date while the app embed is off in the theme", () => {
+    const input = vInput(cfg, { attr: null });
+    (input.validation!.metafield!.jsonValue as any).embedOff = true;
+    expect(validate(input, messages)).toEqual([]);
+  });
+
+  it("rejects an unknown or switched-off pickup location", () => {
+    const c = (enabled: boolean) =>
+      config((s) => {
+        s.methods.pickup.enabled = true;
+        s.methods.pickup.dateRequired = true;
+        s.methods.shipping.enabled = false;
+        s.methods.delivery.enabled = false;
+        s.locations.push({ id: "a", shopifyLocationId: null, name: "A", address: "", mapUrl: "", instructions: {}, timeZone: null, enabled, countries: "all", custom: null });
+      });
+    expect(validate(vInput(c(true), { attr: sel({ m: "pickup", l: "a" }) }), messages)).toEqual([]);
+    expect(validate(vInput(c(true), { attr: sel({ m: "pickup", l: "nope" }) }), messages)[0].message).toBe(messages.en["validation.methodUnavailable"]);
+    expect(validate(vInput(c(false), { attr: sel({ m: "pickup", l: "a" }) }), messages)).toHaveLength(1);
+  });
+
+  it("leaves Pickday fee lines out of the minimum order", () => {
+    const c = config((s) => {
+      s.methods.shipping.minOrder = "50";
+      s.surcharges.push({ id: "f", label: "", kind: "weekday", weekdays: [], dates: [], slotIds: [], methods: "all", amount: "5", variantId: "200" } as any);
+    });
+    const fee = { id: "gid://shopify/CartLine/2", quantity: 1, merchandise: { __typename: "ProductVariant", id: "gid://shopify/ProductVariant/200", requiresShipping: false, product: { id: "gid://shopify/Product/2", isGiftCard: false, hasTags: [], inCollections: [] } } };
+    const lines = [...vInput(c).cart.lines, fee];
+    // 52 in the cart, 5 of it the fee: 47 is under the 50 minimum.
+    expect(validate(vInput(c, { subtotal: "52.0", lines }), messages)[0].message).toContain("50.00 EUR");
+  });
 });
 
 describe("delivery customization Function", () => {
@@ -167,6 +198,12 @@ describe("delivery customization Function", () => {
   it("keeps local delivery for a delivery choice", () => {
     const ops = run(sel({ m: "delivery", lbl: "Fri, 16 Oct" }));
     expect(ops.filter((o) => "deliveryOptionHide" in o)).toHaveLength(3);
+  });
+
+  it("renames shipping rates only when the merchant switches it on", () => {
+    const renames = (cfg: DeliveryConfig) => run(sel({ m: "shipping", lbl: "Fri, 16 Oct" }), cfg).filter((o) => "deliveryOptionRename" in o);
+    expect(renames(dc)).toHaveLength(0);
+    expect(renames({ ...dc, renameShipping: true })).toHaveLength(1);
   });
 
   it("uses the merchant's rate mapping", () => {

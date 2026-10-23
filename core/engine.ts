@@ -249,14 +249,17 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
   }
 
   let sameDay = false;
+  // Same-day skips the day-based lead time only; an hour-based lead still applies to slot start times.
+  const sameDayMin = now.minutes + (s.lead.unit === "hours" ? amount * 60 : 0);
   if (
     s.sameDay.allowed &&
     extra === 0 &&
     now.minutes < toMinutes(s.sameDay.cutoff || "00:00") &&
+    sameDayMin < 1440 &&
     (!date || date > today)
   ) {
     date = today;
-    minMinutes = now.minutes;
+    minMinutes = sameDayMin;
     sameDay = true;
   }
 

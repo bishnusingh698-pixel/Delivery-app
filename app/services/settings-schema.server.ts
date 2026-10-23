@@ -89,7 +89,7 @@ const location = z.object({
   shopifyLocationId: z.string().max(60).nullable(),
   name: z.string().min(1, "Enter a name").max(100),
   address: z.string().max(300),
-  mapUrl: z.union([z.literal(""), z.string().url().max(500)]),
+  mapUrl: z.union([z.literal(""), z.string().url().max(500).regex(/^https?:\/\//i, "Use a link that starts with https://")]),
   instructions: texts,
   timeZone: z.string().max(60).nullable(),
   enabled: z.boolean(),
@@ -203,6 +203,7 @@ export const settingsSchema = z
     checkoutMatching: z.object({
       enabled: z.boolean(),
       renameWithDate: z.boolean(),
+      renameShipping: z.boolean(),
       rateMap: z.array(z.object({ title: z.string().max(255), method: z.union([method, z.literal("ignore")]) })).max(100),
     }),
     widget: z.object({

@@ -11,7 +11,7 @@ import { holidayRegions } from "./holidays.server";
 import { targetIsEmpty } from "../../core/rules";
 import type { Settings, StorefrontConfig } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
-import { addWarning, clearWarning, planOf, requireShop, shopToday } from "../models/shop.server";
+import { addWarning, clearWarning, flagsOf, planOf, requireShop, shopToday } from "../models/shop.server";
 import { buildAvailability, maxWindow } from "./counts.server";
 import { assertNoUserErrors, gql, type AdminGraphql } from "./graphql.server";
 import { monthlyUsage } from "./usage.server";
@@ -137,6 +137,8 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   // The Function only knows the shop's local time; pickup locations in other zones get an offset (republished hourly, so DST is followed).
   const tzShift = locationTimeShifts(config);
   if (Object.keys(tzShift).length) fnConfig.tzShift = tzShift;
+  // With the app embed off there is no date picker, so the Function must not require a date.
+  if (flagsOf(row).embedDetected === false) (fnConfig as { embedOff?: boolean }).embedOff = true;
   // Capacity counts go to the Function too when they fit (otherwise it skips the "full" check, D-11).
   fnConfig.avail = JSON.stringify(fnConfig).length + JSON.stringify(availability).length < 24000 ? availability : null;
   const vars = ruleVariables(config);
@@ -197,6 +199,7 @@ export function deliveryConfig(config: StorefrontConfig, settings: Settings) {
   return {
     enabled: config.checkoutMatching.enabled,
     rename: config.checkoutMatching.renameWithDate,
+    renameShipping: settings.checkoutMatching.renameShipping,
     rateMap: settings.checkoutMatching.rateMap.map((r) => ({ title: r.title.trim().toLowerCase(), method: r.method })),
     locations: config.locations.map((l) => ({ id: l.id, name: l.name })),
     names: Object.fromEntries(config.methods.map((m) => [m.id, m.names])),

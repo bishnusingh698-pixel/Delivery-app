@@ -125,7 +125,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 ## Automated checks (run `npm test`)
 
 - Date engine: lead time, per-weekday cutoffs, working-day counting, closures, special open days, vacation, booking window, launch date, product restrictions, extra lead time, daily limits, capacity by orders and by items, slot limits, per-date overrides, admin overrides, multiple time zones, DST, leap years, country rules, postcode ranges, zones, surcharges.
-- Storefront translations (27 languages): keys, placeholders, plural forms for 0–1000, no English left over, length limits.
+- Storefront translations (28 locales, 26 languages): keys, placeholders, plural forms for 0–1000, no English left over, length limits.
 - Admin translations: every key used by the code exists in English.
 - Checkout Functions: valid choice passes, adding to cart never blocked, missing/closed/full/past-cutoff dates blocked in the shopper's language, wrong country, minimum order, date per item, gift cards, no config; checkout matching hides/renames correctly and never hides everything.
 - Orders (with Postgres): new order counted, duplicate and older webhooks ignored, date change moves the count, cancel frees capacity, over-limit orders recorded but flagged; admin reschedule refuses full days unless overridden, keeps other order attributes, updates tags and history.
