@@ -139,6 +139,7 @@ model ProductCount {
   qty    Int    @default(0)
 
   @@id([shop, key, date])
+  @@index([shop, date])
 }
 
 model ActivityLog {
@@ -170,6 +171,7 @@ model ShareCode {
   createdAt DateTime @default(now())
 
   @@index([expiresAt])
+  @@index([shop])
 }
 
 model WebhookLog {
@@ -179,4 +181,5 @@ model WebhookLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  @@index([shop])
 }

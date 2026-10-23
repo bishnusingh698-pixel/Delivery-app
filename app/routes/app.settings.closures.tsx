@@ -139,7 +139,7 @@ export default function ClosuresPage() {
               {draft.vacation.start && ordersIn(draft.vacation.start, draft.vacation.end ?? "9999-12-31") ? (
                 <s-banner tone="warning">
                   {t("closures.overlap", { count: ordersIn(draft.vacation.start, draft.vacation.end ?? "9999-12-31") })}{" "}
-                  <s-link href={`/app/orders?from=${draft.vacation.start}&to=${draft.vacation.end ?? ""}`}>{t("closures.viewThem")}</s-link>
+                  <s-link href={`/app/orders?range=custom&from=${draft.vacation.start}&to=${draft.vacation.end ?? ""}`}>{t("closures.viewThem")}</s-link>
                 </s-banner>
               ) : null}
             </>
@@ -290,7 +290,7 @@ export default function ClosuresPage() {
           ) : null}
           {overlap ? (
             <s-banner tone="warning">
-              {t("closures.overlap", { count: overlap })} <s-link href={`/app/orders?from=${editing.start}&to=${editing.end}`}>{t("closures.viewThem")}</s-link>
+              {t("closures.overlap", { count: overlap })} <s-link href={`/app/orders?range=custom&from=${editing.start}&to=${editing.end}`}>{t("closures.viewThem")}</s-link>
             </s-banner>
           ) : null}
         </s-stack>

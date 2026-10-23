@@ -13,6 +13,7 @@ import { checkEmbed } from "./embed.server";
 import { publishShop, schedulePublish } from "./publish.server";
 import { collectionIdsIn, resolveCollectionProducts } from "./collections.server";
 import { loadSettings, storeSettings } from "../models/settings.server";
+import { syncShopInfo } from "./install.server";
 
 const running = new Map<string, Promise<unknown>>();
 
@@ -70,8 +71,13 @@ export async function daily() {
     const old = addDays(shopToday(s), -400);
     pruned.orders += (await prisma.scheduledItem.deleteMany({ where: { shop: s.shop, date: { lt: old } } })).count;
     pruned.orders += (await prisma.scheduledOrder.deleteMany({ where: { shop: s.shop, date: { lt: old } } })).count;
+    // Orders saved without a date (date not required) by when they were placed.
+    pruned.orders += (await prisma.scheduledOrder.deleteMany({ where: { shop: s.shop, date: null, createdAt: { lt: days(400) } } })).count;
     try {
       const { admin } = await unauthenticated.admin(s.shop);
+      // Time zone, currency and languages can change in Shopify settings (shop/update covers most of it).
+      const synced = await syncShopInfo(s.shop, admin);
+      if (synced.timeZone !== s.timeZone) schedulePublish(s.shop);
       await checkEmbed(s.shop, admin);
       await refreshCollections(s.shop, admin);
     } catch (e) {

@@ -21,7 +21,7 @@ services:
       - key: SHOPIFY_APP_URL
         sync: false
       - key: SCOPES
-        value: read_orders,write_orders,read_draft_orders,write_draft_orders,read_products,write_products,write_publications,read_locations,read_themes,read_markets,write_validations,write_delivery_customizations
+        value: read_orders,write_orders,read_draft_orders,write_draft_orders,read_products,write_products,write_publications,read_locales,read_locations,read_themes,read_markets,write_validations,write_delivery_customizations
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL

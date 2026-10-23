@@ -270,8 +270,21 @@ export function validateSettings(input: unknown): { ok: true; data: Settings } |
   };
 }
 
+/** Text that could end the storefront's JSON <script> block or open an HTML comment. */
+const UNSAFE = /<\/|<!--/;
+
+/** Paths of every string in the document that contains UNSAFE. */
+export function unsafeStrings(v: unknown, path: string[] = [], out: string[] = []): string[] {
+  if (typeof v === "string") {
+    if (UNSAFE.test(v)) out.push(path.join("."));
+  } else if (Array.isArray(v)) v.forEach((x, i) => unsafeStrings(x, [...path, String(i)], out));
+  else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) unsafeStrings(x, [...path, k], out);
+  return out;
+}
+
 function contentIssues(s: Settings): SettingsIssue[] {
   const out: SettingsIssue[] = [];
+  for (const path of unsafeStrings(s)) out.push({ path, message: 'Remove "</" and "<!--" from this text' });
   for (const [locale, map] of Object.entries(s.texts)) {
     for (const [key, text] of Object.entries(map)) if (!bracesBalanced(text)) out.push({ path: `texts.${locale}.${key}`, message: "Unbalanced { } in text" });
   }
