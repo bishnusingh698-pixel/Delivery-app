@@ -11,7 +11,7 @@ import { nowInZone, zoneDiffersFromDevice, zoneDisplayName } from "../../core/tz
 import { attributeDate, formatShopperDate } from "../../core/dateformat";
 import { onAccent } from "../../core/color";
 import type { Availability, CartLine, DayStatus, LocalNow, MethodId, Selection, StorefrontConfig, Surcharge } from "../../core/types";
-import { addVariant, changeLine, getCart, notifyTheme, productTags, updateAttributes, type Cart } from "./cart";
+import { shopifyCart, type Cart, type CartApi } from "./cart";
 import { h, nextId, swap } from "./dom";
 import { makeTexts, type Texts } from "./i18n";
 
@@ -29,6 +29,8 @@ export interface BootData {
   itemCollections?: Record<string, string[]>;
   /** Tags of items in the cart at page render (Liquid). */
   itemTags?: Record<string, string[]>;
+  /** Admin preview only: a fixed "now" (simulate a time) instead of the clock. */
+  nowAt?: LocalNow | null;
 }
 
 type Item = { d: string | null; s: string | null };
@@ -69,7 +71,12 @@ export class Pickday {
   ready = false;
   hidden = true;
 
-  constructor(public boot: BootData) {
+  private timer: number | undefined;
+
+  constructor(
+    public boot: BootData,
+    public api: CartApi = shopifyCart,
+  ) {
     this.cfg = boot.config!;
     this.avail = boot.availability;
     this.tx = makeTexts(boot.locale, this.cfg.texts, boot.pseudo);
@@ -133,7 +140,7 @@ export class Pickday {
   }
 
   async loadCart() {
-    const cart = await getCart();
+    const cart = await this.api.getCart();
     this.cart = cart;
     const fees = this.surchargeVariants();
     const lines: CartLine[] = [];
@@ -148,7 +155,7 @@ export class Pickday {
         title: it.product_title,
         giftCard: it.gift_card,
         requiresShipping: it.requires_shipping,
-        tags: needTags ? this.boot.itemTags?.[String(it.product_id)] ?? (await productTags(it.handle)) : [],
+        tags: needTags ? this.boot.itemTags?.[String(it.product_id)] ?? (await this.api.productTags(it.handle)) : [],
         collections: this.boot.itemCollections?.[String(it.product_id)],
       });
     }
@@ -163,6 +170,7 @@ export class Pickday {
   }
 
   now(method = this.st.method, loc = this.st.locationId): LocalNow {
+    if (this.boot.nowAt) return this.boot.nowAt;
     return nowInZone(engineTimeZone(this.cfg, method ?? "shipping", loc));
   }
 
@@ -225,7 +233,13 @@ export class Pickday {
     this.ready = true;
     await this.revalidate();
     this.render();
-    window.setInterval(() => this.tick(), 60_000);
+    this.timer = window.setInterval(() => this.tick(), 60_000);
+  }
+
+  /** Stop the minute timer (admin preview re-creates the widget on every change). */
+  stop() {
+    window.clearInterval(this.timer);
+    window.clearTimeout(this.saving);
   }
 
   /** Read the saved selection from the cart. */
@@ -444,7 +458,7 @@ export class Pickday {
     this.lastSaved = sig;
     if (!same) {
       log(this.cfg, "save", attrs);
-      this.cart = await updateAttributes(attrs);
+      this.cart = await this.api.updateAttributes(attrs);
     }
     if (this.cfg.dateMode === "item") await this.persistItems(clear);
     await this.syncFees(clear ? [] : this.currentFees());
@@ -471,7 +485,7 @@ export class Pickday {
       }
       // Changing properties changes the line key: carry the selection over.
       const before: Set<string> = new Set(this.cart.items.map((i) => i.key));
-      this.cart = await changeLine(item.key, { quantity: item.quantity, properties: props });
+      this.cart = await this.api.changeLine(item.key, { quantity: item.quantity, properties: props });
       const newKey = this.cart.items.find((i) => !before.has(i.key))?.key;
       if (newKey && it) {
         this.st.items[newKey] = it;
@@ -496,24 +510,24 @@ export class Pickday {
       const vid = String(it.variant_id);
       if (!fees.has(vid)) continue;
       if (!wanted.has(vid) || it.quantity !== 1) {
-        await changeLine(it.key, { quantity: wanted.has(vid) ? 1 : 0 });
+        await this.api.changeLine(it.key, { quantity: wanted.has(vid) ? 1 : 0 });
         changed = true;
       }
       wanted.delete(vid);
     }
     for (const vid of wanted) {
       const names = want.filter((f) => f.variantId === vid).map((f) => f.label).filter(Boolean);
-      await addVariant(vid, 1, names.length ? { Fee: names.join(", ") } : undefined);
+      await this.api.addVariant(vid, 1, names.length ? { Fee: names.join(", ") } : undefined);
       changed = true;
     }
     if (changed) {
       log(this.cfg, "surcharge synced", [...wanted]);
-      if (location.pathname.endsWith("/cart")) {
+      if (this.api === shopifyCart && location.pathname.endsWith("/cart")) {
         location.reload();
         return;
       }
-      notifyTheme();
-      this.cart = await getCart();
+      this.api.notifyTheme();
+      this.cart = await this.api.getCart();
     }
   }
 
@@ -523,7 +537,7 @@ export class Pickday {
     if (this.primary) return this.primary;
     const pl = this.cfg.primaryLocale || "en";
     const loc = makeTexts(pl, {}, false);
-    if (!window.PickdayI18n?.[loc.textLocale]) {
+    if (!window.PickdayI18n?.[loc.textLocale] && this.boot.assetBase) {
       await new Promise<void>((resolve) => {
         const s = document.createElement("script");
         s.src = `${this.boot.assetBase}pickday-i18n-${loc.textLocale}.js`;

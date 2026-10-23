@@ -19,7 +19,7 @@
     "typecheck": "react-router typegen && tsc --noEmit && tsc --noEmit -p extensions/pickday-admin && tsc --noEmit -p extensions/pickday-thank-you",
     "build:widget": "node scripts/build-widget.mjs",
     "test": "vitest run",
-    "test:browser": "npm run build:widget && tsx tests/browser/widget.browser.ts",
+    "test:browser": "npm run build:widget && tsx tests/browser/widget.browser.ts && tsx tests/browser/preview.browser.ts",
     "test:watch": "vitest",
     "render-build": "npm ci --include=dev && npm run build && prisma generate",
     "render-start": "prisma migrate deploy && npm run start"

@@ -34,11 +34,11 @@ export default function App() {
             {t("nav.home")}
           </s-link>
           <s-link href="/app/orders">{t("nav.orders")}</s-link>
-          <s-link href="/app/production">{t("nav.production")}</s-link>
+          <s-link href="/app/delivery">{t("nav.delivery")}</s-link>
+          <s-link href="/app/pickup">{t("nav.pickup")}</s-link>
+          <s-link href="/app/days-off">{t("nav.daysOff")}</s-link>
+          <s-link href="/app/appearance">{t("nav.appearance")}</s-link>
           <s-link href="/app/settings">{t("nav.settings")}</s-link>
-          <s-link href="/app/widget">{t("nav.widget")}</s-link>
-          <s-link href="/app/notifications">{t("nav.notifications")}</s-link>
-          <s-link href="/app/plans">{t("nav.plans")}</s-link>
           <s-link href="/app/help">{t("nav.help")}</s-link>
         </s-app-nav>
         <Outlet />

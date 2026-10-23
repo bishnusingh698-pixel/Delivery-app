@@ -7,6 +7,7 @@
  * raw <s-*> tags for every interactive field.
  */
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { NavBar } from "./nav";
 
 type El = HTMLElement & Record<string, any>;
 
@@ -269,9 +270,12 @@ export function Page(p: {
   secondary?: ReactNode;
   children: ReactNode;
   wide?: boolean;
+  /** Hide the icon navigation (only for focused flows like the setup wizard). */
+  noNav?: boolean;
 }) {
   return (
     <s-page heading={p.title} inlineSize={p.wide ? "large" : "base"}>
+      {p.noNav ? null : <NavBar />}
       {p.backTo ? (
         <s-link slot="breadcrumb-actions" href={p.backTo.href}>
           {p.backTo.label}

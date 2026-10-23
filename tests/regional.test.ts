@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyBusinessPreset, applyCountry, defaultSettings, sixDays } from "../core/defaults";
+import { applyBusinessPreset, applyCountry, applyWizard, defaultSettings, sixDays, wizardSuggestion } from "../core/defaults";
 import { attributeDate, formatDate, formatShopperDate } from "../core/dateformat";
 import { onAccent } from "../core/color";
 import { holidayClosures } from "../core/holidays";
@@ -136,5 +136,39 @@ describe("plans", () => {
     const free = applyPlan(s, "free");
     expect(free.methods.delivery.enabled && free.methods.pickup.enabled).toBe(true);
     expect(free.methods.delivery.capacity.maxPerDay).toBeNull();
+  });
+});
+
+describe("setup wizard", () => {
+  it("suggests the country's days and the business type's lead time", () => {
+    const s = defaultSettings(null);
+    const sug = wizardSuggestion(s, "SA", "bakery");
+    expect(sug.workdays).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(sug.methods).toEqual(["pickup", "delivery"]);
+    expect(sug.lead).toEqual({ amount: 1, unit: "days" });
+  });
+
+  it("turns the answers into valid settings that work for shoppers at once", () => {
+    const s = defaultSettings(null);
+    const next = applyWizard(s, {
+      country: "US",
+      businessType: "florist",
+      methods: ["delivery", "pickup"],
+      workdays: [1, 2, 3, 4, 5, 6],
+      lead: { amount: 1, unit: "days" },
+      cutoff: "15:00",
+      holidays: true,
+      pickup: { name: "Main Street", address: "1 Main St" },
+    });
+    expect(validateSettings(next).ok).toBe(true);
+    expect(next.country).toBe("US");
+    expect(next.holidays[0].country).toBe("US");
+    expect(next.methods.delivery.enabled && next.methods.pickup.enabled && !next.methods.shipping.enabled).toBe(true);
+    expect(next.methods.pickup.schedule.cutoff.time).toBe("15:00");
+    expect(next.locations.map((l) => l.name)).toEqual(["Main Street"]);
+    expect(next.methodOrder.slice(0, 2).sort()).toEqual(["delivery", "pickup"]);
+    const none = applyWizard(s, { country: "DE", businessType: null, methods: [], workdays: [1, 2, 3, 4, 5], lead: { amount: 2, unit: "days" }, cutoff: null, holidays: false, pickup: null });
+    expect(none.methods.shipping.enabled).toBe(true);
+    expect(none.holidays).toEqual([]);
   });
 });

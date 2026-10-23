@@ -124,7 +124,7 @@ export default function ProductsPage() {
       />
       {dateMode === "item" ? (
         <s-banner tone="info">
-          {t("products.itemModeNote")} <s-link href="/app/settings/schedule">{t("schedule.title")}</s-link>
+          {t("products.itemModeNote")} <s-link href="/app/settings">{t("nav.settings")}</s-link>
         </s-banner>
       ) : null}
 

@@ -82,3 +82,16 @@ export function holidayClosuresFor(sets: HolidaySet[], from: string, to: string,
   }
   return allHolidayClosures(sets, lists);
 }
+
+/** Each set's holidays for the next 400 days (admin preview and the Days off page). */
+export function holidayItemsFor(sets: HolidaySet[], today: string, lang: string): Record<string, HolidayItem[]> {
+  const out: Record<string, HolidayItem[]> = {};
+  for (const set of sets) {
+    try {
+      out[set.id] = upcomingHolidays(set.country, set.region, lang, today, 400);
+    } catch {
+      out[set.id] = [];
+    }
+  }
+  return out;
+}

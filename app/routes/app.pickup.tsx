@@ -1,34 +1,43 @@
+/**
+ * Pickup: on/off, pickup hours for all locations, the pickup locations (each can have its own
+ * hours, limits and days off), who can choose pickup, and a live preview.
+ */
 import { useEffect, useMemo, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData } from "react-router";
 import { hasFeature, PLAN_LOCATION_LIMIT } from "../../core/publish";
-import type { Location, Settings } from "../../core/types";
+import type { Location, MethodSettings, Settings } from "../../core/types";
 import { CapacityEditor, ScheduleEditor } from "../components/editors";
-import { Button, closeModal, EmptyState, Locked, Modal, openModal, Page, Section, Select, Switch, TextField } from "../components/polaris";
+import { MethodPreview } from "../components/live-preview";
+import { Button, Checkbox, closeModal, Locked, Modal, MoneyField, openModal, Page, Section, Select, Switch, TextField } from "../components/polaris";
 import { SettingsChrome, fieldId, useSettingsForm } from "../components/settings-form";
-import { CountryPicker, newId } from "../components/shared";
+import { CountryPicker, newId, useMethodLabel } from "../components/shared";
 import { useI18n, useT } from "../i18n/react";
 import { shopCountries } from "../services/countries.server";
 import { fetchShopifyLocations, type ShopifyLocation } from "../services/locations.server";
-import { adminContext, patchSettingsAction, shopMeta } from "../services/settings.server";
+import { adminContext, patchSettingsAction, previewData, shopMeta } from "../services/settings.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const { countries, markets } = await shopCountries(ctx.admin);
-  const pickup = ctx.settings.methods.pickup;
   let timeZones: string[] = [];
   try {
     timeZones = Intl.supportedValuesOf("timeZone");
   } catch {
     timeZones = [];
   }
+  const s = ctx.settings;
+  const daysOff: Record<string, number> = {};
+  for (const l of s.locations) daysOff[l.id] = s.closures.filter((c) => c.locations !== "all" && c.locations.includes(l.id) && (c.yearly || c.end >= ctx.today)).length;
   return {
     meta: shopMeta(ctx),
+    ...previewData(ctx),
     countries,
     markets,
     timeZones,
-    pickup: { enabled: pickup.enabled, slotsEnabled: pickup.slotsEnabled, schedule: pickup.schedule, capacity: pickup.capacity },
-    initial: { locations: ctx.settings.locations } as Pick<Settings, "locations">,
+    daysOff,
+    full: s,
+    initial: { methods: s.methods, locations: s.locations } as Pick<Settings, "methods" | "locations">,
   };
 };
 
@@ -39,7 +48,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     try {
       return { ok: true as const, intent: "importShopify" as const, locations: await fetchShopifyLocations(ctx.admin) };
     } catch (e) {
-      console.error(`[locations] import ${ctx.shop}`, e);
+      console.error(`[pickup] import ${ctx.shop}`, e);
       return { ok: false as const, intent: "importShopify" as const, locations: [] as ShopifyLocation[] };
     }
   }
@@ -57,11 +66,17 @@ function languageName(code: string, locale: string) {
   }
 }
 
-export default function LocationsPage() {
-  const { meta, countries, markets, timeZones, pickup, initial } = useLoaderData<typeof loader>();
+export default function PickupPage() {
+  const d = useLoaderData<typeof loader>();
+  const { meta, countries, markets, timeZones } = d;
   const t = useT();
-  const form = useSettingsForm(initial);
+  const label = useMethodLabel();
+  const form = useSettingsForm(d.initial, {
+    validate: (x) => (Object.values(x.methods).some((m) => m.enabled) ? [] : [{ path: "methods", message: t("methods.atLeastOne") }]),
+  });
   const { draft, update } = form;
+  const m = draft.methods.pickup;
+  const set = (fn: (m: MethodSettings) => void) => update((x) => fn(x.methods.pickup));
   const limit = PLAN_LOCATION_LIMIT[meta.plan];
   const atLimit = limit !== null && draft.locations.length >= limit;
   const [open, setOpen] = useState<string | null>(null);
@@ -70,10 +85,9 @@ export default function LocationsPage() {
   const importing = importer.state !== "idle";
   const imported = importer.data && "intent" in importer.data && importer.data.intent === "importShopify" ? importer.data : null;
 
-  // Open the first location that has a problem so its fields are visible.
   useEffect(() => {
-    const m = form.issues.map((i) => /^locations\.(\d+)/.exec(i.path)).find(Boolean);
-    const loc = m ? draft.locations[Number(m[1])] : undefined;
+    const hit = form.issues.map((i) => /^locations\.(\d+)/.exec(i.path)).find(Boolean);
+    const loc = hit ? draft.locations[Number(hit[1])] : undefined;
     if (loc) setOpen(loc.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.issues]);
@@ -82,26 +96,11 @@ export default function LocationsPage() {
     if (imported && importer.state === "idle") openModal(IMPORT_MODAL);
   }, [imported, importer.state]);
 
-  const blank = (): Location => ({
-    id: newId("loc_"),
-    shopifyLocationId: null,
-    name: "",
-    address: "",
-    mapUrl: "",
-    instructions: {},
-    timeZone: null,
-    enabled: true,
-    countries: "all",
-    custom: null,
-  });
-
+  const blank = (): Location => ({ id: newId("loc_"), shopifyLocationId: null, name: "", address: "", mapUrl: "", instructions: {}, timeZone: null, enabled: true, countries: "all", custom: null });
   const add = (loc: Location) => {
-    update((d) => {
-      d.locations.push(loc);
-    });
+    update((x) => void x.locations.push(loc));
     setOpen(loc.id);
   };
-
   const fromShopify = (s: ShopifyLocation): Location => ({
     ...blank(),
     shopifyLocationId: s.id,
@@ -109,12 +108,11 @@ export default function LocationsPage() {
     address: s.address,
     instructions: s.instructions ? { [meta.primaryLocale]: s.instructions.slice(0, 1000) } : {},
   });
-
   const linked = new Set(draft.locations.map((l) => l.shopifyLocationId).filter(Boolean));
   const unlinked = (imported?.locations ?? []).filter((s) => !linked.has(s.id));
   const deleting = draft.locations.find((l) => l.id === toDelete);
-
-  const fieldLabels = Object.fromEntries(draft.locations.map((l, i) => [`locations.${i}`, l.name || t("locations.untitled")]));
+  const fieldLabels = { methods: label("pickup"), ...Object.fromEntries(draft.locations.map((l, i) => [`locations.${i}`, l.name || t("locations.untitled")])) };
+  const capacityAllowed = hasFeature(meta.plan, "capacity");
 
   const addButton = (
     <Button variant="primary" icon="plus" disabled={atLimit} onClick={() => add(blank())}>
@@ -122,52 +120,31 @@ export default function LocationsPage() {
     </Button>
   );
   const importButton = (
-    <Button
-      icon="import"
-      loading={importing}
-      onClick={() => importer.submit({ intent: "importShopify" }, { method: "post", encType: "application/json" })}
-    >
+    <Button icon="import" loading={importing} onClick={() => importer.submit({ intent: "importShopify" }, { method: "post", encType: "application/json" })}>
       {t("locations.import")}
     </Button>
   );
 
   return (
-    <Page title={t("locations.title")} subtitle={t("locations.subtitle")} backTo={{ href: "/app/settings", label: t("nav.settings") }}>
+    <Page title={t("pickup.title")} subtitle={t("pickup.subtitle")}>
       <SettingsChrome form={form} fieldLabels={fieldLabels} />
 
-      {!pickup.enabled ? (
-        <s-banner tone="warning">
-          {t("locations.pickupOff")} <s-link href="/app/settings/methods">{t("methods.title")}</s-link>
-        </s-banner>
-      ) : null}
+      <Section heading={t("delivery.onOff", { method: label("pickup") })} id={fieldId("methods.pickup")}>
+        <Switch label={t("methods.offer", { method: label("pickup") })} details={t("pickup.switchHelp")} checked={m.enabled} onChange={(v) => set((x) => (x.enabled = v))} />
+      </Section>
 
-      {atLimit && limit !== null ? <Locked plan="Pro" label={t("locations.limitReached", { count: limit })} upgradeLabel={t("common.upgrade")} /> : null}
-
-      {draft.locations.length === 0 ? (
-        <EmptyState
-          heading={t("locations.emptyHeading")}
-          text={t("locations.emptyText")}
-          action={
-            <s-stack gap="base" alignItems="center">
-              <s-stack direction="inline" gap="base">
-                {addButton}
-                {importButton}
-              </s-stack>
-              <s-link href="/app/settings/methods">{t("locations.emptyMethodsLink")}</s-link>
-            </s-stack>
-          }
-        />
-      ) : (
+      {m.enabled ? (
         <>
-          <s-section>
-            <s-stack direction="inline" gap="base" justifyContent="space-between" alignItems="center">
-              <s-text color="subdued">{t("locations.count", { count: draft.locations.length })}</s-text>
+          <Section heading={t("pickup.locationsHeading")}>
+            <s-stack gap="base">
+              <s-text color="subdued">{draft.locations.length ? t("pickup.locationsHelp") : t("pickup.noLocationsHelp")}</s-text>
+              {atLimit && limit !== null ? <Locked plan={limit === 1 ? "Starter" : "Pro"} label={t("locations.limitReached", { count: limit })} upgradeLabel={t("common.upgrade")} /> : null}
               <s-stack direction="inline" gap="base">
-                {importButton}
                 {addButton}
+                {importButton}
               </s-stack>
             </s-stack>
-          </s-section>
+          </Section>
           {draft.locations.map((loc, index) => (
             <LocationCard
               key={loc.id}
@@ -179,17 +156,78 @@ export default function LocationsPage() {
                 setToDelete(loc.id);
                 openModal(DELETE_MODAL);
               }}
-              update={(fn) => update((d) => fn(d.locations[index]))}
+              update={(fn) => update((x) => fn(x.locations[index]))}
               errorFor={form.errorFor}
               meta={meta}
               countries={countries}
               markets={markets}
               timeZones={timeZones}
-              pickup={pickup}
+              pickup={{ schedule: m.schedule, capacity: m.capacity, slotsEnabled: m.slotsEnabled }}
+              daysOff={d.daysOff[loc.id] ?? 0}
             />
           ))}
+
+          <Section heading={t("pickup.hoursHeading")} id="pickup-hours">
+            <s-stack gap="base">
+              <s-text color="subdued">{t("pickup.hoursHelp")}</s-text>
+              <ScheduleEditor path="methods.pickup.schedule" value={m.schedule} errorFor={form.errorFor} onChange={(s) => set((x) => (x.schedule = s))} />
+            </s-stack>
+          </Section>
+
+          <Section heading={t("delivery.slotsHeading")}>
+            <s-stack gap="base">
+              <Switch label={t("methods.slots")} details={t("pickup.slotsHelp")} checked={m.slotsEnabled} onChange={(v) => set((x) => (x.slotsEnabled = v))} />
+              <CapacityEditor
+                modalPrefix="cap-pickup"
+                path="methods.pickup.capacity"
+                value={m.capacity}
+                errorFor={form.errorFor}
+                slotsEnabled={m.slotsEnabled}
+                capacityAllowed={capacityAllowed}
+                onChange={(c) => set((x) => (x.capacity = c))}
+              />
+            </s-stack>
+          </Section>
+
+          <Section heading={t("delivery.whoHeading")}>
+            <s-stack gap="base">
+              <s-stack gap="small-200">
+                <s-text type="strong">{t("methods.shopperName")}</s-text>
+                <s-text color="subdued">{t("methods.shopperNameHelp")}</s-text>
+                {meta.locales.map((loc) => (
+                  <TextField
+                    key={loc}
+                    label={`${t("methods.nameIn")} ${loc}`}
+                    value={m.names[loc] ?? ""}
+                    placeholder={label("pickup")}
+                    maxLength={40}
+                    onChange={(v) =>
+                      set((x) => {
+                        if (v) x.names[loc] = v;
+                        else delete x.names[loc];
+                      })
+                    }
+                  />
+                ))}
+              </s-stack>
+              <CountryPicker label={t("methods.whereOffered")} value={m.countries} countries={countries} markets={markets} onChange={(v) => set((x) => (x.countries = v))} />
+              <Checkbox label={t("methods.dateRequired")} details={t("methods.dateRequiredHelp")} checked={m.dateRequired} onChange={(v) => set((x) => (x.dateRequired = v))} />
+              <MoneyField
+                id={fieldId("methods.pickup.minOrder")}
+                label={t("methods.minOrder", { currency: meta.currency })}
+                details={t("methods.minOrderHelp", { method: label("pickup") })}
+                value={m.minOrder}
+                error={form.errorFor("methods.pickup.minOrder")}
+                onChange={(v) => set((x) => (x.minOrder = v))}
+              />
+            </s-stack>
+          </Section>
         </>
-      )}
+      ) : null}
+
+      <Section heading={t("preview.heading")} aside>
+        <MethodPreview settings={{ ...d.full, ...draft }} meta={d.preview} holidayItems={d.holidayItems} method="pickup" locationId={draft.locations.find((l) => l.enabled)?.id ?? null} />
+      </Section>
 
       <Modal
         id={DELETE_MODAL}
@@ -200,7 +238,7 @@ export default function LocationsPage() {
             variant="primary"
             tone="critical"
             onClick={() => {
-              if (toDelete) update((d) => (d.locations = d.locations.filter((l) => l.id !== toDelete)));
+              if (toDelete) update((x) => (x.locations = x.locations.filter((l) => l.id !== toDelete)));
               setToDelete(null);
               closeModal(DELETE_MODAL);
             }}
@@ -241,11 +279,7 @@ export default function LocationsPage() {
                     <s-text type="strong">{s.name}</s-text>
                     {s.address ? <s-text color="subdued">{s.address}</s-text> : null}
                   </s-stack>
-                  <Button
-                    disabled={atLimit}
-                    accessibilityLabel={t("locations.importOne", { name: s.name })}
-                    onClick={() => add(fromShopify(s))}
-                  >
+                  <Button disabled={atLimit} accessibilityLabel={t("locations.importOne", { name: s.name })} onClick={() => add(fromShopify(s))}>
                     {t("locations.importAdd")}
                   </Button>
                 </s-stack>
@@ -259,7 +293,7 @@ export default function LocationsPage() {
 }
 
 type Meta = ReturnType<typeof useLoaderData<typeof loader>>["meta"];
-type Pickup = ReturnType<typeof useLoaderData<typeof loader>>["pickup"];
+type Pickup = { schedule: Settings["methods"]["pickup"]["schedule"]; capacity: Settings["methods"]["pickup"]["capacity"]; slotsEnabled: boolean };
 
 function LocationCard(p: {
   loc: Location;
@@ -274,6 +308,7 @@ function LocationCard(p: {
   markets: { name: string; countries: string[] }[];
   timeZones: string[];
   pickup: Pickup;
+  daysOff: number;
 }) {
   const t = useT();
   const { locale } = useI18n();
@@ -427,7 +462,7 @@ function LocationCard(p: {
             />
             {!loc.custom ? (
               <s-text color="subdued">
-                <s-link href="/app/settings/schedule">{t("locations.storeSchedule")}</s-link>
+                <s-link href="#pickup-hours">{t("locations.storeSchedule")}</s-link>
               </s-text>
             ) : (
               <>
@@ -450,6 +485,13 @@ function LocationCard(p: {
                 />
               </>
             )}
+            <s-divider />
+            <s-stack direction="inline" gap="base" alignItems="center" justifyContent="space-between">
+              <s-text color="subdued">{t("pickup.locationDaysOff", { count: p.daysOff })}</s-text>
+              <Button href={`/app/days-off?location=${encodeURIComponent(loc.id)}`} icon="calendar-check">
+                {t("pickup.manageDaysOff")}
+              </Button>
+            </s-stack>
           </>
         ) : null}
       </s-stack>

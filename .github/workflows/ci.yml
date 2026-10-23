@@ -37,5 +37,9 @@ jobs:
         run: npx tsx tests/browser/widget.browser.ts
         env:
           PLAYWRIGHT_CHROMIUM: /usr/bin/google-chrome
+      - name: Admin live preview in a real browser
+        run: npx tsx tests/browser/preview.browser.ts
+        env:
+          PLAYWRIGHT_CHROMIUM: /usr/bin/google-chrome
       - name: Built widget assets are up to date
         run: git diff --exit-code -- extensions

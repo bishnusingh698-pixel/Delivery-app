@@ -7,7 +7,7 @@ import prisma from "../db.server";
 import { addDays } from "../../core/civil";
 import { buildCalendar, checkSelection, type EngineInput } from "../../core/engine";
 import { ATTR_KEY, READABLE_KEYS, encodeSelection } from "../../core/selection";
-import type { CartLine, DayStatus, MethodId, Selection } from "../../core/types";
+import type { CartLine, DayStatus, MethodId, Selection, StorefrontConfig } from "../../core/types";
 import { logActivity } from "../models/settings.server";
 import { nowInZone } from "../../core/tz";
 import { buildAvailability, recountDates, toLine, type StoredItem } from "./counts.server";
@@ -17,7 +17,6 @@ import { writeToShopify } from "./orders.server";
 import { storefrontConfigFor, schedulePublish } from "./publish.server";
 import { engineTimeZone, findSlot } from "../../core/engine";
 import { attributeDate } from "../../core/dateformat";
-import type { StorefrontConfig } from "../../core/types";
 
 /** "10:00–12:00" written like the storefront writes it, in the store's language. */
 function timeRange(slot: string, locale: string): string {

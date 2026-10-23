@@ -100,7 +100,7 @@ export default function AreasPage() {
     const next = needed.find((c) => c && !requested.current.has(c));
     if (!next) return;
     requested.current.add(next);
-    regionFetcher.load(`/app/settings/areas?regions=${next}`);
+    regionFetcher.load(`/app/delivery/areas?regions=${next}`);
   }, [needed, regionFetcher, regionFetcher.state]);
   const regionsLoading = (c: string) => !regionMap[c] && regionFetcher.state !== "idle";
 
@@ -113,12 +113,12 @@ export default function AreasPage() {
   const addValue = unused.some((c) => c.value === addCountry) ? addCountry : (unused[0]?.value ?? "");
 
   return (
-    <Page title={t("areas.title")} subtitle={t("areas.subtitle")} backTo={{ href: "/app/settings", label: t("nav.settings") }}>
+    <Page title={t("areas.title")} subtitle={t("areas.subtitle")} backTo={{ href: "/app/delivery", label: t("nav.delivery") }}>
       <SettingsChrome form={form} fieldLabels={{ areas: t("areas.title"), zones: t("areas.zonesHeading") }} />
       {locked ? <Locked plan="Pro" label={t("areas.locked")} upgradeLabel={t("common.upgrade")} /> : null}
       {!delivery.enabled ? (
         <s-banner tone="warning">
-          {t("areas.deliveryOff")} <s-link href="/app/settings/methods">{t("methods.title")}</s-link>
+          {t("areas.deliveryOff")} <s-link href="/app/delivery">{t("nav.delivery")}</s-link>
         </s-banner>
       ) : null}
 

@@ -87,6 +87,25 @@ export async function productTags(handle: string): Promise<string[]> {
   }
 }
 
+/** Everything the widget does with the cart. The admin's live preview passes an in-memory cart. */
+export interface CartApi {
+  getCart: () => Promise<Cart>;
+  updateAttributes: (attributes: Record<string, string>) => Promise<Cart>;
+  changeLine: (key: string, change: { quantity?: number; properties?: Record<string, string> }) => Promise<Cart>;
+  addVariant: (id: string, quantity?: number, properties?: Record<string, string>) => Promise<unknown>;
+  productTags: (handle: string) => Promise<string[]>;
+  notifyTheme: () => void;
+}
+
+export const shopifyCart: CartApi = {
+  getCart,
+  updateAttributes,
+  changeLine,
+  addVariant,
+  productTags: (handle) => productTags(handle),
+  notifyTheme: () => notifyTheme(),
+};
+
 /** Call `cb` (debounced) whenever the theme changes the cart. */
 export function onCartChange(cb: () => void) {
   let t: number | undefined;

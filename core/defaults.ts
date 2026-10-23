@@ -225,3 +225,62 @@ export function applyCountry(s: Settings, country: string, opts: { workdays: boo
   }
   return next;
 }
+
+/** What the 3-step setup wizard asks. */
+export interface WizardChoices {
+  country: string | null;
+  businessType: BusinessType | null;
+  methods: MethodId[];
+  workdays: number[];
+  lead: { amount: number; unit: "days" | "hours" };
+  cutoff: string | null;
+  holidays: boolean;
+  /** Pickup address when pickup is on and the store has no pickup location yet. */
+  pickup: { name: string; address: string } | null;
+}
+
+/** Suggested answers for step 2, from the country and business type picked in step 1. */
+export function wizardSuggestion(s: Settings, country: string | null, type: BusinessType | null): Pick<WizardChoices, "methods" | "workdays" | "lead" | "cutoff"> {
+  let next = country ? applyCountry(s, country, { workdays: true, dateFormat: false }) : (JSON.parse(JSON.stringify(s)) as Settings);
+  if (type && type !== "other") next = applyBusinessPreset(next, type);
+  const enabled = next.methodOrder.filter((id) => next.methods[id].enabled);
+  const first = next.methods[enabled[0] ?? "shipping"];
+  return {
+    methods: enabled.length ? enabled : ["shipping"],
+    workdays: [...first.schedule.weekdays],
+    lead: { amount: first.schedule.lead.amount, unit: first.schedule.lead.unit },
+    cutoff: first.schedule.cutoff.time,
+  };
+}
+
+/** Turn the wizard's answers into settings (country defaults → business preset → the merchant's answers). */
+export function applyWizard(s: Settings, c: WizardChoices): Settings {
+  let next = c.country ? applyCountry(s, c.country, { workdays: true, dateFormat: false }) : (JSON.parse(JSON.stringify(s)) as Settings);
+  if (c.businessType && c.businessType !== "other") next = applyBusinessPreset(next, c.businessType);
+  const methods = c.methods.length ? c.methods : (["shipping"] as MethodId[]);
+  for (const id of Object.keys(next.methods) as MethodId[]) {
+    const m = next.methods[id];
+    m.enabled = methods.includes(id);
+    m.schedule.weekdays = [...new Set(c.workdays)].filter((d) => d >= 0 && d <= 6).sort();
+    m.schedule.lead = { ...m.schedule.lead, amount: Math.max(0, Math.min(c.lead.unit === "hours" ? 720 : 365, Math.round(c.lead.amount))), unit: c.lead.unit };
+    m.schedule.cutoff = { time: c.cutoff, perWeekday: null };
+  }
+  next.methodOrder = [...next.methodOrder.filter((id) => methods.includes(id)), ...next.methodOrder.filter((id) => !methods.includes(id))];
+  next.defaultMethod = null;
+  if (!c.holidays) next.holidays = [];
+  if (methods.includes("pickup") && c.pickup?.name.trim() && !next.locations.length) {
+    next.locations.push({
+      id: "loc_main",
+      shopifyLocationId: null,
+      name: c.pickup.name.trim().slice(0, 100),
+      address: c.pickup.address.trim().slice(0, 300),
+      mapUrl: "",
+      instructions: {},
+      timeZone: null,
+      enabled: true,
+      countries: "all",
+      custom: null,
+    });
+  }
+  return next;
+}

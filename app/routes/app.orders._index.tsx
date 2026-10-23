@@ -100,13 +100,14 @@ export default function OrdersPage() {
       wide
       secondary={
         <s-button-group slot="secondary-actions">
-          <Button variant={data.view === "list" ? "primary" : "secondary"} onClick={() => set({ view: null })}>{t("orders.viewList")}</Button>
-          <Button variant={data.view === "calendar" ? "primary" : "secondary"} onClick={() => set({ view: "calendar" })}>{t("orders.viewCalendar")}</Button>
+          <Button icon="list-bulleted" variant={data.view === "list" ? "primary" : "secondary"} onClick={() => set({ view: null })}>{t("orders.viewList")}</Button>
+          <Button icon="calendar" variant={data.view === "calendar" ? "primary" : "secondary"} onClick={() => set({ view: "calendar" })}>{t("orders.viewCalendar")}</Button>
+          <Button icon="product" href="/app/production">{t("nav.production")}</Button>
         </s-button-group>
       }
     >
       {!data.anyOrders ? (
-        <EmptyState heading={t("orders.emptyHeading")} text={t("orders.emptyText")} action={<Button href="/app/widget" variant="primary">{t("orders.emptyAction")}</Button>} />
+        <EmptyState heading={t("orders.emptyHeading")} text={t("orders.emptyText")} action={<Button href="/app/appearance" variant="primary">{t("orders.emptyAction")}</Button>} />
       ) : data.view === "calendar" ? (
         <CalendarView data={data} onPick={(d) => navigate(`/app/orders?range=custom&from=${d}&to=${d}`)} onMonth={(m) => set({ month: m })} />
       ) : (

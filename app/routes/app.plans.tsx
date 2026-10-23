@@ -59,9 +59,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 const PLANS: { id: PlanId; price: string; features: string[] }[] = [
-  { id: "free", price: "$0", features: ["oneMethod", "datePicker", "languages", "checkoutBlock", "orders", "branding"] },
-  { id: "starter", price: "$7.99", features: ["allMethods", "slots", "capacity", "closures", "checkoutMatching", "noBranding"] },
-  { id: "pro", price: "$14.99", features: ["everythingStarter", "locations", "areas", "productRules", "surcharges", "production", "routeSheet", "digest", "calendarFeed", "flow", "importExport"] },
+  { id: "free", price: "$0", features: ["allMethods", "datePicker", "slots", "closures", "notes", "languages", "checkoutBlock", "orders"] },
+  { id: "starter", price: "$7.99", features: ["everythingFree", "capacity", "checkoutMatching"] },
+  { id: "pro", price: "$14.99", features: ["everythingStarter", "areas", "productRules", "surcharges", "production", "routeSheet", "digest", "calendarFeed", "flow", "importExport"] },
 ];
 
 export default function PlansPage() {
@@ -102,7 +102,7 @@ export default function PlansPage() {
                 </Stack>
                 <s-text>{t(`plans.${p.id}.orders`, { count: PLAN_ORDER_LIMIT[p.id] ?? 0 })}</s-text>
                 <s-text color="subdued">
-                  {PLAN_LOCATION_LIMIT[p.id] === null ? t("plans.unlimitedLocations") : t("plans.oneLocation")}
+                  {PLAN_LOCATION_LIMIT[p.id] === null ? t("plans.unlimitedLocations") : t("plans.locations", { count: PLAN_LOCATION_LIMIT[p.id] ?? 1 })}
                 </s-text>
                 <s-unordered-list>
                   {p.features.map((f) => (
