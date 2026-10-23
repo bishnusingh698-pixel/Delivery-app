@@ -7,7 +7,7 @@ import { unauthenticated } from "../shopify.server";
 import { addDays } from "../../core/civil";
 import { nowInZone } from "../../core/tz";
 import { toFunctionConfig, toStorefrontConfig } from "../../core/publish";
-import { holidayRegions } from "./holidays.server";
+import { holidayClosuresFor, holidayRegions } from "./holidays.server";
 import { targetIsEmpty } from "../../core/rules";
 import type { Settings, StorefrontConfig } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
@@ -114,7 +114,11 @@ export async function storefrontConfigFor(shop: string) {
   const today = shopToday(row);
   const plan = planOf(row);
   const usage = await monthlyUsage(shop, row);
+  // Public holidays for the whole booking window, renewed on every (at least daily) publish.
+  const window = maxWindow({ methods: Object.values(settings.methods), locations: settings.locations });
+  const holidayClosures = holidayClosuresFor(settings.holidays, addDays(today, -1), addDays(today, window + 1), row.primaryLocale.split("-")[0] || "en");
   const config = toStorefrontConfig(settings, {
+    holidayClosures,
     version,
     timeZone: row.timeZone,
     primaryLocale: row.primaryLocale,

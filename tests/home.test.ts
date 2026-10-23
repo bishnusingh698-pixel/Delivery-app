@@ -29,7 +29,10 @@ describe("home", () => {
     s.methods.pickup.enabled = true;
     s.methods.delivery.slotsEnabled = true;
     s.surcharges.push({ id: "f", label: "", kind: "weekday", weekdays: [6], dates: [], slotIds: [], methods: "all", amount: "5", variantId: null } as any);
-    expect(settingsOffOnPlan(s, "free")).toEqual(["methods", "capacity", "surcharges"]);
+    // Every method and time slots are on every plan now; daily limits need Starter.
+    expect(settingsOffOnPlan(s, "free")).toEqual(["surcharges"]);
+    s.methods.delivery.capacity.maxPerDay = 10;
+    expect(settingsOffOnPlan(s, "free")).toEqual(["capacity", "surcharges"]);
     expect(settingsOffOnPlan(s, "starter")).toEqual(["surcharges"]);
     expect(settingsOffOnPlan(s, "pro")).toEqual([]);
     const a = alerts({ settings: s, today: "2026-03-01", flags: { embedDetected: true }, embedChecked: true, busyDays: [], usagePct: null, warnings: [], plan: "starter" });

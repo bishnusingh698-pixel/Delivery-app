@@ -166,7 +166,7 @@ export async function buildAvailability(shop: string, from: string, to: string):
 }
 
 /** Longest booking window in the config (days). */
-export function maxWindow(cfg: Pick<StorefrontConfig, "methods" | "locations">): number {
+export function maxWindow(cfg: { methods: Pick<StorefrontConfig["methods"][number], "enabled" | "schedule">[]; locations: StorefrontConfig["locations"] }): number {
   let max = 1;
   for (const m of cfg.methods) if (m.enabled) max = Math.max(max, m.schedule.windowDays);
   for (const l of cfg.locations) if (l.custom) max = Math.max(max, l.custom.schedule.windowDays);

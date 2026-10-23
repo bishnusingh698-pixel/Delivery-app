@@ -102,7 +102,22 @@ export const settingsSchema = z
   .object({
     schemaVersion: z.literal(1),
     businessType: z.string().max(30).nullable(),
-    country: z.string().max(2).nullable(),
+    country: z.string().regex(/^[A-Z]{2}$/).nullable(),
+    dateFormat: z.enum(["auto", "mdy", "dmy", "ymd", "long"]),
+    weekStart: z.union([z.literal(0), z.literal(1), z.literal(6)]).nullable(),
+    holidays: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(30),
+          country: z.string().regex(/^[A-Z]{2}$/),
+          region: z.string().max(10).nullable(),
+          methods: methodsOrAll,
+          locations: idsOrAll,
+          skip: z.array(z.string().max(80)).max(100),
+        }),
+      )
+      .max(10),
+    notes: z.object({ enabled: z.boolean(), methods: methodsOrAll, maxLength: z.number().int().min(20).max(500) }),
     dateMode: z.enum(["order", "item"]),
     methods: z.object({ delivery: methodSettings, pickup: methodSettings, shipping: methodSettings }),
     methodOrder: z.array(method).length(3),
@@ -219,6 +234,8 @@ export const settingsSchema = z
       drawerSelector: z.string().max(200),
       customCss: z.string().max(5000),
       productPageMode: z.enum(["message", "picker"]),
+      position: z.enum(["before", "after"]),
+      drawer: z.boolean(),
     }),
     texts: z.record(z.string().max(20), z.record(z.string().max(80), z.string().max(600))),
     notifications: z.object({
