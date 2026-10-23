@@ -1,105 +1,106 @@
-# Pickday audit (October 2026)
+# Pickday audit (October 2026, round 2)
 
-Source of truth for this round of work. Updated as items land (✅ = done, ⏳ = in progress, ⬜ = to do).
+Source of truth for this round of work. Updated as items land (✅ done, ⏳ in progress, ⬜ to do).
 
-## 0. How the app works today (map)
+## 0. How the app works (map)
 
 | Flow | Where | Notes |
 |---|---|---|
-| Install / auth | `app/shopify.server.ts` (`afterAuth` → `services/install.server.ts`) | Creates `Shop` row + default `Settings`, publishes metafields. Runs on every auth. |
-| Settings | One JSON document per shop (`Settings.data`), validated by zod (`services/settings-schema.server.ts`) | Saved per page through `patchSettingsAction`; every save republishes. |
-| Publishing | `services/publish.server.ts` | Writes `pickday.config` + `pickday.availability` (app-installation metafields, read by Liquid), Function configs, thank-you config. Storefront never calls the server. |
-| Storefront widget | `widget/src/*` → built into `extensions/pickday-theme/assets` | App embed + cart block + product block. Writes cart attributes `_pickday` + readable keys. Gates the checkout button. |
-| Checkout | `extensions/pickday-validation` (cart validation Function), `extensions/pickday-delivery` (delivery customization Function) | Backstop for express checkout / direct links; hides non-matching rates. Both available on every plan for public apps. |
-| Orders | `routes/webhooks.orders.tsx` → `services/orders.server.ts` | Idempotent, out-of-order safe; counts are rebuilt per date (`services/counts.server.ts`). Tags + order metafield + Flow. |
-| Thank-you / order status | `extensions/pickday-thank-you` | Allowed on all plans (not an information/shipping/payment step). |
+| Install / auth | `app/shopify.server.ts` `afterAuth` → `services/install.server.ts` | Creates the `Shop` row + default `Settings`, publishes metafields. Runs on every auth, idempotent. |
+| Onboarding | `routes/app._index.tsx` | Today: a "welcome" box (business type + country) and a 6-item checklist. |
+| Settings | One JSON document per shop (`Settings.data`), validated by zod (`services/settings-schema.server.ts`) | Each page posts the sections it edits (`patchSettingsAction`); every save republishes. |
+| Publishing | `services/publish.server.ts` + `core/publish.ts` | `pickday.config` + `pickday.availability` (app-installation metafields, read by Liquid), Function configs, thank-you config. The storefront never calls the server. |
+| Storefront widget | `widget/src/*` → `extensions/pickday-theme/assets` | App embed + cart block + product block. Writes cart attribute `_pickday` + readable attributes. Gates the checkout button. |
+| Checkout | `extensions/pickday-validation` (cart validation Function), `extensions/pickday-delivery` (delivery customization Function) | Backstop for express checkout and direct links; hides non-matching rates. Both work on every plan for public apps. No Plus-only checkout UI extensions. |
+| Orders | `routes/webhooks.orders.tsx` → `services/orders.server.ts` | Idempotent, out-of-order safe; counts rebuilt per date (`services/counts.server.ts`). Tags + order metafield + Flow. |
+| Thank-you / order status | `extensions/pickday-thank-you` | Allowed on all plans. |
 | Admin order block / actions | `extensions/pickday-admin` + `routes/api.order.$id.tsx`, `api.draft.$id.tsx` | Session-token authenticated. |
-| Jobs | `routes/jobs.hourly.tsx`, `jobs.daily.tsx` (cron-job.org, secret header) | Republish, digest, pruning, embed check. |
-| Uninstall / GDPR | `webhooks.app.uninstalled.tsx`, `webhooks.compliance.tsx` | Data kept 48 h for reinstall, deleted on `shop/redact`. |
+| Jobs | `routes/jobs.hourly.tsx`, `jobs.daily.tsx` (cron-job.org, secret header) | Republish, digest, pruning, embed check, shop info sync. |
+| Uninstall / GDPR | `webhooks.app.uninstalled.tsx`, `webhooks.compliance.tsx` | Data kept 48 h for a reinstall, deleted on `shop/redact`. |
 
-Baseline checks before any change: `npm run typecheck` ✅, `npm run lint` ✅ (0 errors, 21 warnings), `npm test` ✅ (267 passed, 9 DB tests skipped without a database; with a fresh Postgres all 9 pass), `npm run build` ✅, `prisma migrate deploy` on an empty database ✅.
+Baseline checks before this round: `npm run typecheck` ✅, `npm run lint` ✅ (0 errors, 21 warnings), `npm test` ✅ (278 passed, 9 DB tests skipped without a database), `npm run build` ✅.
 
 ## 1. Bugs
 
 Severity: **C** critical (wrong dates, stuck shoppers, broken install), **M** major, **m** minor.
 
+### Fixed in round 1 (kept for reference)
+
+B1 same-day opened every day before the lead time (C) ✅ · B3 reinstall left a stale app-installation id (C) ✅ · B4 missing `read_locales` scope (C) ✅ · B5 pickup limits without a location never applied (M) ✅ · B6 US ZIP+4 never matched (M) ✅ · B8 pickup offered where no location serves (M) ✅ · B9 flags survived uninstall (M) ✅ · B10 time zone only synced on auth (M) ✅ · B11 `</script>` in merchant text (M) ✅ · B12 zone slot labels on reschedule (M) ✅ · B13 window limit mismatch (M) ✅ · B14–B20 minor ✅.
+
+### Open / new in round 2
+
 | # | Sev | File:line | Bug | Root cause | Status |
 |---|---|---|---|---|---|
-| B1 | C | `core/engine.ts:251-264` | "Same-day" opens **every day** between today and the normal earliest date, and opens the week after a closed day early (e.g. lead 3 working days, Wed 10:00 → Thu/Fri wrongly bookable; on a closed Sunday Mon–Wed wrongly bookable). Same bug in the checkout Function (shares the engine). | `earliest.date` is overwritten with today, so `dayStatus` treats every later date as past the lead time. | ✅ |
-| B2 | C | `widget/src/widget.ts` `view()` / `canCheckout()` | Store pickup **without any pickup location** (what the Bakery/Florist/… presets switch on) shows no date picker but still requires a date: the shopper can never check out. | Date picker only renders when `locationId` is set; there is no location to set. | ⬜ |
-| B3 | C | `app/services/publish.server.ts:25-36` | After **uninstall + reinstall**, every publish fails until the server restarts: storefront has no config, checkout Functions keep stale rules. | App-installation id cached in memory forever; a reinstall gets a new installation id. | ✅ |
-| B4 | C | `shopify.app.toml`, `.env.example`, `render.yaml` scopes | Install hook queries `shopLocales` which needs `read_locales`; without it `syncShopInfo` throws, the store keeps the UTC time zone and nothing is published on install. | Missing scope. | ✅ |
-| B5 | M | `app/services/counts.server.ts:393-395` | Pickup daily/slot limits never apply when no location is set (counts stored under `pickup:_`, engine reads `pickup`). | Capacity key mismatch. | ✅ |
-| B6 | M | `core/postcode.ts` | US ZIP+4 (`10115-1234`) never matches a 5-digit rule or range: US shoppers who type the full ZIP are told "we don't deliver there", and checkout blocks them. | Normalisation keeps all 9 digits. | ✅ |
-| B7 | M | `widget/src/main.ts` gate | When a theme's cart drawer isn't recognised, clicking checkout in the drawer is silently blocked (the error is rendered where nobody can see it). | Gate blocks even when no widget is visible. Now: send the shopper to the cart page, where the picker is always placed; never trap them. | ⬜ |
-| B8 | M | `core/rules.ts methodsFor` | Pickup is offered in countries where no pickup location serves; the shopper picks it and then has no location to choose. | Location country filter not applied to the method list. | ✅ |
-| B9 | M | `webhooks.app.uninstalled.tsx` | Flags survive uninstall (`embedDetected: true`), so after reinstall Home says the embed is on and the checkout Function enforces dates before the embed is checked again. | Flags not reset. | ✅ |
-| B10 | M | Store time zone / currency / languages | Only synced on auth; a merchant who changes the store time zone keeps the old cutoffs until they reopen the app. | No `shop/update` webhook, no periodic sync. | ✅ |
-| B11 | M | Settings strings | A merchant text or label containing `</script>` breaks out of the storefront's JSON `<script>` block (self-XSS, theme breakage). | No check on `</` in published strings. | ✅ |
-| B12 | M | `services/reschedule.server.ts:96` | Changing an order's slot in a delivery **zone** with its own slots saves no slot label. | Slot lookup ignores zone slots. | ✅ |
-| B13 | M | `core/engine.ts` + schema | Booking window can be set up to 730 days but the engine only scans 400. | Limits disagree. | ✅ |
-| B14 | m | `app.settings.closures.tsx:142,293` | "View them" links ignore the dates (missing `range=custom`). | Link format. | ✅ |
-| B15 | m | `prisma/schema.prisma` | `ProductCount` has no `(shop, date)` index; recounts/prunes scan the table. | Missing index. | ✅ |
-| B16 | m | `services/jobs.server.ts` | Orders without a date (date not required) are never pruned. | `date < x` excludes NULL. | ✅ |
-| B17 | m | `webhooks.compliance.tsx` | `customers/data_request` logs only a count; the merchant can't answer the customer. | Activity entry lacks the order list. | ✅ |
-| B18 | m | `print.server.ts page()` | Printed sheets always left-to-right, also for Arabic/Hebrew admins. | `dir` never set. | ✅ |
-| B19 | m | `_index/route.tsx` | Public landing page still shows template placeholder text ("A short heading about [your app]") — App Store reviewers see it. | Template leftover. | ✅ |
-| B20 | m | `.env.example` / README | Neon pooled URL without `pgbouncer=true` can cause "prepared statement already exists" errors with Prisma on Neon's transaction pooler. | Docs. | ✅ |
+| B2 | C | `widget/src/widget.ts` `view()` ~590, `canCheckout()` | Store pickup **without any pickup location** (what the presets switch on) shows no date picker but still requires a date: the shopper can never check out. | Date picker only renders when `locationId` is set. | ⬜ |
+| B7 | M | `widget/src/main.ts` gate ~105 | Theme cart drawer not recognised → checkout click silently blocked; the error renders where nobody can see it. Also new themes (Horizon) use other drawer markup. | Gate blocks even when no widget is visible; only a fixed list of drawer selectors. | ⬜ |
+| B21 | M | `widget/src/widget.ts` `canCheckout()` | Minimum order not reached: the picker is hidden but the shopper is told "choose a date" (they can't). | Gate ignores the min-order state. | ⬜ |
+| B22 | M | `widget/src/main.ts` `setHidden()` | In one-date-per-order mode the product-page picker writes `Delivery date` **line properties**. If the shopper then picks another date in the cart, the order carries two different dates (line vs order attribute) → wrong date on packing slips. | Product page writes line properties in both modes. | ⬜ |
+| B23 | M | `app.settings.closures.tsx` holiday import | Imported public holidays are one-off dates for the next 12 months; nothing renews them, so next year's Christmas becomes bookable silently. | Holidays copied as fixed dates. Fix: holiday **sets** (country/region) expanded on every publish for the rolling booking window. | ⬜ |
+| B24 | M | `widget/src/styles.css` `--pd-on-accent` | Text on the accent colour is always white: a light accent (yellow, pastel) makes the selected day and slot unreadable. | No contrast calculation. | ⬜ |
+| B25 | M | `core/defaults.ts`, `install.server.ts` | Every new store gets Mon–Fri working days and Monday/Sunday week start from the browser, also in Saudi Arabia, Israel, Iran… | No per-country defaults. | ⬜ |
+| B26 | m | `services/reschedule.server.ts` 441, draft 486 | Admin date change writes `Delivery date` as a bare ISO date (storefront writes "Friday, 18 October 2026 (2026-10-18)"); draft-order scheduling leaves stale `Time slot` / `Pickup location` attributes. | Different formatting paths. | ⬜ |
+| B27 | m | `webhooks.compliance.tsx` `CUSTOMERS_REDACT` | The stored postcode/area of the customer's orders is kept. | Only `customerFirst` and history cleared. | ⬜ |
+| B28 | m | `services/orders-query.server.ts` `parseFilters("week")` | "This week" always starts on Monday, also for US stores. | Hard-coded. Use the store's week start. | ⬜ |
+| B29 | m | `routes/app.orders._index.tsx` bulk move | Moving pickup orders keeps a slot id only if it exists in the method's default slots, not a location's own slots. | Slot lookup ignores locations. | ⬜ |
+| B30 | m | `app.settings.closures.tsx` modal | Editing a closure shows "Add closure"; yearly ranges stored as `MM-DD` can't be edited (date field empty). | Heading/format. | ⬜ |
+| B31 | m | `render.yaml` buildCommand | Relies on Prisma's postinstall to generate the client. | Explicit `prisma generate` missing. | ⬜ |
+| B32 | m | Widget, free plan | "Powered by Pickday" link on the storefront of free stores: merchants can't remove it and App Store reviewers dislike storefront promotion. | Branding feature. Removed. | ⬜ |
 
-Checked and **not** bugs (kept): cutoff boundary (`>=` at exactly the cutoff = next day), leap days and yearly ranges over New Year (`core/civil.ts`), DST conversion (`zonedToUtc`), idempotent/out-of-order order webhooks, express checkout (validation Function is the backstop), counts rebuilt not incremented, shop scoping on every query, jobs secret compare, CSV formula injection guard.
+Checked and **not** bugs: cutoff boundary (`>=` at exactly the cutoff = next day), leap days and yearly ranges over New Year (`core/civil.ts`), DST conversion (`zonedToUtc`), idempotent / out-of-order order webhooks, express checkout (validation Function is the backstop), counts rebuilt not incremented, shop scoping on every query, jobs secret compare, CSV formula injection guard, session-token auth on admin extension APIs, GDPR shop/redact after reinstall.
 
-Known limitation kept (documented in DECISIONS D-09): two shoppers can book the last spot within the same few seconds; the counts republish ~3 s after each order and the Function re-checks at checkout. A hard reservation would need the server during checkout (not free-tier safe).
+Known limitation kept (DECISIONS D-09): two shoppers can book the last spot within the same few seconds; counts republish ~3 s after each order and the Function re-checks at checkout. A hard reservation would need the server during checkout (not free-tier safe).
 
 ## 2. UX problems
 
 Admin
-1. Navigation is organised by data type, not by task: 8 menu items plus a Settings hub with 10 cards. Turning on pickup needs 4 pages (Methods → Schedule → Slots & capacity → Pickup locations). → **Regroup into 7 task pages with an icon bar on top of every page.**
-2. No real setup wizard: a "welcome" box with business type + country, then a 6-item checklist pointing at 6 different pages. → **3-step wizard (country & business, what you offer + pickup address, turn on the embed).**
-3. The "live preview" on the Widget page is a static mock with fake dates; it doesn't show the merchant's real days, holidays or slots. → **Preview driven by the real date engine and the unsaved settings, shown next to the delivery/pickup rules too.**
-4. Country only influences the holiday importer. Weekends, date format and first day of the week are US defaults everywhere. → **Country picker with per-country defaults.**
-5. Holidays need a modal, a country select and ticking each holiday. → **One click: "Add {country} public holidays" (still editable).**
-6. Free plan can't use closures/holidays, slots or more than one method — the app looks broken for new stores (Christmas bookable). → **Free plan gets every scheduling basic.**
-7. Pages for removed concepts / jargon ("Methods & countries", "Slots & capacity", "Checkout matching") → plain words ("Local delivery", "Time slots and daily limits", "Show only the matching shipping option at checkout").
-8. "View them" links on closures ignored dates (B14).
+1. Organised by data type: 8 menu items plus a Settings hub with 10 cards. Turning on pickup needs 4 pages (Methods → Schedule → Slots & capacity → Pickup locations). → **7 task-based sections with an icon bar on top of every page.**
+2. No setup wizard: a welcome box plus a 6-step checklist pointing at 6 pages. → **3-step wizard (< 2 minutes).**
+3. The "live preview" is a static mock with fake dates. → **The real storefront widget, running the real engine on the unsaved settings.**
+4. Country only drives the holiday importer. → **Country selector with regional defaults** (working days, week start, date format, holidays).
+5. Holidays need a modal, a country select and ticking each holiday, and expire after a year (B23). → **One switch: "Closed on {country} public holidays", renewed automatically, each holiday can be skipped.**
+6. Free plan can't use closures/holidays, time slots or more than one method: a new store's picker offers Christmas Day. → **Free plan includes every scheduling basic.**
+7. Jargon: "Methods & countries", "Slots & capacity", "Checkout matching", "Surcharges". → plain words.
+8. No quick "we're closed today" action. → **"Close a day" on Home.**
 
 Storefront widget
-1. Pickup without an address breaks checkout (B2).
-2. Drawer themes not recognised trap the shopper (B7).
-3. No place for delivery instructions / gift message — one of the most requested extras. → **Optional "Delivery instructions" box (saved as an order attribute).**
-4. Dates are always written in the locale's long style; merchants who print `MM/DD/YYYY` want that on packing slips. → **Date format setting** for the saved order date and the shopper summary.
+1. B2, B7, B21, B22, B24.
+2. No delivery instructions / gift message. → **Optional notes box** (cart attribute, shown on the order).
+3. Dates always in the long locale style. → **Date format setting** (auto / MM/DD/YYYY / DD/MM/YYYY / YYYY-MM-DD / written month).
+4. Week start always from the shopper's language. → Store setting (auto or Sunday/Monday/Saturday).
+5. Placement fixed above the checkout button. → **Position option** (above or below the checkout button) and a switch for the cart drawer.
 
 App Store reviewer view
-1. Template placeholder text on the public page (B19).
-2. Missing scope makes install fail silently (B4).
-3. GDPR data request answer is weak (B17).
+1. Storefront branding link (B32).
+2. Everything else already in order (GDPR, scopes, embed, billing, no theme code edits).
 
 ## 3. Features: add / change / remove
 
 | Change | Why | Status |
 |---|---|---|
-| **Top icon navigation** on every page (Home, Orders, Delivery, Pickup, Days off, Appearance, Settings, Help) + matching Shopify sidebar menu | Merchant can reach anything in one click, also on mobile (scrolls sideways). | ⬜ |
-| **Delivery page**: Local delivery and Shipping, each on one page: on/off, name, days, lead time, cutoff, same-day, time slots, daily limits, where offered, minimum order, live preview | Replaces Methods + Schedule + Slots & capacity (3 pages). | ⬜ |
-| **Pickup page**: on/off, default hours and slots, pickup locations with their own hours/limits/blocked dates | Replaces Methods (pickup) + Schedule + Pickup locations. | ⬜ |
-| **Days off page**: holidays (one-click per country), closures, recurring yearly dates, vacation mode, special open days | Renamed Closures; one-click holidays. | ⬜ |
-| **Appearance page**: colours, labels, layout, texts per language, real live preview | Renamed Widget & text; preview uses the engine. | ⬜ |
-| **Settings page**: Store country & regional defaults, date format, first day of week, shopper options (method order, default, date mode, delivery instructions), links to Product rules, Fees, Checkout, Notifications, Import/Export, Plan | One place for everything that isn't a schedule. | ⬜ |
-| **Setup wizard** (3 steps, < 2 minutes) | Merchant goes live fast; creates a pickup location from the address so pickup works at once. | ⬜ |
-| **Country defaults** (`core/regions.ts`): working days, weekend, date format, first day of week for ~70 countries + fallback | Worldwide correctness. | ⬜ |
-| **Date format** setting (auto / MM/DD/YYYY / DD/MM/YYYY / YYYY-MM-DD / written month) | Requested; used for the order's "Delivery date" and the shopper summary. | ⬜ |
-| **Delivery instructions** field in the widget (optional, per method) | Most requested extra; free. | ⬜ |
-| **Next 14 days** load chart on Home | See busy days at a glance. | ⬜ |
-| **Generous Free plan**: all methods, time slots, holidays/closures, 1 location, 50 orders/month. Starter: limits, checkout matching, 3 locations, 500 orders. Pro: everything. | New stores get a working picker; paid plans still sell capacity and advanced rules. | ⬜ |
-| `shop/update` webhook + daily sync of time zone/currency/languages | B10. | ✅ |
-| Remove: Methods, Schedule, Slots & capacity pages and their routes (merged); template landing copy | Less to learn. | ⬜ |
+| **Icon navigation bar** on top of every page (Home, Orders, Delivery, Pickup, Days off, Appearance, Settings, Help) + same Shopify sidebar menu | One click to anything, also on mobile (scrolls sideways). | ⬜ |
+| **Delivery page**: Local delivery + Shipping tabs; on/off, name, days, lead time, cutoff, same-day, booking window, time slots, limits, where offered, minimum order, areas & zones link, live preview | Replaces Methods + Schedule + Slots & capacity. | ⬜ |
+| **Pickup page**: on/off, default hours/slots/limits, pickup locations with own hours, limits and days off | Replaces Methods (pickup) + Schedule + Locations. | ⬜ |
+| **Days off page**: public holidays (one switch, auto-renewing, skip any), closures, yearly dates, vacation mode, special open days, year calendar | Replaces Closures & holidays. | ⬜ |
+| **Appearance page**: colours, layout, position, labels/texts per language, real live preview | Replaces Widget & text. | ⬜ |
+| **Settings page**: store & region (country, date format, week start), shopper options (method order, default method, date per order/item, notes box), links to product rules, fees, checkout, notifications, import/export, plan | Everything that isn't a schedule in one place. | ⬜ |
+| **Setup wizard** (3 steps) | Live in under 2 minutes. | ⬜ |
+| **Regional defaults** (`core/regions.ts`): working days, week start, date format for ~90 countries | Worldwide correctness (B25). | ⬜ |
+| **Holiday sets** expanded at publish time | B23. | ⬜ |
+| **Date format** setting | Merchants print `MM/DD/YYYY`. | ⬜ |
+| **Delivery instructions / gift message** box | Most requested extra. | ⬜ |
+| **Next 14 days** chart on Home + **Close a day** quick action | See busy days, close fast. | ⬜ |
+| **Widget position**, drawer switch, automatic text contrast | Styling without code (B24). | ⬜ |
+| **Generous Free plan**: every method, time slots, holidays and closures, notes, 1 location, 50 orders/month. Starter: daily and slot limits, checkout matching, 3 locations, 500 orders. Pro: everything. | New stores get a correct picker; paid plans sell capacity and advanced rules. | ⬜ |
+| Remove: storefront "Powered by" link; Methods, Schedule, Slots & capacity, Locations and Settings-hub pages (merged) | Less to learn, reviewer-safe. | ⬜ |
 
 ## 4. Order of work
 
 1. ✅ Audit (this file).
-2. ✅ Critical/major engine + server bugs B1–B6, B8, B12, B13 with tests.
-3. ✅ Data/infra: scopes (B4), uninstall/reinstall (B3, B9), `shop/update` (B10), schema index (B15), pruning (B16), GDPR (B17), `</` guard (B11), Neon docs (B20), fresh single migration.
-4. ⬜ Regional defaults + date format + holidays one-click (core + server).
-5. ⬜ Widget: B2, B7, date format, delivery instructions; rebuild assets; storefront translations (28 languages).
-6. ⬜ Admin redesign: icon nav, Delivery, Pickup, Days off, Appearance, Settings, wizard, Home chart, engine preview; remove merged pages; plan changes.
-7. ⬜ Admin translations (8 languages) for new text.
-8. ⬜ Docs: README (Render + Neon + Partner Dashboard), DECISIONS, CHECKLIST, PRIVACY, `.env.example`, `render.yaml`.
-9. ⬜ Verification: re-read changed files, tricky date tests (time zones, DST, holidays, cutoff boundary, month/year ends, leap day), full install → order flow review, typecheck, lint, tests, build, browser test.
+2. ⬜ Core: regions, holiday sets, date format, notes, widget options, plan changes, contrast; tests.
+3. ⬜ Server: publish expands holidays, install uses regional defaults, B26–B29, B31.
+4. ⬜ Widget: B2, B7, B21, B22, B24, notes, date format, week start, position; rebuild; 28 storefront languages for new text.
+5. ⬜ Admin redesign: icon nav, wizard, Home chart + close a day, Delivery, Pickup, Days off, Appearance (live widget preview), Settings; remove merged pages.
+6. ⬜ Admin translations (8 languages) for new text.
+7. ⬜ Docs: README (Render + Neon + Partner Dashboard), DECISIONS, CHECKLIST, PRIVACY, `.env.example`, `render.yaml`.
+8. ⬜ Verification: re-read changed files, tricky date tests (time zones, DST, holidays, cutoff boundary, month/year ends, leap day), full install → order flow review, typecheck, lint, tests (incl. DB), build, browser test.
