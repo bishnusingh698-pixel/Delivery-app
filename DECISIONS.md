@@ -153,6 +153,8 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-61 Counts follow the plan.** Counts are stored under the capacity keys and product limits of the plan-applied settings (the same ones the published config uses), and all future dates are recounted when the plan changes (billing webhook or Plans page), so a downgrade that drops delivery zones can't overbook the method's own limit.
 
+**D-62 Admin reschedules write to Shopify first.** Changing an order's date updates the order in Shopify (attributes, then tags and metafield) before Pickday's record, history and counts. If Shopify refuses, nothing in Pickday changes and the merchant sees the error; if Shopify accepted part of it, trying again repeats the same writes. Bulk moves wait and retry an order up to three times (1, 2 and 4 seconds) when Shopify answers THROTTLED. The Flow trigger still fires last.
+
 ## Not yet decided / proposed
 
 - **Founding-merchant price lock (proposed, not built).** Stores that subscribe in the first months could keep their price for life when prices rise later. Shopify already keeps an approved subscription's price until the app asks for a new one, so this would mostly be a promise plus a list of stores; the owner decides whether to offer it.

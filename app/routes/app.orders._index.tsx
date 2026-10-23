@@ -14,6 +14,7 @@ import { useI18n, useT } from "../i18n/react";
 import { adminContext } from "../services/settings.server";
 import { dayCounts, listOrders, orderRow, parseFilters } from "../services/orders-query.server";
 import { setOrderSchedule } from "../services/reschedule.server";
+import { retryThrottled } from "../services/graphql.server";
 import { storefrontConfigFor } from "../services/publish.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -63,7 +64,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   for (const o of orders) {
     const slotId = body.slotId && ctx.settings.methods[o.method as MethodId]?.capacity.slots.some((s) => s.id === body.slotId) ? body.slotId : o.slotId;
     try {
-      const r = await setOrderSchedule(ctx.shop, ctx.admin, o.orderId, { method: o.method as MethodId, date: body.date, slotId, locationId: o.locationId }, { force: body.force, actor: ctx.actor });
+      // Shopify is updated before our record, so a rate-limited order can simply be tried again.
+      const r = await retryThrottled(() => setOrderSchedule(ctx.shop, ctx.admin, o.orderId, { method: o.method as MethodId, date: body.date, slotId, locationId: o.locationId }, { force: body.force, actor: ctx.actor }));
       if (r.ok) moved.push(o.orderName);
       else failed.push({ name: o.orderName, reason: r.reason });
     } catch (e) {

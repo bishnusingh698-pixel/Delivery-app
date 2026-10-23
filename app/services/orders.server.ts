@@ -168,8 +168,8 @@ async function afterChange(shop: string, settings: Settings, dates: (string | nu
 
 const SCHEDULE_MF = { namespace: "$app:pickday", key: "schedule" };
 
-/** Tags + order metafield (for Order Printer, Flow, other apps). */
-export async function writeToShopify(shop: string, admin: AdminGraphql, settings: Settings, o: ParsedOrder, previousTags: string[]) {
+/** Tags + order metafield (for Order Printer, Flow, other apps). Returns the tags; stores them unless `store` is false. */
+export async function writeToShopify(shop: string, admin: AdminGraphql, settings: Settings, o: ParsedOrder, previousTags: string[], opts: { store?: boolean } = {}) {
   const orderGid = gid("Order", o.orderId);
   const loc = settings.locations.find((l) => l.id === o.locationId)?.name ?? null;
   const tags = settings.tagging.enabled ? orderTags(o, settings.tagging.prefix, loc) : [];
@@ -189,7 +189,8 @@ export async function writeToShopify(shop: string, admin: AdminGraphql, settings
     { m: [{ ownerId: orderGid, ...SCHEDULE_MF, type: "json", value }] },
   );
   assertNoUserErrors(r.metafieldsSet, "metafieldsSet");
-  await prisma.scheduledOrder.update({ where: { shop_orderId: { shop, orderId: o.orderId } }, data: { tags } });
+  if (opts.store !== false) await prisma.scheduledOrder.update({ where: { shop_orderId: { shop, orderId: o.orderId } }, data: { tags } });
+  return tags;
 }
 
 /** Has this webhook delivery been processed already? Records it if not. */

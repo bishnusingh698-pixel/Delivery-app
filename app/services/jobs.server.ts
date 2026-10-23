@@ -10,7 +10,7 @@ import { requireShop, shopToday } from "../models/shop.server";
 import { unauthenticated } from "../shopify.server";
 import { sendDigestIfDue } from "./digest.server";
 import { checkEmbed } from "./embed.server";
-import { publishShop, schedulePublish } from "./publish.server";
+import { publishShop, schedulePublish, timeShiftsChanged } from "./publish.server";
 import { collectionIdsIn, resolveCollectionProducts, resolveTagProducts, tagsIn } from "./collections.server";
 import { recountFuture } from "./counts.server";
 import { loadSettings, storeSettings } from "../models/settings.server";
@@ -37,7 +37,13 @@ export async function hourly() {
   for (const s of shops) {
     try {
       const today = shopToday(s);
-      const stale = s.publishedFor !== today || s.countsDirty || !s.publishedAt || Date.now() - s.publishedAt.getTime() > 6 * 3600_000;
+      const stale =
+        s.publishedFor !== today ||
+        s.countsDirty ||
+        !s.publishedAt ||
+        Date.now() - s.publishedAt.getTime() > 6 * 3600_000 ||
+        // Pickup locations in other time zones: republish as soon as a DST change moves their offset.
+        timeShiftsChanged({ tz: s.timeZone, locations: (await loadSettings(s.shop)).settings.locations }, s.publishedAt);
       if (stale) {
         await publishShop(s.shop, undefined, { functions: false });
         published++;

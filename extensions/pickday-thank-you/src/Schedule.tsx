@@ -29,7 +29,7 @@ function Schedule() {
   const t = (key: string, values: Record<string, string> = {}) => format(table[key] ?? (messages as any).en[key] ?? key, values, { plural: () => "other" });
 
   const cfgRaw = (api.appMetafields?.value ?? []).find((m: any) => m.metafield?.key === "checkout")?.metafield?.value;
-  let cfg: { u?: string; dispatch?: boolean; tz?: string; ins?: Record<string, Record<string, string>> } = {};
+  let cfg: { u?: string; dispatch?: boolean; tz?: string; ltz?: Record<string, string>; ins?: Record<string, Record<string, string>> } = {};
   try {
     cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
   } catch {
@@ -57,7 +57,7 @@ function Schedule() {
     date: sel.d,
     start: sel.t?.slice(0, 5) ?? null,
     end: sel.t?.slice(6, 11) ?? null,
-    timeZone: cfg.tz ?? null,
+    timeZone: (sel.m === "pickup" && sel.l ? cfg.ltz?.[sel.l] : null) ?? cfg.tz ?? null,
     location,
     icsBase: cfg.u ? `${cfg.u}/ics/event` : null,
   });

@@ -29,3 +29,21 @@ describe("theme app embed detection", () => {
   it("ignores a disabled embed", () => expect(embedEnabledIn(data(true))).toBe(false));
   it("survives bad JSON", () => expect(embedEnabledIn("{nope")).toBe(false));
 });
+
+describe("hourly republish for pickup locations in other time zones", () => {
+  it("notices when a DST change moves a location's offset", async () => {
+    const { timeShiftsChanged } = await import("../app/services/publish.server");
+    const cfg = { tz: "Europe/Berlin", locations: [{ id: "ny", timeZone: "America/New_York" }] } as never;
+    // New York moves to summer time on 8 March 2026 at 07:00 UTC; Berlin only on 29 March.
+    expect(timeShiftsChanged(cfg, new Date("2026-03-08T05:00:00Z"), new Date("2026-03-08T08:00:00Z"))).toBe(true);
+    expect(timeShiftsChanged(cfg, new Date("2026-03-08T08:00:00Z"), new Date("2026-03-08T12:00:00Z"))).toBe(false);
+  });
+});
+
+describe("thank-you block config", () => {
+  it("names the time zone of pickup locations outside the store's zone", async () => {
+    const { thankYouConfig } = await import("../app/services/publish.server");
+    const cfg = { tz: "Europe/Berlin", methods: [], locations: [{ id: "ny", timeZone: "America/New_York", instructions: {} }, { id: "b", timeZone: null, instructions: {} }] } as never;
+    expect(thankYouConfig(cfg).ltz).toEqual({ ny: "America/New_York" });
+  });
+});

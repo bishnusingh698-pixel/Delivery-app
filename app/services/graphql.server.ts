@@ -21,6 +21,23 @@ export async function gql<T = any>(admin: AdminGraphql, query: string, variables
   return json.data as T;
 }
 
+/** Shopify's rate limit ("THROTTLED"): worth waiting and trying again. */
+export function isThrottled(e: unknown): boolean {
+  return e instanceof ShopifyGraphqlError && JSON.stringify(e.details ?? null).includes("THROTTLED");
+}
+
+/** Run `fn`, waiting and retrying while Shopify answers THROTTLED (used for bulk work). */
+export async function retryThrottled<T>(fn: () => Promise<T>, delaysMs: number[] = [1000, 2000, 4000]): Promise<T> {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i >= delaysMs.length || !isThrottled(e)) throw e;
+      await new Promise((r) => setTimeout(r, delaysMs[i]));
+    }
+  }
+}
+
 /** Throw if a mutation payload has userErrors. */
 export function assertNoUserErrors(payload: { userErrors?: { field?: string[] | null; message: string }[] } | null | undefined, what: string) {
   const errs = payload?.userErrors ?? [];

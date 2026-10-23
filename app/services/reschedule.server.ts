@@ -5,9 +5,9 @@
 import type { Prisma, ScheduledOrder } from "@prisma/client";
 import prisma from "../db.server";
 import { addDays } from "../../core/civil";
-import { buildCalendar, checkSelection, type EngineInput } from "../../core/engine";
+import { buildCalendar, checkSelection, resolveRules, slotsForDate, specialDayFor, type EngineConfig, type EngineInput } from "../../core/engine";
 import { ATTR_KEY, READABLE_KEYS, encodeSelection } from "../../core/selection";
-import type { CartLine, DayStatus, MethodId, Selection } from "../../core/types";
+import type { CartLine, DayStatus, MethodId, Selection, Slot } from "../../core/types";
 import { logActivity } from "../models/settings.server";
 import { nowInZone } from "../../core/tz";
 import { buildAvailability, recountDates, toLine, type StoredItem } from "./counts.server";
@@ -78,10 +78,20 @@ export async function getOrderSchedule(shop: string, admin: AdminGraphql, orderI
   return { existing, info, lines, ...cal };
 }
 
+/** The chosen slot as the engine sees that day (method, location or zone rules, date overrides, special days). */
+function chosenSlot(config: EngineConfig, choice: ScheduleChoice, zoneId: string | null): Slot | null {
+  if (!choice.slotId) return null;
+  const locationId = choice.method === "pickup" ? choice.locationId : null;
+  const rules = resolveRules(config, choice.method, locationId, choice.method === "delivery" ? zoneId : null);
+  if (!rules) return null;
+  return slotsForDate(rules.capacity, choice.date, specialDayFor(config, choice.date, choice.method, locationId)).find((s) => s.id === choice.slotId) ?? null;
+}
+
 /**
  * Set or change the schedule. Capacity and rules are checked unless `force`
- * (merchant override). Writes our record, recounts, updates the order's
- * attributes, tags and metafield in Shopify, and fires the Flow trigger.
+ * (merchant override). Updates the order in Shopify first (attributes, tags,
+ * metafield), then our record and counts, then fires the Flow trigger, so a
+ * Shopify error leaves both sides on the old date.
  */
 export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderId: string, choice: ScheduleChoice, opts: { force?: boolean; actor?: string | null } = {}) {
   const existing = await prisma.scheduledOrder.findUnique({ where: { shop_orderId: { shop, orderId } } });
@@ -93,39 +103,27 @@ export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderI
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
   }
   const method = config.methods.find((m) => m.id === choice.method);
-  const slot = method?.capacity.slots.find((s) => s.id === choice.slotId) ?? config.locations.find((l) => l.id === choice.locationId)?.custom?.capacity.slots.find((s) => s.id === choice.slotId) ?? null;
+  const slot = chosenSlot(config, choice, existing?.zoneId ?? null);
   const slotLabel = slot ? `${slot.start}-${slot.end}` : null;
   const history = [
     ...(((existing?.history as unknown as unknown[]) ?? []) as unknown[]),
     { at: new Date().toISOString(), by: opts.actor ?? null, from: existing ? { method: existing.method, date: existing.date, slot: existing.slotLabel } : null, to: { method: choice.method, date: choice.date, slot: slotLabel }, forced: !!opts.force },
   ].slice(-20);
-
-  const data = {
-    orderName: info.name,
-    customerFirst: info.first,
+  const next = {
     method: choice.method,
     date: choice.date,
     slotId: slot?.id ?? null,
     slotLabel,
     locationId: choice.method === "pickup" ? choice.locationId : null,
-    status: existing?.status === "cancelled" ? "cancelled" : existing?.status ?? "scheduled",
-    items: info.items as unknown as Prisma.InputJsonValue,
-    itemCount: lines.reduce((n, l) => n + l.quantity, 0),
-    history: history as unknown as Prisma.InputJsonValue,
+    zoneId: existing?.zoneId ?? null,
+    area: existing?.area ?? null,
   };
-  const saved = existing
-    ? await prisma.scheduledOrder.update({ where: { id: existing.id }, data })
-    : await prisma.scheduledOrder.create({ data: { shop, orderId, ...data } });
-  // A merchant-set date replaces any per-item dates.
-  const oldItemDates = (await prisma.scheduledItem.findMany({ where: { shop, orderId }, select: { date: true } })).map((i) => i.date);
-  await prisma.scheduledItem.deleteMany({ where: { shop, orderId } });
+  const limited = existing?.limited ?? false;
   const { settings } = await storefrontConfigFor(shop);
-  await recountDates(shop, settings, [existing?.date ?? "", ...oldItemDates, choice.date]);
-  schedulePublish(shop);
 
-  // Keep the order's own attributes in step so packing slips and other apps see the new date.
-  const sel: Selection = { v: 1, m: choice.method, d: choice.date, s: saved.slotId, t: slotLabel, l: saved.locationId, z: saved.zoneId, a: saved.area, c: null, lbl: null, lc: config.primaryLocale, f: null };
-  const loc = config.locations.find((l) => l.id === saved.locationId);
+  // 1. Shopify: the order's own attributes, so packing slips and other apps see the new date.
+  const sel: Selection = { v: 1, m: next.method, d: next.date, s: next.slotId, t: slotLabel, l: next.locationId, z: next.zoneId, a: next.area, c: null, lbl: null, lc: config.primaryLocale, f: null };
+  const loc = config.locations.find((l) => l.id === next.locationId);
   const attrs = await currentAttributes(admin, orderId);
   const merged = new Map(attrs.map((a) => [a.key, a.value]));
   merged.set(ATTR_KEY, encodeSelection(sel));
@@ -139,11 +137,37 @@ export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderI
     input: { id: gid("Order", orderId), customAttributes: [...merged].map(([key, value]) => ({ key, value })) },
   });
   assertNoUserErrors(res.orderUpdate, "orderUpdate");
+  // Tags and metafield (not for orders over the plan's monthly limit).
+  const itemCount = lines.reduce((n, l) => n + l.quantity, 0);
+  const tags = limited
+    ? existing?.tags ?? []
+    : await writeToShopify(shop, admin, settings, { orderId, orderName: info.name, customerFirst: info.first, selection: sel, ...next, status: "scheduled", items: info.items, itemCount, perItem: [], updatedAt: null, shippingTitle: null }, existing?.tags ?? [], { store: false });
 
-  if (!saved.limited) {
-    await writeToShopify(shop, admin, settings, { orderId, orderName: info.name, customerFirst: info.first, selection: sel, method: choice.method, date: choice.date, slotId: saved.slotId, slotLabel, locationId: saved.locationId, zoneId: saved.zoneId, area: saved.area, status: "scheduled", items: info.items, itemCount: saved.itemCount, perItem: [], updatedAt: null, shippingTitle: null }, existing?.tags ?? []);
-    await flowTrigger(shop, admin, existing ? "rescheduled" : "scheduled", saved).catch(() => {});
-  }
+  // 2. Our record and counts.
+  const data = {
+    orderName: info.name,
+    customerFirst: info.first,
+    method: next.method,
+    date: next.date,
+    slotId: next.slotId,
+    slotLabel,
+    locationId: next.locationId,
+    status: existing?.status === "cancelled" ? "cancelled" : existing?.status ?? "scheduled",
+    items: info.items as unknown as Prisma.InputJsonValue,
+    itemCount,
+    tags,
+    history: history as unknown as Prisma.InputJsonValue,
+  };
+  // A merchant-set date replaces any per-item dates.
+  const oldItemDates = (await prisma.scheduledItem.findMany({ where: { shop, orderId }, select: { date: true } })).map((i) => i.date);
+  const [saved] = await prisma.$transaction([
+    existing ? prisma.scheduledOrder.update({ where: { id: existing.id }, data }) : prisma.scheduledOrder.create({ data: { shop, orderId, ...data } }),
+    prisma.scheduledItem.deleteMany({ where: { shop, orderId } }),
+  ]);
+  await recountDates(shop, settings, [existing?.date ?? "", ...oldItemDates, choice.date]);
+  schedulePublish(shop);
+
+  if (!limited) await flowTrigger(shop, admin, existing ? "rescheduled" : "scheduled", saved).catch(() => {});
   await logActivity(shop, "order", `${info.name}: ${existing?.date ?? "no date"} → ${choice.date}${slotLabel ? ` ${slotLabel}` : ""}${opts.force ? " (override)" : ""}`, opts.actor ?? null);
   return { ok: true as const, order: saved };
 }
@@ -170,7 +194,7 @@ export async function scheduleDraftOrder(shop: string, admin: AdminGraphql, draf
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
   }
   const method = config.methods.find((m) => m.id === choice.method);
-  const slot = method?.capacity.slots.find((s) => s.id === choice.slotId) ?? config.locations.find((l) => l.id === choice.locationId)?.custom?.capacity.slots.find((s) => s.id === choice.slotId) ?? null;
+  const slot = chosenSlot(config, choice, null);
   const sel: Selection = { v: 1, m: choice.method, d: choice.date, s: slot?.id ?? null, t: slot ? `${slot.start}-${slot.end}` : null, l: choice.method === "pickup" ? choice.locationId : null, z: null, a: null, c: null, lbl: null, lc: config.primaryLocale, f: null };
   const merged = new Map<string, string>((d.draftOrder.customAttributes as { key: string; value: string }[]).map((a) => [a.key, a.value]));
   merged.set(ATTR_KEY, encodeSelection(sel));

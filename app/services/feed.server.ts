@@ -44,7 +44,8 @@ export async function feedFor(token: string): Promise<string | null> {
   } else {
     for (const o of orders) {
       const [start, end] = o.slotLabel?.split("-") ?? [null, null];
-      const loc = settings.locations.find((l) => l.id === o.locationId)?.name;
+      const place = o.method === "pickup" ? settings.locations.find((l) => l.id === o.locationId) : undefined;
+      const loc = place?.name;
       const items = cfg.includeDetails ? ((o.items as unknown as StoredItem[]) ?? []).filter((i) => i.needsDate !== false).map((i) => `${i.qty} x ${i.title}`).join("\n") : undefined;
       events.push(
         icsEvent({
@@ -54,7 +55,8 @@ export async function feedFor(token: string): Promise<string | null> {
           date: o.date!,
           start: start ?? null,
           end: end ?? null,
-          timeZone: row.timeZone,
+          // Slot times are local to the pickup location.
+          timeZone: place?.timeZone || row.timeZone,
           location: loc,
           description: items,
         }),

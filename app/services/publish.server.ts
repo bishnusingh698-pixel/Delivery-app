@@ -189,6 +189,8 @@ export function thankYouConfig(config: StorefrontConfig) {
     u: (process.env.SHOPIFY_APP_URL ?? "").replace(/\/$/, ""),
     dispatch: config.methods.find((m) => m.id === "shipping")?.dateMeaning === "dispatch",
     tz: config.tz,
+    // Pickup locations in their own time zone (calendar links use it for the slot times).
+    ltz: Object.fromEntries(config.locations.filter((l) => l.timeZone && l.timeZone !== config.tz).map((l) => [l.id, l.timeZone])),
     // Pickup instructions per location and language.
     ins: Object.fromEntries(config.locations.filter((l) => Object.values(l.instructions).some(Boolean)).map((l) => [l.id, l.instructions])),
   };
@@ -233,6 +235,11 @@ export function schedulePublish(shop: string, delayMs = 3000) {
       });
     }, delayMs),
   );
+}
+
+/** Did a DST change move any pickup location's offset since `publishedAt`? (the Function's tzShift is then stale) */
+export function timeShiftsChanged(config: Pick<StorefrontConfig, "tz" | "locations">, publishedAt: Date, at = new Date()): boolean {
+  return JSON.stringify(locationTimeShifts(config, publishedAt)) !== JSON.stringify(locationTimeShifts(config, at));
 }
 
 /** Minutes between the shop's local time and each pickup location's own time zone, right now. */
