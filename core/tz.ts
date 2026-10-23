@@ -47,22 +47,24 @@ export function nowInZone(timeZone: string, at: Date = new Date()): LocalNow {
 }
 
 /**
- * Convert a civil date-time in `timeZone` to a UTC Date (handles DST gaps by
- * moving forward, overlaps by taking the first occurrence).
+ * Convert a civil date-time in `timeZone` to a UTC Date. A time that occurs twice (DST ends)
+ * gives the first occurrence; a time that doesn't exist (DST starts, also at midnight in
+ * zones like America/Santiago) moves forward by the gap, e.g. 02:30 → 03:30.
  */
 export function zonedToUtc(date: string, time: string, timeZone: string): Date {
   const [y, m, d] = date.split("-").map(Number);
   const [hh, mm] = time.split(":").map(Number);
-  const guess = Date.UTC(y, m - 1, d, hh, mm);
-  // Two iterations converge for every real-world zone.
-  let ts = guess;
-  for (let i = 0; i < 2; i++) {
-    const local = nowInZone(timeZone, new Date(ts));
-    const [ly, lm, ld] = local.date.split("-").map(Number);
-    const localTs = Date.UTC(ly, lm - 1, ld, Math.floor(local.minutes / 60), local.minutes % 60);
-    ts += guess - localTs;
-  }
-  return new Date(ts);
+  const wall = Date.UTC(y, m - 1, d, hh, mm);
+  const localAt = (ts: number) => {
+    const l = nowInZone(timeZone, new Date(ts));
+    const [ly, lm, ld] = l.date.split("-").map(Number);
+    return Date.UTC(ly, lm - 1, ld, Math.floor(l.minutes / 60), l.minutes % 60);
+  };
+  const offset = (ts: number) => localAt(ts) - ts;
+  // The zone's offset a day before and a day after: at most one change lies between them.
+  const candidates = [wall - offset(wall - 86_400_000), wall - offset(wall + 86_400_000)];
+  const exact = candidates.filter((ts) => localAt(ts) === wall);
+  return new Date(exact.length ? Math.min(...exact) : Math.max(...candidates));
 }
 
 /** Does the browser's zone currently differ from `timeZone` (by offset)? */

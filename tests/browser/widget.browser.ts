@@ -190,6 +190,16 @@ async function main() {
     await page.waitForSelector(".pd-root", { timeout: 5000 });
   });
 
+  await check("unknown cart drawer: the picker appears next to the clicked checkout button", async () => {
+    const body = `<header>Shop</header><div class="side-basket"><button type="submit" name="checkout" form="x">Check out</button></div><form id="x" action="/cart" method="post"></form>`;
+    await open(page, "en", false, { body, path: "/", wait: false });
+    await page.waitForFunction(() => !!(window as any).Pickday?.ready);
+    await page.click("button[name=checkout]");
+    await page.waitForSelector(".side-basket .pickday .pd-root", { timeout: 5000 });
+    assert(await page.isVisible(".side-basket [data-pd-err]"), "no message next to the button");
+    assert(new URL(page.url()).pathname === "/", "left the page");
+  });
+
   const overflow = async () =>
     page.evaluate(() => {
       const root = document.querySelector(".pickday") as HTMLElement;

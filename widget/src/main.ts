@@ -119,11 +119,19 @@ async function main() {
     if (blocked) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      // No picker on screen (a drawer this theme builds in an unknown way, or the drawer picker is off):
-      // never trap the shopper, send them to the cart page where the picker always is.
-      if (!pd.visibleMount() && !onCart) {
-        location.href = cartUrl();
-        return;
+      // No picker on screen (a theme layout none of the guesses know): never trap the shopper.
+      // Put the picker right next to the button they clicked; if that's not possible (or the
+      // merchant turned the drawer picker off), send them to the cart page.
+      if (!pd.visibleMount()) {
+        const inDrawer = !!btn && !btn.closest("main");
+        if (btn?.parentElement && !btn.closest("[data-pickday-mount]") && (onCart || (inDrawer && pd.cfg.widget.drawer !== false))) {
+          const el = h("div", { "data-pickday-mount": inDrawer ? "drawer" : "cart", class: `pickday${inDrawer ? " pd-drawer" : ""}` });
+          placeNear(pd, btn, el);
+          pd.mount(el);
+        } else if (!onCart) {
+          location.href = cartUrl();
+          return;
+        }
       }
       pd.canCheckout();
       return;

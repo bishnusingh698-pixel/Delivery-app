@@ -32,20 +32,22 @@ B1 same-day opened every day before the lead time (C) ✅ · B3 reinstall left a
 
 | # | Sev | File:line | Bug | Root cause | Status |
 |---|---|---|---|---|---|
-| B2 | C | `widget/src/widget.ts` `view()` ~590, `canCheckout()` | Store pickup **without any pickup location** (what the presets switch on) shows no date picker but still requires a date: the shopper can never check out. | Date picker only renders when `locationId` is set. | ⬜ |
-| B7 | M | `widget/src/main.ts` gate ~105 | Theme cart drawer not recognised → checkout click silently blocked; the error renders where nobody can see it. Also new themes (Horizon) use other drawer markup. | Gate blocks even when no widget is visible; only a fixed list of drawer selectors. | ⬜ |
-| B21 | M | `widget/src/widget.ts` `canCheckout()` | Minimum order not reached: the picker is hidden but the shopper is told "choose a date" (they can't). | Gate ignores the min-order state. | ⬜ |
-| B22 | M | `widget/src/main.ts` `setHidden()` | In one-date-per-order mode the product-page picker writes `Delivery date` **line properties**. If the shopper then picks another date in the cart, the order carries two different dates (line vs order attribute) → wrong date on packing slips. | Product page writes line properties in both modes. | ⬜ |
-| B23 | M | `app.settings.closures.tsx` holiday import | Imported public holidays are one-off dates for the next 12 months; nothing renews them, so next year's Christmas becomes bookable silently. | Holidays copied as fixed dates. Fix: holiday **sets** (country/region) expanded on every publish for the rolling booking window. | ⬜ |
-| B24 | M | `widget/src/styles.css` `--pd-on-accent` | Text on the accent colour is always white: a light accent (yellow, pastel) makes the selected day and slot unreadable. | No contrast calculation. | ⬜ |
-| B25 | M | `core/defaults.ts`, `install.server.ts` | Every new store gets Mon–Fri working days and Monday/Sunday week start from the browser, also in Saudi Arabia, Israel, Iran… | No per-country defaults. | ⬜ |
-| B26 | m | `services/reschedule.server.ts` 441, draft 486 | Admin date change writes `Delivery date` as a bare ISO date (storefront writes "Friday, 18 October 2026 (2026-10-18)"); draft-order scheduling leaves stale `Time slot` / `Pickup location` attributes. | Different formatting paths. | ⬜ |
-| B27 | m | `webhooks.compliance.tsx` `CUSTOMERS_REDACT` | The stored postcode/area of the customer's orders is kept. | Only `customerFirst` and history cleared. | ⬜ |
-| B28 | m | `services/orders-query.server.ts` `parseFilters("week")` | "This week" always starts on Monday, also for US stores. | Hard-coded. Use the store's week start. | ⬜ |
-| B29 | m | `routes/app.orders._index.tsx` bulk move | Moving pickup orders keeps a slot id only if it exists in the method's default slots, not a location's own slots. | Slot lookup ignores locations. | ⬜ |
-| B30 | m | `app.settings.closures.tsx` modal | Editing a closure shows "Add closure"; yearly ranges stored as `MM-DD` can't be edited (date field empty). | Heading/format. | ⬜ |
-| B31 | m | `render.yaml` buildCommand | Relies on Prisma's postinstall to generate the client. | Explicit `prisma generate` missing. | ⬜ |
-| B32 | m | Widget, free plan | "Powered by Pickday" link on the storefront of free stores: merchants can't remove it and App Store reviewers dislike storefront promotion. | Branding feature. Removed. | ⬜ |
+| B2 | C | `widget/src/widget.ts` `view()` ~590, `canCheckout()` | Store pickup **without any pickup location** (what the presets switch on) shows no date picker but still requires a date: the shopper can never check out. | Date picker only renders when `locationId` is set. | ✅ |
+| B7 | M | `widget/src/main.ts` gate ~105 | Theme cart drawer not recognised → checkout click silently blocked; the error renders where nobody can see it. Also new themes (Horizon) use other drawer markup. | Gate blocks even when no widget is visible; only a fixed list of drawer selectors. | ✅ |
+| B21 | M | `widget/src/widget.ts` `canCheckout()` | Minimum order not reached: the picker is hidden but the shopper is told "choose a date" (they can't). | Gate ignores the min-order state. | ✅ |
+| B22 | M | `widget/src/main.ts` `setHidden()` | In one-date-per-order mode the product-page picker writes `Delivery date` **line properties**. If the shopper then picks another date in the cart, the order carries two different dates (line vs order attribute) → wrong date on packing slips. | Product page writes line properties in both modes. | ✅ |
+| B23 | M | `app.settings.closures.tsx` holiday import | Imported public holidays are one-off dates for the next 12 months; nothing renews them, so next year's Christmas becomes bookable silently. | Holidays copied as fixed dates. Fix: holiday **sets** (country/region) expanded on every publish for the rolling booking window. | ✅ |
+| B24 | M | `widget/src/styles.css` `--pd-on-accent` | Text on the accent colour is always white: a light accent (yellow, pastel) makes the selected day and slot unreadable. | No contrast calculation. | ✅ |
+| B25 | M | `core/defaults.ts`, `install.server.ts` | Every new store gets Mon–Fri working days and Monday/Sunday week start from the browser, also in Saudi Arabia, Israel, Iran… | No per-country defaults. | ✅ |
+| B26 | m | `services/reschedule.server.ts` 441, draft 486 | Admin date change writes `Delivery date` as a bare ISO date (storefront writes "Friday, 18 October 2026 (2026-10-18)"); draft-order scheduling leaves stale `Time slot` / `Pickup location` attributes. | Different formatting paths. | ✅ |
+| B27 | m | `webhooks.compliance.tsx` `CUSTOMERS_REDACT` | The stored postcode/area of the customer's orders is kept. | Only `customerFirst` and history cleared. | ✅ |
+| B28 | m | `services/orders-query.server.ts` `parseFilters("week")` | "This week" always starts on Monday, also for US stores. | Hard-coded. Use the store's week start. | ✅ |
+| B29 | m | `routes/app.orders._index.tsx` bulk move | Moving pickup orders keeps a slot id only if it exists in the method's default slots, not a location's own slots. | Slot lookup ignores locations. | ✅ |
+| B30 | m | `app.settings.closures.tsx` modal | Editing a closure shows "Add closure"; yearly ranges stored as `MM-DD` can't be edited (date field empty). | Heading/format. | ✅ |
+| B31 | m | `render.yaml` buildCommand | Relies on Prisma's postinstall to generate the client. | Explicit `prisma generate` missing. | ✅ |
+| B33 | M | `core/tz.ts` `zonedToUtc` | A time inside a daylight-saving gap (02:30 on the spring-forward day, or 00:00 in zones that change at midnight like America/Santiago) was moved **backward** an hour instead of forward, so "start of the month" in such zones counted an hour of the previous month. Found by the Phase 3 DST tests. | Two fixed-point iterations without gap detection. Now: candidates from the offsets a day before and after; first exact match, else the later one. | ✅ |
+| B34 | M | `widget/src/main.ts` gate | On the cart page, a theme whose checkout button sits outside `main` / the cart form got no picker and the error rendered nowhere: same trap as B7. Found while re-reading B7's fix. | Auto-placement only looked inside `main` and the cart form. Now the picker is placed next to the button the shopper clicked. | ✅ |
+| B32 | m | Widget, free plan | "Powered by Pickday" link on the storefront of free stores: merchants can't remove it and App Store reviewers dislike storefront promotion. | Branding feature. Removed. | ✅ |
 
 Checked and **not** bugs: cutoff boundary (`>=` at exactly the cutoff = next day), leap days and yearly ranges over New Year (`core/civil.ts`), DST conversion (`zonedToUtc`), idempotent / out-of-order order webhooks, express checkout (validation Function is the backstop), counts rebuilt not incremented, shop scoping on every query, jobs secret compare, CSV formula injection guard, session-token auth on admin extension APIs, GDPR shop/redact after reinstall.
 
@@ -78,29 +80,38 @@ App Store reviewer view
 
 | Change | Why | Status |
 |---|---|---|
-| **Icon navigation bar** on top of every page (Home, Orders, Delivery, Pickup, Days off, Appearance, Settings, Help) + same Shopify sidebar menu | One click to anything, also on mobile (scrolls sideways). | ⬜ |
-| **Delivery page**: Local delivery + Shipping tabs; on/off, name, days, lead time, cutoff, same-day, booking window, time slots, limits, where offered, minimum order, areas & zones link, live preview | Replaces Methods + Schedule + Slots & capacity. | ⬜ |
-| **Pickup page**: on/off, default hours/slots/limits, pickup locations with own hours, limits and days off | Replaces Methods (pickup) + Schedule + Locations. | ⬜ |
-| **Days off page**: public holidays (one switch, auto-renewing, skip any), closures, yearly dates, vacation mode, special open days, year calendar | Replaces Closures & holidays. | ⬜ |
-| **Appearance page**: colours, layout, position, labels/texts per language, real live preview | Replaces Widget & text. | ⬜ |
-| **Settings page**: store & region (country, date format, week start), shopper options (method order, default method, date per order/item, notes box), links to product rules, fees, checkout, notifications, import/export, plan | Everything that isn't a schedule in one place. | ⬜ |
-| **Setup wizard** (3 steps) | Live in under 2 minutes. | ⬜ |
-| **Regional defaults** (`core/regions.ts`): working days, week start, date format for ~90 countries | Worldwide correctness (B25). | ⬜ |
-| **Holiday sets** expanded at publish time | B23. | ⬜ |
-| **Date format** setting | Merchants print `MM/DD/YYYY`. | ⬜ |
-| **Delivery instructions / gift message** box | Most requested extra. | ⬜ |
-| **Next 14 days** chart on Home + **Close a day** quick action | See busy days, close fast. | ⬜ |
-| **Widget position**, drawer switch, automatic text contrast | Styling without code (B24). | ⬜ |
-| **Generous Free plan**: every method, time slots, holidays and closures, notes, 1 location, 50 orders/month. Starter: daily and slot limits, checkout matching, 3 locations, 500 orders. Pro: everything. | New stores get a correct picker; paid plans sell capacity and advanced rules. | ⬜ |
-| Remove: storefront "Powered by" link; Methods, Schedule, Slots & capacity, Locations and Settings-hub pages (merged) | Less to learn, reviewer-safe. | ⬜ |
+| **Icon navigation bar** on top of every page (Home, Orders, Delivery, Pickup, Days off, Appearance, Settings, Help) + same Shopify sidebar menu | One click to anything, also on mobile (scrolls sideways). | ✅ |
+| **Delivery page**: Local delivery + Shipping tabs; on/off, name, days, lead time, cutoff, same-day, booking window, time slots, limits, where offered, minimum order, areas & zones link, live preview | Replaces Methods + Schedule + Slots & capacity. | ✅ |
+| **Pickup page**: on/off, default hours/slots/limits, pickup locations with own hours, limits and days off | Replaces Methods (pickup) + Schedule + Locations. | ✅ |
+| **Days off page**: public holidays (one switch, auto-renewing, skip any), closures, yearly dates, vacation mode, special open days, year calendar | Replaces Closures & holidays. | ✅ |
+| **Appearance page**: colours, layout, position, labels/texts per language, real live preview | Replaces Widget & text. | ✅ |
+| **Settings page**: store & region (country, date format, week start), shopper options (method order, default method, date per order/item, notes box), links to product rules, fees, checkout, notifications, import/export, plan | Everything that isn't a schedule in one place. | ✅ |
+| **Setup wizard** (3 steps) | Live in under 2 minutes. | ✅ |
+| **Regional defaults** (`core/regions.ts`): working days, week start, date format for ~90 countries | Worldwide correctness (B25). | ✅ |
+| **Holiday sets** expanded at publish time | B23. | ✅ |
+| **Date format** setting | Merchants print `MM/DD/YYYY`. | ✅ |
+| **Delivery instructions / gift message** box | Most requested extra. | ✅ |
+| **Next 14 days** chart on Home + **Close a day** quick action | See busy days, close fast. | ✅ |
+| **Widget position**, drawer switch, automatic text contrast | Styling without code (B24). | ✅ |
+| **Generous Free plan**: every method, time slots, holidays and closures, notes, 1 location, 50 orders/month. Starter: daily and slot limits, checkout matching, 3 locations, 500 orders. Pro: everything. | New stores get a correct picker; paid plans sell capacity and advanced rules. | ✅ |
+| Remove: storefront "Powered by" link; Methods, Schedule, Slots & capacity, Locations and Settings-hub pages (merged) | Less to learn, reviewer-safe. | ✅ |
 
-## 4. Order of work
+## 4. Verification notes
+
+- `tests/tricky-dates.test.ts`: DST in New York (spring forward / fall back), Sydney, Santiago (midnight change); Kolkata, Kathmandu, Chatham offsets; cutoff at 13:59 vs 14:00; Friday after cutoff; month end; year end with New Year closed; leap day; yearly Feb 29 rule; window across the year; UK holidays over New Year and lunar Saudi holidays from the real dataset; the checkout Function's hour-level check (benefit of the doubt inside the cutoff hour).
+- `tests/regional.test.ts`: regional defaults, date formats, contrast, holiday sets renewing every year, plans, wizard.
+- `tests/admin/pages.render.test.tsx`: every redesigned page renders with realistic data and no untranslated keys.
+- `tests/browser/widget.browser.ts` (38 checks): B2, B7, B21, B24, B34, notes box, 28 languages, RTL, 320 px.
+- `tests/browser/preview.browser.ts`: the admin live preview runs the real widget, reacts to setting changes and shows holidays.
+- `tests/db/*` run against a real Postgres.
+
+## 5. Order of work
 
 1. ✅ Audit (this file).
-2. ⬜ Core: regions, holiday sets, date format, notes, widget options, plan changes, contrast; tests.
-3. ⬜ Server: publish expands holidays, install uses regional defaults, B26–B29, B31.
-4. ⬜ Widget: B2, B7, B21, B22, B24, notes, date format, week start, position; rebuild; 28 storefront languages for new text.
-5. ⬜ Admin redesign: icon nav, wizard, Home chart + close a day, Delivery, Pickup, Days off, Appearance (live widget preview), Settings; remove merged pages.
-6. ⬜ Admin translations (8 languages) for new text.
-7. ⬜ Docs: README (Render + Neon + Partner Dashboard), DECISIONS, CHECKLIST, PRIVACY, `.env.example`, `render.yaml`.
-8. ⬜ Verification: re-read changed files, tricky date tests (time zones, DST, holidays, cutoff boundary, month/year ends, leap day), full install → order flow review, typecheck, lint, tests (incl. DB), build, browser test.
+2. ✅ Core: regions, holiday sets, date format, notes, widget options, plan changes, contrast; tests.
+3. ✅ Server: publish expands holidays, install uses regional defaults, B26–B29, B31.
+4. ✅ Widget: B2, B7, B21, B22, B24, notes, date format, week start, position; rebuild; 28 storefront languages for new text.
+5. ✅ Admin redesign: icon nav, wizard, Home chart + close a day, Delivery, Pickup, Days off, Appearance (live widget preview), Settings; remove merged pages.
+6. ✅ Admin translations (8 languages) for new text.
+7. ⏳ Docs: README (Render + Neon + Partner Dashboard), DECISIONS, CHECKLIST, PRIVACY, `.env.example`, `render.yaml`.
+8. ⏳ Verification: re-read changed files, tricky date tests (time zones, DST, holidays, cutoff boundary, month/year ends, leap day), full install → order flow review, typecheck, lint, tests (incl. DB), build, browser test.
