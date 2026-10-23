@@ -251,10 +251,6 @@
     "where": "While the widget prepares the calendar.",
     "max": 40
   },
-  "poweredBy": {
-    "where": "Free plan footer link. {brand} = app name.",
-    "max": 30
-  },
   "product.earliest.delivery": {
     "where": "Product page message. {date} = formatted date or Today/Tomorrow.",
     "max": 50
@@ -398,5 +394,17 @@
   "snippet.location": {
     "where": "Label in order emails / packing slips.",
     "max": 25
+  },
+  "requiredLocation": {
+    "where": "Inline error when trying to check out with store pickup but no pickup location chosen.",
+    "max": 60
+  },
+  "notes.label": {
+    "where": "Label of the optional notes box under the date (delivery instructions or gift message; merchants can rename it).",
+    "max": 40
+  },
+  "notes.placeholder": {
+    "where": "Example text inside the empty notes box.",
+    "max": 60
   }
 }

@@ -56,13 +56,13 @@
   "required": "Sila pilih tarikh untuk meneruskan.",
   "requiredSlot": "Sila pilih slot masa untuk meneruskan.",
   "requiredItems": "Sila pilih tarikh bagi setiap item untuk meneruskan.",
+  "requiredLocation": "Sila pilih lokasi pengambilan untuk meneruskan.",
   "invalidated": "Tarikh yang anda pilih sebelum ini tidak lagi tersedia. Sila pilih tarikh lain.",
   "noDates": "Maaf, tiada tarikh tersedia buat masa ini.",
   "noCommonDate": "{product} tidak boleh dihantar pada hari yang sama dengan item lain dalam troli anda. Sila pesan berasingan.",
   "minOrder": "{method} tersedia untuk pesanan melebihi {amount}.",
   "vacation": "Kami cuti hingga {date}. Anda boleh memesan untuk {nextDate} dan seterusnya.",
   "loading": "Memuatkan tarikh yang tersedia…",
-  "poweredBy": "Dikuasakan oleh {brand}",
   "product.earliest.delivery": "Penghantaran terawal: {date}",
   "product.earliest.pickup": "Pengambilan terawal: {date}",
   "product.earliest.dispatch": "Dipos mulai {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Kaedah penghantaran",
   "snippet.date": "Tarikh",
   "snippet.time": "Masa",
-  "snippet.location": "Lokasi pengambilan"
+  "snippet.location": "Lokasi pengambilan",
+  "notes.label": "Nota atau arahan (pilihan)",
+  "notes.placeholder": "Contoh: tinggalkan di pintu belakang"
 }

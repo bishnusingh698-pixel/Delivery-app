@@ -56,13 +56,13 @@
   "required": "Please choose a date to continue.",
   "requiredSlot": "Please choose a time slot to continue.",
   "requiredItems": "Please choose a date for every item to continue.",
+  "requiredLocation": "Please choose a pickup location to continue.",
   "invalidated": "Your previous date is no longer available. Please choose another.",
   "noDates": "Sorry, there are no dates available right now.",
   "noCommonDate": "{product} can't be delivered on the same day as the rest of your cart. Please order it separately.",
   "minOrder": "{method} is available for orders over {amount}.",
   "vacation": "We're closed until {date}. You can still order for {nextDate} or later.",
   "loading": "Loading available dates…",
-  "poweredBy": "Powered by {brand}",
   "product.earliest.delivery": "Earliest delivery: {date}",
   "product.earliest.pickup": "Earliest pickup: {date}",
   "product.earliest.dispatch": "Ships from {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Delivery method",
   "snippet.date": "Date",
   "snippet.time": "Time",
-  "snippet.location": "Pickup location"
+  "snippet.location": "Pickup location",
+  "notes.label": "Notes or instructions (optional)",
+  "notes.placeholder": "For example: leave it at the back door"
 }

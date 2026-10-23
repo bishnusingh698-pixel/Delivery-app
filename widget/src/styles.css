@@ -31,8 +31,7 @@
 .pd-error, .pd-error-inline { color: var(--pd-error); font-weight: 500; }
 .pd-error:focus { outline: 2px solid var(--pd-error); outline-offset: 2px; }
 .pd-ok { color: var(--pd-ok); }
-.pd-tz, .pd-reason, .pd-busy, .pd-powered { color: var(--pd-muted); font-size: 0.875em; }
-.pd-powered a { color: inherit; }
+.pd-tz, .pd-reason, .pd-busy { color: var(--pd-muted); font-size: 0.875em; }
 .pd-field { display: flex; flex-direction: column; }
 .pd-row { display: flex; gap: 0.5em; flex-wrap: wrap; }
 .pd-row .pd-input { flex: 1 1 8em; min-inline-size: 0; }
@@ -42,6 +41,7 @@
   border: 1px solid var(--pd-line); border-radius: var(--pd-radius);
 }
 .pd-row .pd-input { inline-size: auto; }
+.pd-notes { resize: vertical; min-block-size: 3.2em; line-height: 1.4; }
 .pd-select option { color: initial; background: initial; }
 .pd-btn, .pd-link, .pd-nav, .pd-day {
   font: inherit; color: inherit; cursor: pointer; background: none; border: 0; -webkit-tap-highlight-color: transparent;

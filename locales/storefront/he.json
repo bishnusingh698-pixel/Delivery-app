@@ -56,13 +56,13 @@
   "required": "יש לבחור תאריך כדי להמשיך.",
   "requiredSlot": "יש לבחור חלון זמן כדי להמשיך.",
   "requiredItems": "יש לבחור תאריך לכל פריט כדי להמשיך.",
+  "requiredLocation": "יש לבחור נקודת איסוף כדי להמשיך.",
   "invalidated": "התאריך שנבחר קודם כבר לא זמין. יש לבחור תאריך אחר.",
   "noDates": "מצטערים, אין כרגע תאריכים פנויים.",
   "noCommonDate": "לא ניתן לשלוח את {product} באותו יום עם שאר הפריטים בעגלה. יש להזמין אותו בנפרד.",
   "minOrder": "האפשרות {method} זמינה בהזמנות מעל {amount}.",
   "vacation": "אנחנו סגורים עד {date}. עדיין אפשר להזמין לתאריך {nextDate} ואילך.",
   "loading": "התאריכים הפנויים נטענים…",
-  "poweredBy": "מופעל על ידי {brand}",
   "product.earliest.delivery": "המשלוח הקרוב ביותר: {date}",
   "product.earliest.pickup": "האיסוף הקרוב ביותר: {date}",
   "product.earliest.dispatch": "יציאה למשלוח החל מ: {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "שיטת משלוח",
   "snippet.date": "תאריך",
   "snippet.time": "שעה",
-  "snippet.location": "נקודת איסוף"
+  "snippet.location": "נקודת איסוף",
+  "notes.label": "הערות או הוראות (לא חובה)",
+  "notes.placeholder": "לדוגמה: להשאיר ליד הדלת האחורית"
 }

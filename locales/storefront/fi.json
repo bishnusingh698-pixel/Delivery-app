@@ -56,13 +56,13 @@
   "required": "Valitse päivä jatkaaksesi.",
   "requiredSlot": "Valitse aikaikkuna jatkaaksesi.",
   "requiredItems": "Valitse päivä jokaiselle tuotteelle jatkaaksesi.",
+  "requiredLocation": "Valitse noutopaikka jatkaaksesi.",
   "invalidated": "Valitsemasi päivä ei ole enää vapaana. Valitse toinen päivä.",
   "noDates": "Valitettavasti vapaita päiviä ei ole juuri nyt.",
   "noCommonDate": "Tuotetta {product} ei voi toimittaa samana päivänä kuin muita ostoskorin tuotteita. Tilaa se erikseen.",
   "minOrder": "{method} on mahdollinen, kun tilauksen arvo on yli {amount}.",
   "vacation": "Olemme suljettuina {date} asti. Voit jo tilata päivälle {nextDate} tai myöhemmäksi.",
   "loading": "Ladataan vapaita päiviä…",
-  "poweredBy": "Palvelun tarjoaa {brand}",
   "product.earliest.delivery": "Aikaisin toimitus: {date}",
   "product.earliest.pickup": "Aikaisin nouto: {date}",
   "product.earliest.dispatch": "Lähetetään alkaen {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Toimitustapa",
   "snippet.date": "Päivä",
   "snippet.time": "Aika",
-  "snippet.location": "Noutopaikka"
+  "snippet.location": "Noutopaikka",
+  "notes.label": "Huomautukset tai ohjeet (valinnainen)",
+  "notes.placeholder": "Esimerkiksi: jätä takaovelle"
 }

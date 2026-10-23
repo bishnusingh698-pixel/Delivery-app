@@ -56,13 +56,13 @@
   "required": "Velg en dato for å fortsette.",
   "requiredSlot": "Velg et tidsvindu for å fortsette.",
   "requiredItems": "Velg en dato for hver vare for å fortsette.",
+  "requiredLocation": "Velg et hentested for å fortsette.",
   "invalidated": "Datoen du valgte, er ikke lenger tilgjengelig. Velg en annen.",
   "noDates": "Beklager, det er ingen ledige datoer akkurat nå.",
   "noCommonDate": "{product} kan ikke leveres samme dag som resten av handlekurven. Bestill den separat.",
   "minOrder": "{method} er tilgjengelig for bestillinger over {amount}.",
   "vacation": "Vi holder stengt til og med {date}. Du kan allerede nå bestille til {nextDate} eller senere.",
   "loading": "Henter ledige datoer …",
-  "poweredBy": "Levert av {brand}",
   "product.earliest.delivery": "Tidligste levering: {date}",
   "product.earliest.pickup": "Tidligste henting: {date}",
   "product.earliest.dispatch": "Sendes fra {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Leveringsmåte",
   "snippet.date": "Dato",
   "snippet.time": "Tidspunkt",
-  "snippet.location": "Hentested"
+  "snippet.location": "Hentested",
+  "notes.label": "Merknader eller instruksjoner (valgfritt)",
+  "notes.placeholder": "For eksempel: sett den ved bakdøren"
 }

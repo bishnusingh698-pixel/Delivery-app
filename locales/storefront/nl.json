@@ -56,13 +56,13 @@
   "required": "Kies een datum om verder te gaan.",
   "requiredSlot": "Kies een tijdvak om verder te gaan.",
   "requiredItems": "Kies voor elk artikel een datum om verder te gaan.",
+  "requiredLocation": "Kies een ophaallocatie om verder te gaan.",
   "invalidated": "Je eerder gekozen datum is niet meer beschikbaar. Kies een andere datum.",
   "noDates": "Sorry, er zijn op dit moment geen datums beschikbaar.",
   "noCommonDate": "{product} kan niet op dezelfde dag worden bezorgd als de rest van je winkelwagen. Bestel het apart.",
   "minOrder": "{method} is mogelijk bij bestellingen vanaf {amount}.",
   "vacation": "We zijn gesloten tot en met {date}. Je kunt al bestellen voor {nextDate} of later.",
   "loading": "Beschikbare datums laden…",
-  "poweredBy": "Mogelijk gemaakt door {brand}",
   "product.earliest.delivery": "Vroegste bezorging: {date}",
   "product.earliest.pickup": "Vroegst op te halen: {date}",
   "product.earliest.dispatch": "Verzonden vanaf {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Bezorgmethode",
   "snippet.date": "Datum",
   "snippet.time": "Tijd",
-  "snippet.location": "Ophaallocatie"
+  "snippet.location": "Ophaallocatie",
+  "notes.label": "Opmerkingen of instructies (optioneel)",
+  "notes.placeholder": "Bijvoorbeeld: bij de achterdeur zetten"
 }

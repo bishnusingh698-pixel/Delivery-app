@@ -56,13 +56,13 @@
   "required": "Veuillez choisir une date pour continuer.",
   "requiredSlot": "Veuillez choisir un créneau pour continuer.",
   "requiredItems": "Veuillez choisir une date pour chaque article.",
+  "requiredLocation": "Veuillez choisir un point de retrait pour continuer.",
   "invalidated": "La date choisie n'est plus disponible. Veuillez en choisir une autre.",
   "noDates": "Désolés, aucune date n'est disponible pour le moment.",
   "noCommonDate": "Impossible de livrer {product} le même jour que le reste du panier. Merci de passer une commande à part.",
   "minOrder": "{method} est disponible pour les commandes supérieures à {amount}.",
   "vacation": "Nous sommes fermés jusqu'au {date}. Commandes possibles dès le {nextDate}.",
   "loading": "Chargement des dates disponibles…",
-  "poweredBy": "Propulsé par {brand}",
   "product.earliest.delivery": "Livraison au plus tôt : {date}",
   "product.earliest.pickup": "Retrait au plus tôt : {date}",
   "product.earliest.dispatch": "Expédition au plus tôt : {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Mode de livraison",
   "snippet.date": "Date",
   "snippet.time": "Heure",
-  "snippet.location": "Point de retrait"
+  "snippet.location": "Point de retrait",
+  "notes.label": "Notes ou instructions (facultatif)",
+  "notes.placeholder": "Par exemple : déposer à la porte de derrière"
 }

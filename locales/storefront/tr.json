@@ -56,13 +56,13 @@
   "required": "Devam etmek için lütfen bir tarih seçin.",
   "requiredSlot": "Devam etmek için lütfen bir zaman aralığı seçin.",
   "requiredItems": "Devam etmek için lütfen her ürüne bir tarih seçin.",
+  "requiredLocation": "Devam etmek için lütfen bir teslim alma noktası seçin.",
   "invalidated": "Önceki tarihiniz artık müsait değil. Lütfen başka bir tarih seçin.",
   "noDates": "Üzgünüz, şu anda müsait tarih yok.",
   "noCommonDate": "{product}, sepetinizdeki diğer ürünlerle aynı gün teslim edilemiyor. Lütfen ayrı sipariş verin.",
   "minOrder": "{method}, {amount} üzerindeki siparişlerde kullanılabilir.",
   "vacation": "{date} tarihine kadar kapalıyız. {nextDate} veya sonrası için yine de sipariş verebilirsiniz.",
   "loading": "Müsait tarihler yükleniyor…",
-  "poweredBy": "{brand} altyapısıyla",
   "product.earliest.delivery": "En erken teslimat: {date}",
   "product.earliest.pickup": "En erken teslim alma: {date}",
   "product.earliest.dispatch": "En erken kargoya veriliş: {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Teslimat yöntemi",
   "snippet.date": "Tarih",
   "snippet.time": "Saat",
-  "snippet.location": "Teslim alma noktası"
+  "snippet.location": "Teslim alma noktası",
+  "notes.label": "Notlar veya talimatlar (isteğe bağlı)",
+  "notes.placeholder": "Örneğin: arka kapıya bırakın"
 }

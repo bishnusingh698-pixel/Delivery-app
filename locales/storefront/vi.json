@@ -56,13 +56,13 @@
   "required": "Vui lòng chọn ngày để tiếp tục.",
   "requiredSlot": "Vui lòng chọn khung giờ để tiếp tục.",
   "requiredItems": "Vui lòng chọn ngày cho từng sản phẩm để tiếp tục.",
+  "requiredLocation": "Vui lòng chọn địa điểm nhận hàng để tiếp tục.",
   "invalidated": "Ngày bạn chọn trước đó không còn khả dụng. Vui lòng chọn ngày khác.",
   "noDates": "Rất tiếc, hiện không có ngày nào khả dụng.",
   "noCommonDate": "{product} không thể giao cùng ngày với các sản phẩm khác trong giỏ hàng. Vui lòng đặt riêng sản phẩm này.",
   "minOrder": "{method} áp dụng cho đơn hàng trên {amount}.",
   "vacation": "Chúng tôi tạm nghỉ đến hết {date}. Bạn vẫn có thể đặt hàng nhận từ {nextDate}.",
   "loading": "Đang tải các ngày khả dụng…",
-  "poweredBy": "Cung cấp bởi {brand}",
   "product.earliest.delivery": "Giao sớm nhất: {date}",
   "product.earliest.pickup": "Nhận hàng sớm nhất: {date}",
   "product.earliest.dispatch": "Gửi hàng từ {date}",
@@ -98,5 +98,7 @@
   "snippet.method": "Phương thức nhận hàng",
   "snippet.date": "Ngày",
   "snippet.time": "Giờ",
-  "snippet.location": "Địa điểm nhận hàng"
+  "snippet.location": "Địa điểm nhận hàng",
+  "notes.label": "Ghi chú hoặc hướng dẫn (không bắt buộc)",
+  "notes.placeholder": "Ví dụ: để ở cửa sau"
 }

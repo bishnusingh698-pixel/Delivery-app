@@ -56,13 +56,13 @@
   "required": "続けるには日付を選択してください。",
   "requiredSlot": "続けるには時間帯を選択してください。",
   "requiredItems": "続けるには、すべての商品の日付を選択してください。",
+  "requiredLocation": "続けるには受取場所を選択してください。",
   "invalidated": "以前選択した日付は選択できなくなりました。別の日付をお選びください。",
   "noDates": "申し訳ありません。現在選択できる日付がありません。",
   "noCommonDate": "{product}はカート内の他の商品と同じ日にお届けできません。別々にご注文ください。",
   "minOrder": "{method}は{amount}以上のご注文でご利用いただけます。",
   "vacation": "{date}まで休業しております。{nextDate}以降の日付でしたらご注文いただけます。",
   "loading": "選択可能な日付を読み込み中…",
-  "poweredBy": "{brand} 提供",
   "product.earliest.delivery": "最短お届け日：{date}",
   "product.earliest.pickup": "最短受取日：{date}",
   "product.earliest.dispatch": "{date}以降に発送",
@@ -98,5 +98,7 @@
   "snippet.method": "配送方法",
   "snippet.date": "日付",
   "snippet.time": "時間帯",
-  "snippet.location": "受取場所"
+  "snippet.location": "受取場所",
+  "notes.label": "メモ・ご要望（任意）",
+  "notes.placeholder": "例：裏口に置いてください"
 }
