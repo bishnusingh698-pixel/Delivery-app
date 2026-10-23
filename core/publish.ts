@@ -148,7 +148,7 @@ export function toFunctionConfig(c: StorefrontConfig, maxBytes = 20000): Storefr
     locations: c.locations.map((l) => ({ ...l, address: "", mapUrl: "", instructions: {} })),
     areas: c.areas.map((a) => ({ ...a, areas: a.areas.map((x) => ({ id: x.id, names: {} })) })),
     // Product names are not needed for validation; collection lists are replaced by inCollections().
-    productRules: { ...c.productRules, collectionProducts: {} },
+    productRules: { ...c.productRules, collectionProducts: {}, tagProducts: {} },
   };
   if (JSON.stringify(out).length > maxBytes) {
     out.trimmed = true;

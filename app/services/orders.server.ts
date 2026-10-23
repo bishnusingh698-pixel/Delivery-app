@@ -5,7 +5,7 @@
  * - Out-of-order safe: a payload older than what we stored is ignored.
  * - Counts are rebuilt for every date touched (old and new), never incremented.
  */
-import type { Prisma } from "@prisma/client";
+import type { Prisma, ScheduledItem, ScheduledOrder } from "@prisma/client";
 import prisma from "../db.server";
 import { loadSettings, logActivity } from "../models/settings.server";
 import { addWarning, flagsOf, planOf, requireShop, setFlags, shopToday } from "../models/shop.server";
@@ -33,9 +33,12 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     // Choice removed (or never made). Only matters if we had recorded it.
     if (!existing || topic === "ORDERS_EDITED") return "ignored";
     if (existing.status === "cancelled") return "unchanged";
-    await prisma.scheduledOrder.update({ where: { id: existing.id }, data: { status: "cancelled" } });
-    await prisma.scheduledItem.deleteMany({ where: { shop, orderId: existing.orderId } });
-    await afterChange(shop, settings, [existing.date]);
+    const oldItemRows = await prisma.scheduledItem.findMany({ where: { shop, orderId: existing.orderId } });
+    await prisma.$transaction([
+      prisma.scheduledOrder.update({ where: { id: existing.id }, data: { status: "cancelled" } }),
+      prisma.scheduledItem.deleteMany({ where: { shop, orderId: existing.orderId } }),
+    ]);
+    await undoOnFailure(shop, existing, oldItemRows, () => afterChange(shop, settings, [existing.date, ...oldItemRows.map((i) => i.date)]));
     if (admin && !existing.limited) await flowTrigger(shop, admin, "cancelled", existing).catch(() => {});
     return "removed";
   }
@@ -80,12 +83,13 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
   }
 
   const oldDates = existing ? [existing.date] : [];
-  const oldItems = existing ? (await prisma.scheduledItem.findMany({ where: { shop, orderId: existing.orderId }, select: { date: true } })).map((i) => i.date) : [];
-  const saved = existing
-    ? await prisma.scheduledOrder.update({ where: { id: existing.id }, data })
-    : await prisma.scheduledOrder.create({ data: { shop, orderId: parsed.orderId, limited, ...data } });
-
-  await prisma.$transaction([
+  const oldItemRows = existing ? await prisma.scheduledItem.findMany({ where: { shop, orderId: existing.orderId } }) : [];
+  // The order row and its items change together; if the recount then fails, both are put back so
+  // Shopify's retry finds the old state (and is not skipped as "unchanged").
+  const [saved] = await prisma.$transaction([
+    existing
+      ? prisma.scheduledOrder.update({ where: { id: existing.id }, data })
+      : prisma.scheduledOrder.create({ data: { shop, orderId: parsed.orderId, limited, ...data } }),
     prisma.scheduledItem.deleteMany({ where: { shop, orderId: parsed.orderId } }),
     prisma.scheduledItem.createMany({
       data:
@@ -95,7 +99,9 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     }),
   ]);
 
-  await afterChange(shop, settings, [...oldDates, ...oldItems, saved.date, ...parsed.perItem.map((i) => i.date)]);
+  await undoOnFailure(shop, existing ?? { shop, orderId: parsed.orderId }, oldItemRows, () =>
+    afterChange(shop, settings, [...oldDates, ...oldItemRows.map((i) => i.date), saved.date, ...parsed.perItem.map((i) => i.date)]),
+  );
 
   if (!existing) {
     const row = await requireShop(shop);
@@ -123,6 +129,36 @@ function stable(v: unknown): string {
   return JSON.stringify(JSON.parse(JSON.stringify(v ?? null)), (_k, x) =>
     x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x,
   );
+}
+
+/**
+ * Run `work`; if it throws, put the order (or its absence, for a new one) and its
+ * per-item rows back as they were, then rethrow.
+ */
+async function undoOnFailure(shop: string, before: ScheduledOrder | { shop: string; orderId: string }, items: ScheduledItem[], work: () => Promise<void>) {
+  try {
+    await work();
+  } catch (e) {
+    const { orderId } = before;
+    const restore =
+      "id" in before
+        ? prisma.scheduledOrder.update({ where: { id: before.id }, data: omit(before, ["id", "createdAt", "updatedAt"]) as Prisma.ScheduledOrderUncheckedUpdateInput })
+        : prisma.scheduledOrder.deleteMany({ where: { shop, orderId } });
+    await prisma
+      .$transaction([
+        restore,
+        prisma.scheduledItem.deleteMany({ where: { shop, orderId } }),
+        prisma.scheduledItem.createMany({ data: items.map((i) => omit(i, ["id"])) }),
+      ])
+      .catch((r) => console.error("[orders] undo", shop, orderId, (r as Error).message));
+    throw e;
+  }
+}
+
+function omit<T extends object, K extends keyof T>(o: T, keys: K[]): Omit<T, K> {
+  const out = { ...o };
+  for (const k of keys) delete out[k];
+  return out;
 }
 
 async function afterChange(shop: string, settings: Settings, dates: (string | null | undefined)[]) {

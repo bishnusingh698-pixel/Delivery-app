@@ -190,6 +190,8 @@ export interface ProductRules {
   methodOnly: { id: string; target: Target; methods: MethodId[] }[];
   /** Server-resolved collection membership: collection id -> product ids. */
   collectionProducts: Record<string, string[]>;
+  /** Server-resolved tags used in rules: lower-case tag -> product ids (order webhooks carry no tags). */
+  tagProducts: Record<string, string[]>;
 }
 
 export interface Surcharge {

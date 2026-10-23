@@ -51,6 +51,16 @@ describe("order parsing", () => {
     expect(p.date).toBe("2026-10-20");
   });
 
+  it("lists per-item lines on different dates under the earliest date, tagging every date", () => {
+    const o = order({ note_attributes: [{ name: "_pickday", value: JSON.stringify({ ...sel, d: null, s: null }) }] });
+    o.line_items[0].properties = [{ name: "_pickday", value: JSON.stringify({ d: "2026-10-22" }) }];
+    o.line_items.push({ id: 3, product_id: 30, variant_id: 300, title: "Pie", quantity: 1, properties: [{ name: "_pickday", value: JSON.stringify({ d: "2026-10-20" }) }] });
+    const p = parseOrder(o, settings())!;
+    expect(p.date).toBe("2026-10-20");
+    expect(p.perItem.map((i) => i.date)).toEqual(["2026-10-22", "2026-10-20"]);
+    expect(orderTags(p, "", null).filter((t) => t.startsWith("Date:"))).toEqual(["Date: 2026-10-20", "Date: 2026-10-22"]);
+  });
+
   it("builds tags with a prefix", () => {
     const p = parseOrder(order(), settings())!;
     expect(orderTags(p, "PD-", "Main Street")).toEqual(["PD-Pickday", "PD-Method: Pickup", "PD-Date: 2026-10-18", "PD-Slot: 10:00-12:00", "PD-Location: Main Street"]);

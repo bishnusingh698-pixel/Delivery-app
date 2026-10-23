@@ -8,6 +8,8 @@
 import { withLock } from "./lock.server";
 import prisma from "../db.server";
 import { lineMatches } from "../../core/rules";
+import { applyPlan } from "../../core/publish";
+import { getShop, planOf } from "../models/shop.server";
 import type { Availability, CartLine, DayCount, Settings, StorefrontConfig } from "../../core/types";
 
 export interface StoredItem {
@@ -38,8 +40,11 @@ type Agg = Map<string, { orders: number; items: number }>;
 export async function recountDates(shop: string, settings: Settings, dates: string[]) {
   const unique = [...new Set(dates.filter(Boolean))];
   if (!unique.length) return;
+  // Count under the keys and limits the published config uses (zones and product limits are plan features).
+  const row = await getShop(shop);
+  const effective = row ? applyPlan(settings, planOf(row)) : settings;
   // Read and rewrite under one lock per store so two recounts can't overwrite each other.
-  await withLock(`count:${shop}`, () => recount(shop, settings, unique));
+  await withLock(`count:${shop}`, () => recount(shop, effective, unique));
 }
 
 async function recount(shop: string, settings: Settings, unique: string[]) {
@@ -82,18 +87,18 @@ async function recount(shop: string, settings: Settings, unique: string[]) {
     if (!o.date || !unique.includes(o.date) || itemOrders.has(o.orderId)) continue;
     const items = ((o.items as unknown as StoredItem[]) ?? []).filter((i) => i.needsDate !== false);
     const qty = items.reduce((n, i) => n + i.qty, 0);
-    // Fully refunded (every dated item at quantity 0): the order no longer takes a spot.
-    if (items.length && !qty) continue;
+    // Nothing left to date (every dated line refunded or removed): the order no longer takes a spot.
+    if (!qty && !o.itemCount) continue;
     const key = capacityKey(settings, o.method, o.locationId, o.zoneId);
     bump(key, o.date, "", qty);
     if (o.slotId) bump(key, o.date, o.slotId, qty);
     bumpProduct(items, o.date, o.locationId);
   }
-  // Per-item mode: each line counts on its own date (one "order" per date per order).
+  // Per-item mode: each line counts on its own date (one "order" per date per order, and per slot).
   const byOrderDate = new Map<string, typeof perItem>();
   for (const it of perItem) {
     if (cancelled.has(it.orderId)) continue;
-    const k = `${it.orderId}|${it.date}|${it.slotId ?? ""}`;
+    const k = `${it.orderId}|${it.date}`;
     byOrderDate.set(k, [...(byOrderDate.get(k) ?? []), it]);
   }
   for (const group of byOrderDate.values()) {
@@ -101,7 +106,9 @@ async function recount(shop: string, settings: Settings, unique: string[]) {
     const qty = group.reduce((n, i) => n + i.qty, 0);
     const key = capacityKey(settings, first.method, first.locationId, null);
     bump(key, first.date, "", qty);
-    if (first.slotId) bump(key, first.date, first.slotId, qty);
+    const bySlot = new Map<string, number>();
+    for (const i of group) if (i.slotId) bySlot.set(i.slotId, (bySlot.get(i.slotId) ?? 0) + i.qty);
+    for (const [slot, n] of bySlot) bump(key, first.date, slot, n);
     bumpProduct(
       group.map((g) => ({ lineId: g.lineId, productId: g.productId, variantId: g.variantId, title: g.title, qty: g.qty })),
       first.date,

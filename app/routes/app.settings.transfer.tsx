@@ -8,7 +8,7 @@ import { Button, Locked, Page, Section, Stack, TextField } from "../components/p
 import { useT } from "../i18n/react";
 import { logActivity, recentActivity } from "../models/settings.server";
 import { adminContext, saveSettings } from "../services/settings.server";
-import { collectionIdsIn, resolveCollectionProducts } from "../services/collections.server";
+import { resolveRuleProducts } from "../services/collections.server";
 import { createShareCode, exportDocument, prepareImport, readShareCode, refsFor, remapTargets, consumeShareCode, type Refs } from "../services/transfer.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -50,8 +50,7 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
   if (body.intent === "preview") return { intent: "preview", ok: true, changes: prep.changes, productIds: prep.productIds, fees: prep.fees, missing };
   // Notification settings (daily summary, feed, Flow switch) never come along: keep this store's own.
   mapped.notifications = ctx.settings.notifications;
-  const cols = collectionIdsIn(mapped.productRules);
-  if (cols.length) mapped.productRules.collectionProducts = await resolveCollectionProducts(ctx.admin, cols).catch(() => ({}));
+  Object.assign(mapped.productRules, await resolveRuleProducts(ctx.admin, mapped.productRules, { collectionProducts: {}, tagProducts: {} }));
   // Imported fees need this store's own fee variants, or they would never be charged:
   // if Shopify refuses them, import nothing (and keep the share code usable).
   let next = mapped;

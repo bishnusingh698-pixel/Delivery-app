@@ -64,6 +64,7 @@ export function defaultSettings(country: string | null = null): Settings {
       limits: [],
       methodOnly: [],
       collectionProducts: {},
+      tagProducts: {},
     },
     surcharges: [],
     surchargeTaxable: true,

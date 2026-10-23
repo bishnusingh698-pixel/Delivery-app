@@ -183,6 +183,7 @@ export const settingsSchema = z
         .max(50),
       methodOnly: z.array(z.object({ id: z.string(), target, methods: z.array(method).min(1) })).max(50),
       collectionProducts: z.record(z.string(), z.array(z.string())),
+      tagProducts: z.record(z.string(), z.array(z.string())),
     }),
     surcharges: z
       .array(

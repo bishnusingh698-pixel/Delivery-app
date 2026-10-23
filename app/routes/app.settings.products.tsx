@@ -10,7 +10,7 @@ import { SettingsChrome, fieldId, useSettingsForm, type Issue } from "../compone
 import { WeekdayPicker, newId, useFormatDate, useMethodLabel } from "../components/shared";
 import { TargetPicker, type TitleMap } from "../components/target-picker";
 import { useT } from "../i18n/react";
-import { collectionIdsIn, resolveCollectionProducts, resolveTargetTitles, ruleTargets } from "../services/collections.server";
+import { resolveRuleProducts, resolveTargetTitles, ruleTargets } from "../services/collections.server";
 import { adminContext, saveSettings, shopMeta } from "../services/settings.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -27,7 +27,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     dateMode: ctx.settings.dateMode,
     titles,
     // Collection membership is server-managed and can be large: not sent to the page.
-    initial: { productRules: { ...rules, collectionProducts: {} } } as Pick<Settings, "productRules">,
+    initial: { productRules: { ...rules, collectionProducts: {}, tagProducts: {} } } as Pick<Settings, "productRules">,
   };
 };
 
@@ -39,21 +39,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const ctx = await adminContext(request);
   const body = (await request.json()) as { patch?: Partial<Settings> };
   const incoming = body.patch?.productRules ?? ctx.settings.productRules;
-  let ids: string[] = [];
+  let resolved: Pick<ProductRules, "collectionProducts" | "tagProducts"> = { collectionProducts: {}, tagProducts: {} };
   try {
-    ids = collectionIdsIn(incoming);
+    resolved = await resolveRuleProducts(ctx.admin, incoming, ctx.settings.productRules);
   } catch {
     // Malformed input: validation in saveSettings reports it.
   }
-  let collectionProducts: Record<string, string[]>;
-  try {
-    collectionProducts = await resolveCollectionProducts(ctx.admin, ids);
-  } catch (e) {
-    console.error(`[products] collections ${ctx.shop}`, e);
-    const old = ctx.settings.productRules.collectionProducts;
-    collectionProducts = Object.fromEntries(ids.map((id) => [id, old[id] ?? []]));
-  }
-  const next: Settings = { ...ctx.settings, productRules: { ...incoming, collectionProducts } };
+  const next: Settings = { ...ctx.settings, productRules: { ...incoming, ...resolved } };
   return saveSettings(ctx, next);
 };
 

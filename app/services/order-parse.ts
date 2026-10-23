@@ -88,7 +88,8 @@ export function parseOrder(p: OrderPayload, settings: Pick<Settings, "productRul
   const perItem = items
     .filter((i) => i.needsDate && i.date)
     .map((i) => ({ lineId: i.lineId, productId: i.productId, variantId: i.variantId, title: i.title, qty: i.qty, date: i.date!, slotId: i.slotId ?? null }));
-  const firstItemDate = perItem[0]?.date ?? null;
+  // Lines on different dates: the order is listed on its earliest one (its lines keep their own dates).
+  const firstItemDate = perItem.reduce<string | null>((min, i) => (!min || i.date < min ? i.date : min), null);
   const sameDate = perItem.every((i) => i.date === firstItemDate);
 
   const status: ParsedOrder["status"] = p.cancelled_at ? "cancelled" : p.fulfillment_status === "fulfilled" ? "fulfilled" : "scheduled";
@@ -98,7 +99,7 @@ export function parseOrder(p: OrderPayload, settings: Pick<Settings, "productRul
     customerFirst: p.customer?.first_name?.trim() || null,
     selection: sel,
     method: sel?.m ?? "shipping",
-    date: sel?.d ?? (perItem.length && sameDate ? firstItemDate : null),
+    date: sel?.d ?? firstItemDate,
     slotId: sel?.s ?? (perItem.length && sameDate ? perItem[0].slotId : null),
     slotLabel: sel?.t ?? null,
     locationId: sel?.m === "pickup" ? sel.l : null,
@@ -119,7 +120,7 @@ export function orderTags(o: Pick<ParsedOrder, "method" | "date" | "slotLabel" |
   const tag = (s: string) => `${p}${s}`.slice(0, 40);
   const method = o.method === "delivery" ? "Local delivery" : o.method === "pickup" ? "Pickup" : "Shipping";
   const tags = [tag("Pickday"), tag(`Method: ${method}`)];
-  const dates = o.date ? [o.date] : [...new Set(o.perItem.map((i) => i.date))];
+  const dates = o.perItem.length ? [...new Set(o.perItem.map((i) => i.date))].sort() : o.date ? [o.date] : [];
   for (const d of dates.slice(0, 5)) tags.push(tag(`Date: ${d}`));
   if (o.slotLabel) tags.push(tag(`Slot: ${o.slotLabel}`));
   if (locationName) tags.push(tag(`Location: ${locationName}`));

@@ -1,8 +1,8 @@
 /**
  * Collection membership and title lookups for product rules.
  *
- * Order webhooks and Functions only see product ids, so collections used in
- * rule targets are resolved to product ids when the merchant saves.
+ * Order webhooks and Functions only see product ids, so collections and tags used
+ * in rule targets are resolved to product ids when the merchant saves (and daily).
  */
 import type { ProductRules, Target } from "../../core/types";
 import { gid, gql, numericId, type AdminGraphql } from "./graphql.server";
@@ -25,6 +25,11 @@ export function ruleTargets(rules: Pick<ProductRules, "exclude" | "extraLead" | 
 /** Unique numeric collection ids used in product rules. */
 export function collectionIdsIn(rules: Parameters<typeof ruleTargets>[0]): string[] {
   return [...new Set(ruleTargets(rules).flatMap((t) => t.collections ?? []))].filter(Boolean);
+}
+
+/** Unique tags (lower case, as Shopify compares them) used in product rules. */
+export function tagsIn(rules: Parameters<typeof ruleTargets>[0]): string[] {
+  return [...new Set(ruleTargets(rules).flatMap((t) => (t.tags ?? []).map((g) => g.trim().toLowerCase())))].filter(Boolean);
 }
 
 const COLLECTION_PRODUCTS = `#graphql
@@ -57,6 +62,52 @@ export async function resolveCollectionProducts(admin: AdminGraphql, ids: string
     out[id] = products.slice(0, COLLECTION_PRODUCT_CAP);
   }
   return out;
+}
+
+const TAGGED_PRODUCTS = `#graphql
+  query TaggedProducts($query: String!, $first: Int!, $after: String) {
+    products(first: $first, after: $after, query: $query) {
+      nodes { id }
+      pageInfo { hasNextPage endCursor }
+    }
+  }`;
+
+/** Lower-case tag -> numeric ids of products with that tag (capped like collections). */
+export async function resolveTagProducts(admin: AdminGraphql, tags: string[]): Promise<Record<string, string[]>> {
+  const out: Record<string, string[]> = {};
+  for (const tag of [...new Set(tags.map((g) => g.trim().toLowerCase()))].filter(Boolean)) {
+    const products: string[] = [];
+    let after: string | null = null;
+    while (products.length < COLLECTION_PRODUCT_CAP) {
+      const data: any = await gql(admin, TAGGED_PRODUCTS, { query: `tag:${JSON.stringify(tag)}`, first: PAGE, after });
+      const conn = data?.products;
+      if (!conn) break;
+      for (const n of conn.nodes ?? []) products.push(numericId(n.id));
+      if (!conn.pageInfo?.hasNextPage || !conn.pageInfo.endCursor) break;
+      after = conn.pageInfo.endCursor;
+    }
+    out[tag] = products.slice(0, COLLECTION_PRODUCT_CAP);
+  }
+  return out;
+}
+
+/**
+ * Fresh collection and tag membership for the rules. If Shopify can't be reached,
+ * keep what was resolved before for ids and tags still in use.
+ */
+export async function resolveRuleProducts(admin: AdminGraphql, rules: Parameters<typeof ruleTargets>[0], old: Pick<ProductRules, "collectionProducts" | "tagProducts">) {
+  const ids = collectionIdsIn(rules);
+  const tags = tagsIn(rules);
+  const keep = (list: string[], prev: Record<string, string[]>) => Object.fromEntries(list.map((k) => [k, prev[k] ?? []]));
+  const collectionProducts = await resolveCollectionProducts(admin, ids).catch((e) => {
+    console.error("[rules] collections", (e as Error).message);
+    return keep(ids, old.collectionProducts);
+  });
+  const tagProducts = await resolveTagProducts(admin, tags).catch((e) => {
+    console.error("[rules] tags", (e as Error).message);
+    return keep(tags, old.tagProducts ?? {});
+  });
+  return { collectionProducts, tagProducts };
 }
 
 export interface TargetTitle {

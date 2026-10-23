@@ -6,12 +6,13 @@
  */
 import prisma from "../db.server";
 import { addDays } from "../../core/civil";
-import { shopToday } from "../models/shop.server";
+import { requireShop, shopToday } from "../models/shop.server";
 import { unauthenticated } from "../shopify.server";
 import { sendDigestIfDue } from "./digest.server";
 import { checkEmbed } from "./embed.server";
 import { publishShop, schedulePublish } from "./publish.server";
-import { collectionIdsIn, resolveCollectionProducts } from "./collections.server";
+import { collectionIdsIn, resolveCollectionProducts, resolveTagProducts, tagsIn } from "./collections.server";
+import { recountFuture } from "./counts.server";
 import { loadSettings, storeSettings } from "../models/settings.server";
 
 const running = new Map<string, Promise<unknown>>();
@@ -98,14 +99,22 @@ export async function daily() {
   return { pruned, checked: shops.length, cleanedUninstalled: gone.length };
 }
 
-/** Products added to or removed from a collection used in product rules: refresh the widget's copy (D-35). */
-async function refreshCollections(shop: string, admin: Parameters<typeof resolveCollectionProducts>[0]) {
+/**
+ * Products added to or removed from a collection, or tagged/untagged, for product rules:
+ * refresh the stored copy (D-35), and the counts that depend on it.
+ */
+export async function refreshCollections(shop: string, admin: Parameters<typeof resolveCollectionProducts>[0]) {
   const { settings } = await loadSettings(shop);
   const ids = collectionIdsIn(settings.productRules);
-  if (!ids.length) return;
-  const fresh = await resolveCollectionProducts(admin, ids);
-  if (JSON.stringify(fresh) === JSON.stringify(settings.productRules.collectionProducts)) return;
-  await storeSettings(shop, { ...settings, productRules: { ...settings.productRules, collectionProducts: fresh } });
+  const tags = tagsIn(settings.productRules);
+  if (!ids.length && !tags.length) return;
+  const collectionProducts = await resolveCollectionProducts(admin, ids);
+  const tagProducts = await resolveTagProducts(admin, tags);
+  const old = settings.productRules;
+  if (JSON.stringify(collectionProducts) === JSON.stringify(old.collectionProducts) && JSON.stringify(tagProducts) === JSON.stringify(old.tagProducts)) return;
+  const next = { ...settings, productRules: { ...old, collectionProducts, tagProducts } };
+  await storeSettings(shop, next);
+  if (next.productRules.limits.length) await recountFuture(shop, next, shopToday(await requireShop(shop)));
   schedulePublish(shop);
 }
 

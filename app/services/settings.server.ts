@@ -82,7 +82,7 @@ export async function patchSettingsAction(request: Request, opts: { onSavedFlag?
   // Never accept server-managed fields from the client.
   const { productRules, ...rest } = patch;
   const next: Settings = { ...ctx.settings, ...rest } as Settings;
-  if (productRules) next.productRules = { ...productRules, collectionProducts: ctx.settings.productRules.collectionProducts };
+  if (productRules) next.productRules = { ...productRules, collectionProducts: ctx.settings.productRules.collectionProducts, tagProducts: ctx.settings.productRules.tagProducts };
   // Set by its own button ("I've added it"); a stale form must not undo it.
   if (rest.notifications) next.notifications = { ...rest.notifications, emailSnippetConfirmed: ctx.settings.notifications.emailSnippetConfirmed };
   const r = await saveSettings(ctx, next);

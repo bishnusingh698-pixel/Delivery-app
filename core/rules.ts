@@ -23,13 +23,17 @@ export function targetIsEmpty(t: Target | null | undefined): boolean {
 }
 
 /** Does a cart line match a rule target? */
-export function lineMatches(line: CartLine, t: Target, rules?: Pick<ProductRules, "collectionProducts">): boolean {
+export function lineMatches(line: CartLine, t: Target, rules?: Pick<ProductRules, "collectionProducts"> & Partial<Pick<ProductRules, "tagProducts">>): boolean {
   if (targetIsEmpty(t)) return false;
   if (t.products.includes(line.productId)) return true;
   if (t.variants.includes(line.variantId)) return true;
   if (t.tags.length && line.tags?.length) {
     const tags = line.tags.map(lc);
     if (t.tags.some((g) => tags.includes(lc(g)))) return true;
+  }
+  if (t.tags.length && rules?.tagProducts) {
+    const map = rules.tagProducts;
+    if (t.tags.some((g) => map[lc(g)]?.includes(line.productId))) return true;
   }
   if (t.collections.length) {
     if (line.collections?.some((c) => t.collections.includes(c))) return true;

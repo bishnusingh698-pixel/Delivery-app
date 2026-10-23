@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyTarget } from "../core/defaults";
-import { COLLECTION_PRODUCT_CAP, collectionIdsIn, resolveCollectionProducts, resolveTargetTitles } from "../app/services/collections.server";
+import { COLLECTION_PRODUCT_CAP, collectionIdsIn, resolveCollectionProducts, resolveRuleProducts, resolveTagProducts, resolveTargetTitles, tagsIn } from "../app/services/collections.server";
+import { lineMatches } from "../core/rules";
 import { applyProductPick, productSelection } from "../app/components/target-picker";
 import type { AdminGraphql } from "../app/services/graphql.server";
 
@@ -67,6 +68,34 @@ describe("resolveCollectionProducts", () => {
     const out = await resolveCollectionProducts(admin, ["1"]);
     expect(out["1"].length).toBe(COLLECTION_PRODUCT_CAP);
     expect(admin.calls.length).toBe(COLLECTION_PRODUCT_CAP / 250);
+  });
+});
+
+describe("tags used in rules", () => {
+  const tagged = { ...rules([]), limits: [{ id: "l", name: "", target: { ...emptyTarget(), tags: ["Cake", " cake "] }, max: 1, perLocation: false }], exclude: { ...emptyTarget(), tags: ["Gift"] } };
+
+  it("are collected once, in lower case", () => {
+    expect(tagsIn(tagged).sort()).toEqual(["cake", "gift"]);
+  });
+
+  it("resolve to product ids with a product search", async () => {
+    const admin = fakeAdmin((_q, v) => ({
+      products: { nodes: v.query === 'tag:"cake"' ? [{ id: "gid://shopify/Product/7" }] : [], pageInfo: { hasNextPage: false, endCursor: null } },
+    }));
+    expect(await resolveTagProducts(admin, ["Cake", "gift"])).toEqual({ cake: ["7"], gift: [] });
+  });
+
+  it("keep the previous membership when Shopify can't be reached", async () => {
+    const admin: AdminGraphql = { graphql: async () => new Response("down", { status: 500 }) };
+    const out = await resolveRuleProducts(admin, tagged, { collectionProducts: {}, tagProducts: { cake: ["7"], old: ["1"] } });
+    expect(out.tagProducts).toEqual({ cake: ["7"], gift: [] });
+  });
+
+  it("let order lines (which carry no tags) match tag targets", () => {
+    const line = { key: "1", productId: "7", variantId: "70", quantity: 1, title: "Cake" };
+    const target = { ...emptyTarget(), tags: ["CAKE"] };
+    expect(lineMatches(line, target, { collectionProducts: {} })).toBe(false);
+    expect(lineMatches(line, target, { collectionProducts: {}, tagProducts: { cake: ["7"] } })).toBe(true);
   });
 });
 

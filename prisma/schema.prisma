@@ -80,7 +80,7 @@ model ScheduledOrder {
   orderName       String
   customerFirst   String?
   method          String
-  date            String? // YYYY-MM-DD (null in per-item mode when lines differ)
+  date            String? // YYYY-MM-DD (per-item mode: the earliest line date)
   slotId          String?
   slotLabel       String?
   locationId      String?
