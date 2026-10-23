@@ -35,7 +35,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     case "CUSTOMERS_REDACT": {
       const ids = ((p.orders_to_redact as number[]) ?? []).map(String);
       if (ids.length) {
-        await db.scheduledOrder.updateMany({ where: { shop, orderId: { in: ids } }, data: { customerFirst: null, history: [] } });
+        await db.scheduledOrder.updateMany({ where: { shop, orderId: { in: ids } }, data: { customerFirst: null, area: null, history: [] } });
       }
       break;
     }

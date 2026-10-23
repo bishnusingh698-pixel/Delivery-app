@@ -25,7 +25,7 @@ export interface OrderFilters {
   page: number;
 }
 
-export function parseFilters(url: URL, today: string): OrderFilters & { dateFrom: string | null; dateTo: string | null } {
+export function parseFilters(url: URL, today: string, weekStart: number | null = 1): OrderFilters & { dateFrom: string | null; dateTo: string | null } {
   const g = (k: string) => url.searchParams.get(k) ?? "";
   const range = (g("range") || "upcoming") as RangeKey;
   const f: OrderFilters = {
@@ -50,8 +50,9 @@ export function parseFilters(url: URL, today: string): OrderFilters & { dateFrom
       dateFrom = dateTo = addDays(today, 1);
       break;
     case "week": {
-      // Monday to Sunday of the current week.
-      const wd = (new Date(today + "T00:00:00Z").getUTCDay() + 6) % 7;
+      // The current week, starting on the store's first day of the week (Monday when not set).
+      const first = weekStart ?? 1;
+      const wd = (new Date(today + "T00:00:00Z").getUTCDay() - first + 7) % 7;
       dateFrom = addDays(today, -wd);
       dateTo = addDays(dateFrom, 6);
       break;

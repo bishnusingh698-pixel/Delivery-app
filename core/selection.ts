@@ -15,6 +15,8 @@ export const READABLE_KEYS = {
   slot: "Time slot",
   location: "Pickup location",
   area: "Delivery area",
+  /** Optional notes box (delivery instructions / gift message). Not stored by Pickday. */
+  notes: "Delivery instructions",
 } as const;
 
 const str = (v: unknown, max = 120): string | null =>

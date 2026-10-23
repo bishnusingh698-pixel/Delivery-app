@@ -9,6 +9,7 @@ import { gql, gid, type AdminGraphql } from "./graphql.server";
 import { orderRow } from "./orders-query.server";
 import { normalizePostcode } from "../../core/postcode";
 import { isRtl } from "../../core/i18n/locales";
+import { READABLE_KEYS } from "../../core/selection";
 
 export interface LiveOrder {
   note: string | null;
@@ -22,10 +23,13 @@ export async function liveDetails(admin: AdminGraphql, orderIds: string[]): Prom
   for (let i = 0; i < orderIds.length; i += 100) {
     const ids = orderIds.slice(i, i + 100).map((id) => gid("Order", id));
     try {
-      const d = await gql(admin, `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id note phone shippingAddress { name address1 address2 zip city phone } } } }`, { ids });
+      const d = await gql(admin, `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Order { id note phone customAttributes { key value } shippingAddress { name address1 address2 zip city phone } } } }`, { ids });
       for (const n of d.nodes ?? []) {
         if (!n?.id) continue;
-        out.set(String(n.id).split("/").pop()!, { note: n.note ?? null, phone: n.phone ?? n.shippingAddress?.phone ?? null, address: n.shippingAddress ?? null });
+        // The shopper's delivery instructions (Pickday notes box) print with the order note.
+        const instructions = (n.customAttributes ?? []).find((a: { key: string }) => a.key === READABLE_KEYS.notes)?.value ?? null;
+        const note = [instructions, n.note].filter(Boolean).join(" · ") || null;
+        out.set(String(n.id).split("/").pop()!, { note, phone: n.phone ?? n.shippingAddress?.phone ?? null, address: n.shippingAddress ?? null });
       }
     } catch (e) {
       console.error("[print] live details", (e as Error).message);

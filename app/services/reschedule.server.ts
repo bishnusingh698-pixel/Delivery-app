@@ -16,6 +16,37 @@ import { assertNoUserErrors, gid, gql, numericId, type AdminGraphql } from "./gr
 import { writeToShopify } from "./orders.server";
 import { storefrontConfigFor, schedulePublish } from "./publish.server";
 import { engineTimeZone, findSlot } from "../../core/engine";
+import { attributeDate } from "../../core/dateformat";
+import type { StorefrontConfig } from "../../core/types";
+
+/** "10:00–12:00" written like the storefront writes it, in the store's language. */
+function timeRange(slot: string, locale: string): string {
+  const [a, b] = [slot.slice(0, 5), slot.slice(6, 11)];
+  try {
+    const f = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" });
+    const at = (hm: string) => f.format(new Date(Date.UTC(2000, 0, 1, Number(hm.slice(0, 2)), Number(hm.slice(3, 5)))));
+    return `${at(a)}–${at(b)}`;
+  } catch {
+    return `${a}–${b}`;
+  }
+}
+
+/**
+ * The readable attributes the storefront writes (D-15), set the same way from the admin so packing
+ * slips and snippets don't change format after a merchant moves an order. Removes stale ones.
+ */
+export function setReadableAttributes(merged: Map<string, string>, config: StorefrontConfig, sel: Selection) {
+  const method = config.methods.find((m) => m.id === sel.m);
+  merged.set(ATTR_KEY, encodeSelection(sel));
+  merged.set(READABLE_KEYS.method, method?.names[config.primaryLocale] || method?.names.en || sel.m);
+  if (sel.d) merged.set(READABLE_KEYS.date, attributeDate(sel.d, config.dateFormat, config.primaryLocale));
+  else merged.delete(READABLE_KEYS.date);
+  if (sel.t) merged.set(READABLE_KEYS.slot, timeRange(sel.t, config.primaryLocale));
+  else merged.delete(READABLE_KEYS.slot);
+  const loc = config.locations.find((l) => l.id === sel.l);
+  if (loc) merged.set(READABLE_KEYS.location, loc.name);
+  else merged.delete(READABLE_KEYS.location);
+}
 
 export interface ScheduleChoice {
   method: MethodId;
@@ -92,7 +123,6 @@ export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderI
     const r = checkSelection(input, choice.date, choice.slotId);
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
   }
-  const method = config.methods.find((m) => m.id === choice.method);
   const slot = findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, existing?.zoneId ?? null, choice.date, choice.slotId);
   const slotLabel = slot ? `${slot.start}-${slot.end}` : null;
   const history = [
@@ -125,16 +155,9 @@ export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderI
 
   // Keep the order's own attributes in step so packing slips and other apps see the new date.
   const sel: Selection = { v: 1, m: choice.method, d: choice.date, s: saved.slotId, t: slotLabel, l: saved.locationId, z: saved.zoneId, a: saved.area, c: null, lbl: null, lc: config.primaryLocale, f: null };
-  const loc = config.locations.find((l) => l.id === saved.locationId);
   const attrs = await currentAttributes(admin, orderId);
   const merged = new Map(attrs.map((a) => [a.key, a.value]));
-  merged.set(ATTR_KEY, encodeSelection(sel));
-  merged.set(READABLE_KEYS.method, method?.names[config.primaryLocale] || method?.names.en || choice.method);
-  merged.set(READABLE_KEYS.date, choice.date);
-  if (slotLabel) merged.set(READABLE_KEYS.slot, slotLabel.replace("-", "–"));
-  else merged.delete(READABLE_KEYS.slot);
-  if (loc) merged.set(READABLE_KEYS.location, loc.name);
-  else merged.delete(READABLE_KEYS.location);
+  setReadableAttributes(merged, config, sel);
   const res = await gql(admin, `mutation($input: OrderInput!) { orderUpdate(input: $input) { userErrors { message } } }`, {
     input: { id: gid("Order", orderId), customAttributes: [...merged].map(([key, value]) => ({ key, value })) },
   });
@@ -169,16 +192,10 @@ export async function scheduleDraftOrder(shop: string, admin: AdminGraphql, draf
     const r = checkSelection(input, choice.date, choice.slotId);
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
   }
-  const method = config.methods.find((m) => m.id === choice.method);
   const slot = findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, null, choice.date, choice.slotId);
   const sel: Selection = { v: 1, m: choice.method, d: choice.date, s: slot?.id ?? null, t: slot ? `${slot.start}-${slot.end}` : null, l: choice.method === "pickup" ? choice.locationId : null, z: null, a: null, c: null, lbl: null, lc: config.primaryLocale, f: null };
   const merged = new Map<string, string>((d.draftOrder.customAttributes as { key: string; value: string }[]).map((a) => [a.key, a.value]));
-  merged.set(ATTR_KEY, encodeSelection(sel));
-  merged.set(READABLE_KEYS.method, method?.names[config.primaryLocale] || method?.names.en || choice.method);
-  merged.set(READABLE_KEYS.date, choice.date);
-  if (sel.t) merged.set(READABLE_KEYS.slot, sel.t.replace("-", "–"));
-  const loc = config.locations.find((l) => l.id === sel.l);
-  if (loc) merged.set(READABLE_KEYS.location, loc.name);
+  setReadableAttributes(merged, config, sel);
   const res = await gql(admin, `mutation($id: ID!, $input: DraftOrderInput!) { draftOrderUpdate(id: $id, input: $input) { userErrors { message } } }`, {
     id: gid("DraftOrder", draftId),
     input: { customAttributes: [...merged].map(([key, value]) => ({ key, value })) },
