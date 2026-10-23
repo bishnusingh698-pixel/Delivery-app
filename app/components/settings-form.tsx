@@ -1,6 +1,7 @@
 /**
  * Settings page plumbing: draft state, App Bridge contextual Save Bar,
- * "Settings saved" toast, critical banner with links to each invalid field.
+ * "Saved" toast, a browser warning when leaving with unsaved changes, and a
+ * critical banner with links to each invalid field, in plain words.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useFetcher } from "react-router";
@@ -8,7 +9,7 @@ import { SaveBar, useAppBridge } from "@shopify/app-bridge-react";
 import type { Settings } from "../../core/types";
 import { useT } from "../i18n/react";
 
-export type Issue = { path: string; message: string };
+export type Issue = { path: string; message: string; code?: string; limit?: number };
 type SaveResponse = { ok: true; version: number; settings: Settings; warnings?: string[] } | { ok: false; issues: Issue[] };
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -32,8 +33,8 @@ export function useSettingsForm<K extends keyof Settings>(initial: Pick<Settings
       setBase(clone(fresh));
       setDraft(clone(fresh));
       setIssues([]);
-      shopify.toast.show(t("common.saved"));
       if (d.warnings?.includes("publishFailed")) shopify.toast.show(t("common.publishLater"), { isError: true });
+      else shopify.toast.show(t("common.saved"));
     } else {
       setIssues(d.issues);
       shopify.toast.show(t("common.fixErrors"), { isError: true });
@@ -50,6 +51,17 @@ export function useSettingsForm<K extends keyof Settings>(initial: Pick<Settings
     fetcher.submit(JSON.stringify({ patch: draft }), { method: "post", encType: "application/json" });
   }, [draft, fetcher, opts]);
 
+  // The Save Bar already blocks navigation inside Shopify admin; this covers reloading or closing the tab.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
   const discard = useCallback(() => {
     setDraft(clone(base));
     setIssues([]);
@@ -65,8 +77,11 @@ export function useSettingsForm<K extends keyof Settings>(initial: Pick<Settings
   }, []);
 
   const errorFor = useCallback(
-    (path: string) => issues.find((i) => i.path === path || i.path.startsWith(path + "."))?.message,
-    [issues],
+    (path: string) => {
+      const i = issues.find((x) => x.path === path || x.path.startsWith(path + "."));
+      return i ? issueText(t, i) : undefined;
+    },
+    [issues, t],
   );
 
   return { draft, setDraft, update, dirty, save, discard, saving, issues, errorFor };
@@ -106,7 +121,7 @@ export function SettingsChrome(p: {
                     }}
                   >
                     {label ? `${label}: ` : ""}
-                    {i.message}
+                    {issueText(t, i)}
                   </s-link>
                 </s-list-item>
               );
@@ -117,6 +132,11 @@ export function SettingsChrome(p: {
       {p.children}
     </>
   );
+}
+
+/** Plain, translated text for a server issue; the page's own messages (no code) are shown as they are. */
+export function issueText(t: (k: string, v?: Record<string, string | number>) => string, i: Issue) {
+  return i.code ? t(`issue.${i.code}`, { limit: i.limit ?? 0 }) : i.message;
 }
 
 export const fieldId = (path: string) => "f-" + path.replace(/[^a-zA-Z0-9]+/g, "-");

@@ -1,30 +1,93 @@
-/** Home page logic (pure, tested): setup checklist and alerts. */
+/** Home and Settings page logic (pure, tested): setup guide, card statuses and alerts. */
 import { addDays } from "./civil";
 import { PLAN_CLOSURE_LIMIT, hasFeature, type UsageState } from "./plans";
 import { closureActive } from "./publish";
 import type { PlanId, Settings } from "./types";
 
-export type ChecklistId = "embed" | "methods" | "schedule" | "checkout" | "snippet" | "testOrder";
+export type SetupStepId = "embed" | "methods" | "schedule" | "pickupLocation" | "preview" | "testOrder" | "checkout" | "digest";
 
 export interface HomeFlags {
   embedDetected?: boolean;
   firstOrderAt?: string;
-  checkoutTested?: boolean;
   welcomeDone?: boolean;
   holidayYearOffered?: number;
+  /** Saved on the "Delivery, pickup & shipping" page, or chosen through the welcome questions. */
+  methodsSaved?: boolean;
+  /** Saved on the "Days & hours" page at least once. */
+  scheduleSaved?: boolean;
+  /** Opened the store's cart from the setup guide. */
+  previewed?: boolean;
 }
 
-export function checklist(s: Settings, flags: HomeFlags, settingsVersion: number, checkoutAllowed: boolean): { id: ChecklistId; done: boolean }[] {
-  const items: { id: ChecklistId; done: boolean }[] = [
-    { id: "embed", done: !!flags.embedDetected },
-    // Methods and schedule count as reviewed once the merchant saved settings after the welcome step.
-    { id: "methods", done: Object.values(s.methods).some((m) => m.enabled) && settingsVersion > 2 },
-    { id: "schedule", done: settingsVersion > 2 },
-    { id: "checkout", done: !checkoutAllowed || s.checkoutMatching.enabled },
-    { id: "snippet", done: s.notifications.emailSnippetConfirmed },
-    { id: "testOrder", done: !!flags.firstOrderAt || !!flags.checkoutTested },
+export interface SetupStep {
+  id: SetupStepId;
+  done: boolean;
+  /** Optional steps don't count toward "x of y done". */
+  optional: boolean;
+  /** Plan feature the step needs that the current plan doesn't include (shown with a lock, never hidden). */
+  lockedFeature?: string;
+}
+
+export interface SetupGuide {
+  steps: SetupStep[];
+  done: number;
+  total: number;
+  /** Every required step is done. */
+  complete: boolean;
+}
+
+/** The "Set up Pickday" guide on Home (pure). The pickup location step only shows when pickup is on. */
+export function setupGuide(s: Settings, flags: HomeFlags, plan: PlanId): SetupGuide {
+  const anyMethod = Object.values(s.methods).some((m) => m.enabled);
+  const pickup = s.methods.pickup.enabled;
+  const steps: SetupStep[] = [
+    { id: "embed", done: !!flags.embedDetected, optional: false },
+    { id: "methods", done: anyMethod && !!flags.methodsSaved, optional: false },
+    { id: "schedule", done: !!flags.scheduleSaved, optional: false },
   ];
-  return items;
+  if (pickup) steps.push({ id: "pickupLocation", done: s.locations.some((l) => l.enabled && l.name.trim() !== ""), optional: false });
+  steps.push(
+    { id: "preview", done: !!flags.previewed || !!flags.firstOrderAt, optional: false },
+    { id: "testOrder", done: !!flags.firstOrderAt, optional: false },
+    stepFor("checkout", s.checkoutMatching.enabled, "checkoutMatching", plan),
+    stepFor("digest", s.notifications.digest.enabled, "digest", plan),
+  );
+  const required = steps.filter((x) => !x.optional);
+  const done = required.filter((x) => x.done).length;
+  return { steps, done, total: required.length, complete: done === required.length };
+}
+
+function stepFor(id: SetupStepId, on: boolean, feature: string, plan: PlanId): SetupStep {
+  const allowed = hasFeature(plan, feature);
+  return { id, done: allowed && on, optional: true, ...(allowed ? {} : { lockedFeature: feature }) };
+}
+
+export type SettingsCardKey =
+  | "methods" | "schedule" | "closures" | "locations" | "capacity" | "areas" | "products" | "checkout" | "surcharges" | "notifications" | "transfer";
+
+/** "on": in use; "off": not used (fine); "todo": needed but not set up yet; null: a tool, no status. */
+export type CardStatus = "on" | "off" | "todo" | null;
+
+/** Status shown on each card of the Settings page (pure). */
+export function settingsStatus(s: Settings, flags: HomeFlags): Record<SettingsCardKey, CardStatus> {
+  const methods = Object.values(s.methods);
+  const pr = s.productRules;
+  const on = (v: boolean): CardStatus => (v ? "on" : "off");
+  const pickup = s.methods.pickup.enabled;
+  const hasLocation = s.locations.some((l) => l.enabled && l.name.trim() !== "");
+  return {
+    methods: methods.some((m) => m.enabled) && flags.methodsSaved ? "on" : "todo",
+    schedule: flags.scheduleSaved ? "on" : "todo",
+    closures: on(s.closures.length > 0 || s.specialDays.length > 0 || s.vacation.enabled),
+    locations: !pickup ? "off" : hasLocation ? "on" : "todo",
+    capacity: on(methods.some((m) => m.enabled && (m.slotsEnabled || m.capacity.maxPerDay !== null || (m.capacity.maxPerWeekday ?? []).some((x) => x !== null) || m.capacity.overrides.length > 0))),
+    areas: on(s.areas.length > 0 || s.zones.length > 0),
+    products: on(pr.exclude.products.length + pr.exclude.variants.length + pr.exclude.collections.length + pr.exclude.tags.length + pr.extraLead.length + pr.restrictions.length + pr.limits.length + pr.methodOnly.length > 0),
+    checkout: on(s.checkoutMatching.enabled),
+    surcharges: on(s.surcharges.length > 0),
+    notifications: on(s.notifications.digest.enabled || s.notifications.emailSnippetConfirmed),
+    transfer: null,
+  };
 }
 
 export type AlertId = "busy" | "vacation" | "embedOff" | "usage" | "usageGrace" | "usagePaused" | "holidays" | "checkoutMismatch" | "configLarge" | "functionsMissing" | "planOff";

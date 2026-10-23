@@ -83,7 +83,7 @@ export default function NotificationsPage() {
   };
 
   return (
-    <Page title={t("notifications.title")} subtitle={t("notifications.subtitle")}>
+    <Page title={t("notifications.title")} subtitle={t("notifications.subtitle")} backTo={{ href: "/app/settings", label: t("nav.settings") }}>
       <SettingsChrome form={form} />
 
       <Section heading={t("notifications.digestHeading")}>

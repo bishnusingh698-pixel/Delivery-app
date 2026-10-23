@@ -1,6 +1,6 @@
 /**
  * Is the Pickday app embed turned on in the live theme? Read-only check of the
- * main theme's settings (read_themes). Used by Home's checklist and alerts.
+ * main theme's settings (read_themes). Used by Home's setup guide and alerts.
  */
 import { flagsOf, requireShop, setFlags } from "../models/shop.server";
 import { schedulePublish } from "./publish.server";

@@ -104,7 +104,7 @@ export default function OrdersPage() {
       }
     >
       {!data.anyOrders ? (
-        <EmptyState heading={t("orders.emptyHeading")} text={t("orders.emptyText")} action={<Button href="/app/widget" variant="primary">{t("orders.emptyAction")}</Button>} />
+        <EmptyState heading={t("orders.emptyHeading")} text={t("orders.emptyText")} action={<Button href="/app" variant="primary">{t("orders.emptyAction")}</Button>} />
       ) : data.view === "calendar" && !hasFeature(data.plan, "ordersCalendar") ? (
         <Locked plan="Starter" label={t("orders.calendarLocked")} upgradeLabel={t("common.upgrade")} />
       ) : data.view === "calendar" ? (

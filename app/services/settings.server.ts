@@ -5,7 +5,7 @@ import type { Shop } from "@prisma/client";
 import { authenticate } from "../shopify.server";
 import type { PlanId, Settings } from "../../core/types";
 import { diffSummary, loadSettings, logActivity, storeSettings } from "../models/settings.server";
-import { planOf, requireShop, shopToday } from "../models/shop.server";
+import { planOf, requireShop, setFlags, shopToday, type ShopFlags } from "../models/shop.server";
 import { recountFuture } from "./counts.server";
 import { publishShop } from "./publish.server";
 import { validateSettings, type SettingsIssue } from "./settings-schema.server";
@@ -73,9 +73,9 @@ export async function saveSettings(ctx: AdminContext, next: Settings, summary?: 
 
 /**
  * Standard settings action: the page posts JSON `{ patch: Partial<Settings> }`
- * containing the top-level sections it edits.
+ * containing the top-level sections it edits. `onSavedFlag` is set on the shop after a successful save.
  */
-export async function patchSettingsAction(request: Request): Promise<SaveResult> {
+export async function patchSettingsAction(request: Request, opts: { onSavedFlag?: keyof ShopFlags } = {}): Promise<SaveResult> {
   const ctx = await adminContext(request);
   const body = (await request.json()) as { patch?: Partial<Settings> };
   const patch = body.patch ?? {};
@@ -85,5 +85,8 @@ export async function patchSettingsAction(request: Request): Promise<SaveResult>
   if (productRules) next.productRules = { ...productRules, collectionProducts: ctx.settings.productRules.collectionProducts };
   // Set by its own button ("I've added it"); a stale form must not undo it.
   if (rest.notifications) next.notifications = { ...rest.notifications, emailSnippetConfirmed: ctx.settings.notifications.emailSnippetConfirmed };
-  return saveSettings(ctx, next);
+  const r = await saveSettings(ctx, next);
+  // Marks a Home setup-guide step as done (for example "Set your days and hours").
+  if (r.ok && opts.onSavedFlag) await setFlags(ctx.shop, { [opts.onSavedFlag]: true });
+  return r;
 }

@@ -3,8 +3,8 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData } from "react-router";
 import { addDays } from "../../core/civil";
 import { BUSINESS_TYPES, applyBusinessPreset, type BusinessType } from "../../core/defaults";
-import { alerts, busyDays, checklist, type ChecklistId } from "../../core/home";
-import { hasFeature } from "../../core/publish";
+import { alerts, busyDays, setupGuide, type SetupStepId } from "../../core/home";
+import { hasFeature, minPlanFor } from "../../core/plans";
 import type { MethodId, PlanId, Settings } from "../../core/types";
 import { Button, Page, Section, Select, Stack } from "../components/polaris";
 import { countryName, useFormatDate, useMethodLabel } from "../components/shared";
@@ -41,17 +41,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const week = Array.from({ length: 7 }, (_, i) => addDays(ctx.today, i));
   const busy = busyDays(counts, ctx.today);
   const welcome = !flags.welcomeDone;
+  const guide = setupGuide(ctx.settings, flags, ctx.plan);
+  const guideHidden = !!flags.checklistDismissed;
+  // While the guide is on screen, its first step already says the picker is off: no second banner.
+  const guideShowsEmbed = !guide.complete && !guideHidden;
+  const homeAlerts = alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usage: usage.limit === null ? null : usage, warnings: warningsOf(ctx.row), plan: ctx.plan });
   return {
     shop: ctx.shop,
     today: ctx.today,
     welcome,
     countries: welcome ? (await shopCountries(ctx.admin).catch(() => ({ countries: [] as string[] }))).countries : [],
     country: ctx.settings.country ?? ctx.row.country,
-    checklist: checklist(ctx.settings, flags, ctx.version, hasFeature(ctx.plan, "checkoutMatching")),
-    checklistDismissed: !!flags.checklistDismissed,
+    guide,
+    guideHidden,
     themeLink: themeEditorLink(ctx.shop),
     overview: { today: sum([ctx.today]), tomorrow: sum([addDays(ctx.today, 1)]), week: sum(week) },
-    alerts: alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usage: usage.limit === null ? null : usage, warnings: warningsOf(ctx.row), plan: ctx.plan }),
+    alerts: guideShowsEmbed ? homeAlerts.filter((a) => a.id !== "embedOff") : homeAlerts,
     busy,
     celebrate: !!flags.firstOrderAt && !flags.firstOrderCelebrated,
     methods: ctx.settings.methodOrder.filter((m) => ctx.settings.methods[m].enabled),
@@ -78,7 +83,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     let next = { ...ctx.settings, country };
     if (BUSINESS_TYPES.includes(type)) next = presetForPlan(applyBusinessPreset(next, type), ctx.plan);
     const r = await saveSettings(ctx, next, `Welcome: ${type}`);
-    if (r.ok) await setFlags(ctx.shop, { welcomeDone: true });
+    // Choosing a business type picks the methods, so that setup step counts as done.
+    if (r.ok) await setFlags(ctx.shop, { welcomeDone: true, ...(BUSINESS_TYPES.includes(type) ? { methodsSaved: true } : {}) });
     return { ok: r.ok };
   }
   if (intent === "skipWelcome") await setFlags(ctx.shop, { welcomeDone: true });
@@ -87,17 +93,20 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   if (intent === "showChecklist") await setFlags(ctx.shop, { checklistDismissed: false });
   if (intent === "dismissHolidays") await setFlags(ctx.shop, { holidayYearOffered: Number(ctx.today.slice(0, 4)) + 1 });
   if (intent === "celebrated") await setFlags(ctx.shop, { firstOrderCelebrated: true });
-  if (intent === "testedCheckout") await setFlags(ctx.shop, { checkoutTested: true });
+  if (intent === "previewed") await setFlags(ctx.shop, { previewed: true });
   return { ok: true };
 };
 
-const CHECK_LINKS: Record<ChecklistId, string> = {
+/** Where each setup step's button goes ("cart" = the store's cart page in a new tab). */
+const STEP_LINKS: Record<SetupStepId, string> = {
   embed: "",
   methods: "/app/settings/methods",
   schedule: "/app/settings/schedule",
+  pickupLocation: "/app/settings/locations",
+  preview: "cart",
+  testOrder: "cart",
   checkout: "/app/settings/checkout",
-  snippet: "/app/notifications",
-  testOrder: "",
+  digest: "/app/notifications",
 };
 
 export default function Home() {
@@ -107,8 +116,8 @@ export default function Home() {
     <Page title={t("home.title")} subtitle={t("home.subtitle")}>
       {d.welcome ? <Welcome countries={d.countries} country={d.country} /> : null}
       {d.celebrate ? <Celebrate /> : null}
+      <SetupGuide />
       <Alerts />
-      <Checklist />
       <Overview />
       <Section heading={t("home.quickActions")}>
         <Stack direction="inline" gap="small-200" wrap>
@@ -216,52 +225,96 @@ function Alerts() {
   );
 }
 
-function Checklist() {
+function SetupGuide() {
   const d = useLoaderData<typeof loader>();
   const t = useT();
   const fetcher = useFetcher();
-  const done = d.checklist.filter((c) => c.done).length;
+  const [reopened, setReopened] = useState(false);
+  const { steps, done, total, complete } = d.guide;
   const post = (intent: string) => fetcher.submit({ intent }, { method: "post" });
-  if (d.checklistDismissed) {
-    return done < d.checklist.length ? (
+  const cart = `https://${d.shop}/cart`;
+
+  if (d.guideHidden || (complete && !reopened)) {
+    return (
       <Section>
-        <Button variant="tertiary" onClick={() => post("showChecklist")}>{t("home.showChecklist", { done, total: d.checklist.length })}</Button>
-      </Section>
-    ) : null;
-  }
-  return (
-    <Section heading={t("home.checklistHeading")}>
-      <Stack gap="base">
-        <s-text color="subdued">{t("home.checklistProgress", { done, total: d.checklist.length })}</s-text>
-        {d.checklist.map((c, i) => (
-          <s-box key={c.id} padding="small-200" borderRadius="base" background={c.done ? "subdued" : "base"} border="base">
-            <Stack direction="inline" gap="base" alignItems="center" justifyContent="space-between" wrap>
-              <Stack direction="inline" gap="small-200" alignItems="center">
-                <s-icon type={c.done ? "check-circle" : "circle"} tone={c.done ? "success" : "neutral"} />
-                <Stack gap="none">
-                  <s-text type="strong">{`${i + 1}. ${t(`home.check.${c.id}`)}`}</s-text>
-                  {!c.done ? <s-text color="subdued">{t(`home.check.${c.id}Help`)}</s-text> : null}
-                </Stack>
-              </Stack>
-              {!c.done ? (
-                c.id === "embed" ? (
-                  <Stack direction="inline" gap="small-200">
-                    <Button variant="primary" href={d.themeLink} target="_top">{t("home.check.embedAction")}</Button>
-                    <Button loading={fetcher.state !== "idle"} onClick={() => post("checkEmbed")}>{t("home.check.embedRecheck")}</Button>
-                  </Stack>
-                ) : c.id === "testOrder" ? (
-                  <Stack direction="inline" gap="small-200">
-                    <Button href={`https://${d.shop}/cart`} target="_blank">{t("home.check.testOrderAction")}</Button>
-                    <Button variant="tertiary" onClick={() => post("testedCheckout")}>{t("home.check.testOrderDone")}</Button>
-                  </Stack>
-                ) : (
-                  <Button href={CHECK_LINKS[c.id]}>{t("home.check.open")}</Button>
-                )
-              ) : null}
+        <Stack direction="inline" gap="small-200" alignItems="center" justifyContent="space-between" wrap>
+          {complete ? (
+            <Stack direction="inline" gap="small-200" alignItems="center">
+              <s-icon type="check-circle" tone="success" />
+              <s-text>{t("home.guide.complete")}</s-text>
             </Stack>
-          </s-box>
-        ))}
-        <Button variant="tertiary" onClick={() => post("dismissChecklist")}>{t("home.hideChecklist")}</Button>
+          ) : null}
+          <Button
+            variant="tertiary"
+            onClick={() => {
+              setReopened(true);
+              if (d.guideHidden) post("showChecklist");
+            }}
+          >
+            {complete ? t("home.guide.show") : t("home.guide.showProgress", { done, total })}
+          </Button>
+        </Stack>
+      </Section>
+    );
+  }
+
+  const next = steps.find((s) => !s.optional && !s.done)?.id;
+  const required = steps.filter((s) => !s.optional);
+  const optional = steps.filter((s) => s.optional);
+  const row = (s: (typeof steps)[number], n: number | null) => {
+    const plan = s.lockedFeature ? minPlanFor(s.lockedFeature) : null;
+    const primary = s.id === next;
+    const link = STEP_LINKS[s.id];
+    return (
+      <s-box key={s.id} padding="base" borderRadius="base" background={s.done ? "subdued" : "base"} border="base">
+        <Stack direction="inline" gap="base" alignItems="center" justifyContent="space-between" wrap>
+          <Stack direction="inline" gap="small-200" alignItems="start">
+            <s-icon type={s.done ? "check-circle" : plan ? "lock" : "circle"} tone={s.done ? "success" : "neutral"} />
+            <Stack gap="none">
+              <Stack direction="inline" gap="small-200" alignItems="center">
+                <s-text type="strong">{n ? `${n}. ${t(`home.guide.${s.id}.title`)}` : t(`home.guide.${s.id}.title`)}</s-text>
+                {s.done ? <s-badge tone="success">{t("home.guide.done")}</s-badge> : primary ? <s-badge tone="info">{t("home.guide.nextBadge")}</s-badge> : null}
+                {plan ? <s-badge icon="lock">{t("common.availableOn", { plan })}</s-badge> : null}
+              </Stack>
+              {!s.done ? <s-text color="subdued">{t(`home.guide.${s.id}.help`)}</s-text> : null}
+            </Stack>
+          </Stack>
+          {s.done ? null : plan ? (
+            <Button href="/app/plans">{t("home.guide.seePlans")}</Button>
+          ) : s.id === "embed" ? (
+            <Stack direction="inline" gap="small-200">
+              <Button variant="primary" href={d.themeLink} target="_top">{t("home.guide.embed.action")}</Button>
+              <Button loading={fetcher.state !== "idle"} onClick={() => post("checkEmbed")}>{t("home.guide.recheck")}</Button>
+            </Stack>
+          ) : link === "cart" ? (
+            <Button variant={primary ? "primary" : "secondary"} href={cart} target="_blank" onClick={s.id === "preview" ? () => post("previewed") : undefined}>
+              {t(`home.guide.${s.id}.action`)}
+            </Button>
+          ) : (
+            <Button variant={primary ? "primary" : "secondary"} href={link}>{t(`home.guide.${s.id}.action`)}</Button>
+          )}
+        </Stack>
+      </s-box>
+    );
+  };
+
+  return (
+    <Section heading={t("home.guide.heading")}>
+      <Stack gap="base">
+        <Stack direction="inline" gap="small-200" alignItems="center" justifyContent="space-between" wrap>
+          <s-text color="subdued">{t("home.guide.intro")}</s-text>
+          <s-badge tone={complete ? "success" : "info"}>{t("home.guide.progress", { done, total })}</s-badge>
+        </Stack>
+        {required.map((s, i) => row(s, i + 1))}
+        <s-heading>{t("home.guide.optional")}</s-heading>
+        {optional.map((s) => row(s, null))}
+        <Stack direction="inline" gap="small-200">
+          {complete ? (
+            <Button variant="tertiary" onClick={() => setReopened(false)}>{t("home.guide.hide")}</Button>
+          ) : (
+            <Button variant="tertiary" onClick={() => post("dismissChecklist")}>{t("home.guide.hide")}</Button>
+          )}
+        </Stack>
       </Stack>
     </Section>
   );

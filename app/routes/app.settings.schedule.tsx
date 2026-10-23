@@ -20,7 +20,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => patchSettingsAction(request);
+export const action = async ({ request }: ActionFunctionArgs) => patchSettingsAction(request, { onSavedFlag: "scheduleSaved" });
 
 export default function SchedulePage() {
   const { meta, full, initial } = useLoaderData<typeof loader>();

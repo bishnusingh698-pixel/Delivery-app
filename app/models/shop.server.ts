@@ -9,12 +9,16 @@ import { nowInZone } from "../../core/tz";
 
 export type ShopFlags = {
   welcomeDone?: boolean;
+  /** The merchant hid the setup guide on Home. */
   checklistDismissed?: boolean;
   embedDetected?: boolean;
   embedCheckedAt?: string;
   firstOrderAt?: string;
   firstOrderCelebrated?: boolean;
-  checkoutTested?: boolean;
+  /** Setup guide steps (core/home.ts setupGuide). */
+  methodsSaved?: boolean;
+  scheduleSaved?: boolean;
+  previewed?: boolean;
   holidayYearOffered?: number;
   usageWarnedMonth?: string;
 };

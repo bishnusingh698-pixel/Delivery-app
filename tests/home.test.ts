@@ -1,16 +1,58 @@
 import { describe, expect, it } from "vitest";
-import { alerts, busyDays, checklist, settingsOffOnPlan } from "../core/home";
+import { alerts, busyDays, settingsOffOnPlan, settingsStatus, setupGuide } from "../core/home";
 import { defaultSettings } from "../core/defaults";
 import { usageState } from "../core/plans";
 
 describe("home", () => {
-  it("checklist reflects setup state", () => {
+  it("setup guide: steps in order, live status, x of y counts required steps only", () => {
     const s = defaultSettings("US");
-    const c = checklist(s, {}, 1, true);
-    expect(c.map((x) => x.id)).toEqual(["embed", "methods", "schedule", "checkout", "snippet", "testOrder"]);
-    expect(c.every((x) => !x.done || x.id === "checkout") || true).toBe(true);
-    const done = checklist({ ...s, notifications: { ...s.notifications, emailSnippetConfirmed: true } }, { embedDetected: true, firstOrderAt: "x" }, 5, false);
-    expect(done.filter((x) => x.done).map((x) => x.id)).toEqual(expect.arrayContaining(["embed", "schedule", "checkout", "snippet", "testOrder"]));
+    s.methods.pickup.enabled = false;
+    const g = setupGuide(s, {}, "free");
+    expect(g.steps.map((x) => x.id)).toEqual(["embed", "methods", "schedule", "preview", "testOrder", "checkout", "digest"]);
+    expect(g.steps.filter((x) => x.optional).map((x) => x.id)).toEqual(["checkout", "digest"]);
+    expect(g).toMatchObject({ done: 0, total: 5, complete: false });
+    // Optional steps are locked on Free, with the feature that unlocks them; never hidden.
+    expect(g.steps.find((x) => x.id === "checkout")).toMatchObject({ lockedFeature: "checkoutMatching", done: false });
+    expect(g.steps.find((x) => x.id === "digest")).toMatchObject({ lockedFeature: "digest" });
+
+    const flags = { embedDetected: true, methodsSaved: true, scheduleSaved: true, previewed: true };
+    const almost = setupGuide(s, flags, "free");
+    expect(almost).toMatchObject({ done: 4, total: 5, complete: false });
+    const done = setupGuide(s, { ...flags, firstOrderAt: "2026-10-20T10:00:00Z" }, "free");
+    expect(done).toMatchObject({ done: 5, total: 5, complete: true });
+  });
+  it("setup guide: pickup adds the location step; the first order also counts as previewed", () => {
+    const s = defaultSettings("US");
+    s.methods.pickup.enabled = true;
+    const g = setupGuide(s, { firstOrderAt: "x" }, "pro");
+    expect(g.steps.map((x) => x.id)).toEqual(["embed", "methods", "schedule", "pickupLocation", "preview", "testOrder", "checkout", "digest"]);
+    expect(g.steps.find((x) => x.id === "pickupLocation")?.done).toBe(false);
+    expect(g.steps.find((x) => x.id === "preview")?.done).toBe(true);
+    s.locations.push({ id: "l1", shopifyLocationId: null, name: "Main shop", address: "", mapUrl: "", instructions: {}, timeZone: null, enabled: true, countries: "all", custom: null });
+    expect(setupGuide(s, {}, "pro").steps.find((x) => x.id === "pickupLocation")?.done).toBe(true);
+    // Methods need a saved choice, not just the defaults.
+    expect(setupGuide(s, {}, "pro").steps.find((x) => x.id === "methods")?.done).toBe(false);
+    expect(setupGuide(s, { methodsSaved: true }, "pro").steps.find((x) => x.id === "methods")?.done).toBe(true);
+    // Optional steps on a plan that includes them.
+    s.checkoutMatching.enabled = true;
+    s.notifications.digest.enabled = true;
+    const pro = setupGuide(s, {}, "pro");
+    expect(pro.steps.filter((x) => x.optional).every((x) => x.done && !x.lockedFeature)).toBe(true);
+    expect(pro.done).toBe(1);
+  });
+  it("settings card status: on, off, not set up", () => {
+    const s = defaultSettings("US");
+    s.methods.pickup.enabled = true;
+    const st = settingsStatus(s, {});
+    expect(st).toMatchObject({ methods: "todo", schedule: "todo", locations: "todo", closures: "off", capacity: "off", areas: "off", products: "off", checkout: "off", surcharges: "off", notifications: "off", transfer: null });
+    s.methods.pickup.enabled = false;
+    s.methods.delivery.enabled = true;
+    s.methods.delivery.capacity.maxPerDay = 20;
+    s.vacation.enabled = true;
+    s.checkoutMatching.enabled = true;
+    s.notifications.digest.enabled = true;
+    s.productRules.exclude.tags.push("gift-card");
+    expect(settingsStatus(s, { methodsSaved: true, scheduleSaved: true })).toMatchObject({ methods: "on", schedule: "on", locations: "off", closures: "on", capacity: "on", products: "on", checkout: "on", notifications: "on" });
   });
   it("busy days are those at 80% or more", () => {
     expect(busyDays({ "2026-10-16": { used: 8, max: 10 }, "2026-10-17": { used: 7, max: 10 }, "2026-10-18": { used: 3, max: null } }, "2026-10-16")).toEqual([{ date: "2026-10-16", pct: 80 }]);

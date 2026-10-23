@@ -76,7 +76,7 @@ prisma/                       Schema + migrations (PostgreSQL / Neon).
 | Table | Purpose |
 |---|---|
 | `Session` | Shopify sessions (template). |
-| `Shop` | One row per store: domain, status, plan, time zone, currency, locales, flags (welcome done, checklist), share/feed tokens, warnings. |
+| `Shop` | One row per store: domain, status, plan, time zone, currency, locales, flags (welcome done, setup guide steps and visibility), share/feed tokens, warnings. |
 | `Settings` | One row per shop: `data` JSON (whole settings document, validated with zod), `version`. |
 | `ScheduledOrder` | One row per scheduled order: shop, order id/name, first name, method, date, slot, location, zone/area, status, items JSON, source updated-at (for out-of-order webhooks), history. |
 | `ScheduledItem` | Per-item mode lines: date/slot per line. |

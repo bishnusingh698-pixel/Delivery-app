@@ -252,7 +252,40 @@ export function deepMerge<T>(base: T, value: unknown): T {
   return out as T;
 }
 
-export type SettingsIssue = { path: string; message: string };
+/**
+ * `code` lets the admin show a plain, translated message (issue.<code> in app/i18n/admin);
+ * `message` is the English fallback. `limit` fills {limit} in the translated message.
+ */
+export type SettingsIssue = { path: string; message: string; code?: IssueCode; limit?: number };
+
+export type IssueCode =
+  | "atLeastOneMethod" | "slotsOverlap" | "endAfterStart" | "unbalancedBraces" | "postcode"
+  | "tooSmall" | "tooBig" | "tooLong" | "tooMany" | "required" | "invalidFormat" | "invalid";
+
+const CUSTOM_CODES: Record<string, IssueCode> = {
+  "Turn on at least one method": "atLeastOneMethod",
+  "Two time slots overlap on the same weekday": "slotsOverlap",
+  "End must be after start": "endAfterStart",
+  "End is before start": "endAfterStart",
+  "Unbalanced { } in text": "unbalancedBraces",
+  "Postcode rule can't be read": "postcode",
+};
+
+type LooseIssue = { code: string; message: string; origin?: string; minimum?: unknown; maximum?: unknown };
+
+/** Plain-language code for a zod issue (pure, exported for tests). */
+export function issueCode(i: LooseIssue): { code: IssueCode; limit?: number } {
+  if (i.code === "custom") return { code: CUSTOM_CODES[i.message] ?? "invalid" };
+  if (i.code === "too_small") return i.origin === "number" ? { code: "tooSmall", limit: Number(i.minimum) } : { code: "required" };
+  if (i.code === "too_big") {
+    if (i.origin === "number") return { code: "tooBig", limit: Number(i.maximum) };
+    if (i.origin === "string") return { code: "tooLong", limit: Number(i.maximum) };
+    return { code: "tooMany", limit: Number(i.maximum) };
+  }
+  if (i.code === "invalid_type") return { code: /received (undefined|null)/.test(i.message) ? "required" : "invalid" };
+  if (i.code === "invalid_format") return { code: "invalidFormat" };
+  return { code: "invalid" };
+}
 
 export function validateSettings(input: unknown): { ok: true; data: Settings } | { ok: false; issues: SettingsIssue[] } {
   const merged = deepMerge(defaultSettings(), input ?? {});
@@ -264,23 +297,23 @@ export function validateSettings(input: unknown): { ok: true; data: Settings } |
   }
   return {
     ok: false,
-    issues: res.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+    issues: res.error.issues.map((i) => ({ path: i.path.join("."), message: i.message, ...issueCode(i) })),
   };
 }
 
 function contentIssues(s: Settings): SettingsIssue[] {
   const out: SettingsIssue[] = [];
   for (const [locale, map] of Object.entries(s.texts)) {
-    for (const [key, text] of Object.entries(map)) if (!bracesBalanced(text)) out.push({ path: `texts.${locale}.${key}`, message: "Unbalanced { } in text" });
+    for (const [key, text] of Object.entries(map)) if (!bracesBalanced(text)) out.push({ path: `texts.${locale}.${key}`, message: "Unbalanced { } in text", code: "unbalancedBraces" });
   }
   s.areas.forEach((a, i) => {
-    if (a.mode === "postcode" && postcodeProblems(a.postcodes).invalid.length) out.push({ path: `areas.${i}.postcodes`, message: "Postcode rule can't be read" });
+    if (a.mode === "postcode" && postcodeProblems(a.postcodes).invalid.length) out.push({ path: `areas.${i}.postcodes`, message: "Postcode rule can't be read", code: "postcode" });
   });
   s.zones.forEach((z, i) => {
-    if (postcodeProblems(z.postcodes).invalid.length) out.push({ path: `zones.${i}.postcodes`, message: "Postcode rule can't be read" });
+    if (postcodeProblems(z.postcodes).invalid.length) out.push({ path: `zones.${i}.postcodes`, message: "Postcode rule can't be read", code: "postcode" });
   });
   s.closures.forEach((c, i) => {
-    if (!c.yearly && c.end < c.start) out.push({ path: `closures.${i}.end`, message: "End is before start" });
+    if (!c.yearly && c.end < c.start) out.push({ path: `closures.${i}.end`, message: "End is before start", code: "endAfterStart" });
   });
   return out;
 }

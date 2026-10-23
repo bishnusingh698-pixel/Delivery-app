@@ -21,7 +21,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => patchSettingsAction(request);
+export const action = async ({ request }: ActionFunctionArgs) => patchSettingsAction(request, { onSavedFlag: "methodsSaved" });
 
 export default function MethodsPage() {
   const { meta, countries, markets, initial } = useLoaderData<typeof loader>();

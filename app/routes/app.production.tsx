@@ -76,7 +76,19 @@ export default function ProductionPage() {
       </Section>
       <Section heading={d.from === d.to ? fmt(d.from, true) : `${fmt(d.from)} – ${fmt(d.to, true)}`}>
         {!d.rows.length ? (
-          <s-text color="subdued">{t("production.empty")}</s-text>
+          <s-box padding="base">
+            <Stack gap="small-200" alignItems="center">
+              <s-icon type="product" tone="neutral" />
+              <s-text type="strong">{t("production.empty")}</s-text>
+              <s-text color="subdued">{t("production.emptyText")}</s-text>
+              <Stack direction="inline" gap="small-200" wrap justifyContent="center">
+                {!(d.from === d.today && d.to === addDays(d.today, 6)) ? (
+                  <Button onClick={() => set({ from: d.today, to: addDays(d.today, 6) })}>{t("production.emptyNext7")}</Button>
+                ) : null}
+                <Button variant="tertiary" href="/app/orders">{t("production.emptyOrders")}</Button>
+              </Stack>
+            </Stack>
+          </s-box>
         ) : (
           <s-table>
             <s-table-header-row>

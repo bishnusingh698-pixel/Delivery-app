@@ -10,25 +10,25 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | P2 Engine + schedule settings | ✅ Done | Date engine + 30 automated tests; Settings hub; Methods & countries, Schedule (with live preview), Slots & capacity, Closures & holidays pages. |
 | P3 Storefront widget | ✅ Done | Theme app extension (app embed, cart block, product block); widget for cart page, cart drawer and product page; 28 languages; checkout button gate; browser tests for long text and right-to-left. 20 KB gzipped. |
 | P4 Functions, webhooks, extensions | ✅ Done | Validation Function (backstop) and delivery customization Function (checkout matching); orders webhook (idempotent, out-of-order safe, counts, tags, order metafield); billing webhook; Flow triggers; thank-you and order status block with calendar links; order page block, "Change delivery date" order action and draft order action. |
-| P5 Orders, production, notifications, jobs | ✅ Done | Orders page (list with filters and search, month calendar with counts and capacity bars, order detail with change history and "Change date", bulk move with capacity preview, CSV export, day sheet and route sheet printing); Production list (print, CSV, per-slot split, prep-day offset); Notifications page (daily summary via Shopify Flow, 5 copy-paste snippets with steps, secret calendar feed, Flow toggle); hourly and daily jobs (republish, digest, pruning, app embed check). |
+| P5 Orders, production, notifications, jobs | ✅ Done | Orders page (list with filters and search, month calendar with counts and capacity bars, order detail with change history and "Change date", bulk move with capacity preview, CSV export, day sheet and route sheet printing); Production list (print, CSV, per-slot split, prep-day offset); Order emails & automations page (daily summary via Shopify Flow, 5 copy-paste snippets with steps, secret calendar feed, Flow toggle); hourly and daily jobs (republish, digest, pruning, app embed check). |
 | P6 Locations, areas, product rules, surcharges | ✅ Done | Pickup locations (import from Shopify, own hours and limits, instructions per language); delivery areas by postcode, named area or region, zones with their own days and limits, "Test an address"; product rules (no date needed, extra preparation time, available days, daily limits per product, method-only) with Shopify product and collection pickers; surcharges with an automatically managed hidden fee product. |
-| P7 Billing, import/export, help, polish | ✅ Done | Plans page with Shopify billing (14-day trials, test mode, downgrade), usage bar and catch-up tagging after upgrade; Home (welcome questions with presets, 6-step checklist with app embed detection, overview, alerts, first-order celebration, quick actions); Help (5-step guide, 17 questions with search, diagnostics, debug mode, support email); Import/Export (file or one-time share code, product remapping by handle, recent changes); Widget & text (live preview, per-language text editor); admin in 8 languages; README, PRIVACY, ROADMAP, App Store listing draft. |
+| P7 Billing, import/export, help, polish | ✅ Done | Plans page with Shopify billing (14-day trials, test mode, downgrade), usage bar and catch-up tagging after upgrade; Home (welcome questions with presets, setup guide with live status for each step and app embed detection, overview, alerts, first-order celebration, quick actions); Help (5-step guide, 17 questions with search, diagnostics, debug mode, support email); Import/Export (file or one-time share code, product remapping by handle, recent changes); Widget & text (live preview, per-language text editor); admin in 8 languages; README, PRIVACY, ROADMAP, App Store listing draft. |
 
 ## How to test P1 (needs a live store)
 
 1. Deploy (README → Render) and install the app on a development store.
-2. The app opens on **Home**. The left menu shows Home, Orders, Production, Settings, Widget & text, Notifications & integrations, Plans, Help.
-3. Click each menu item: every page opens with a title and a one-line subtitle.
+2. The app opens on **Home**. The left menu shows Home, Orders, Production list, Settings, Date picker look, Plans, Help. (Order emails & automations is a card on Settings.)
+3. Click each menu item: every page opens with a title and a one-line subtitle. Every page opened from Settings has a **Settings** back link at the top.
 4. Open `https://<your-render-url>/healthz` in a browser: it shows `ok` instantly.
 5. In Neon's SQL editor run `select shop, "timeZone", plan from "Shop";` — your store is listed with its time zone.
 
 ## How to test P2 (needs a live store)
 
-1. In the app click **Settings**. You see cards for every settings area; Pro-only ones show a lock badge on lower plans.
-2. Click **Methods & countries**. Turn on **Store pickup**, change its name, click **Save** in the bar at the top. Reload: the change is kept.
-3. Click **Schedule**. Set the cutoff to 14:00 and lead time to 1 working day. The preview on the right says "Right now it's … Earliest available …". Use **Simulate time** to pick 15:00: the earliest date moves one working day later.
-4. Click **Slots & capacity**. Click **Generate slots**, choose 09:00–17:00 every 2 hours, click **Add**. Four slots appear. Set a max of 5 on one.
-5. Click **Closures & holidays**. Click **Import holidays**, tick two, click **Import**. They appear in the list and in the year calendar.
+1. In the app click **Settings**. Cards are grouped under **Basics**, **Limits and rules**, **Checkout and fees** and **Emails, automations and tools**. Each card shows **On**, **Off** or **Not set up**; locked ones show "Available on Starter/Pro" instead and still open.
+2. Click **Delivery, pickup & shipping**. Turn on **Store pickup**, change its name, click **Save** in the bar at the top: a "Saved" message appears. Reload: the change is kept. Change something again and try to leave the page without saving: Shopify asks you to save or discard first.
+3. Click **Days & hours**. Set the **Daily order deadline** to 14:00 and **Preparation time** to 1 working day. The preview on the right says "Right now it's … Earliest available …". Use **Simulate time** to pick 15:00: the earliest date moves one working day later.
+4. Click **Time slots & daily limits**. Click **Generate slots**, choose 09:00–17:00 every 2 hours, click **Add**. Four slots appear. Set a max of 5 on one.
+5. Click **Closed days & holidays**. Click **Import holidays**, tick two, click **Import**. They appear in the list and in the year calendar.
 
 ## How to test P3 (needs a live store)
 
@@ -61,8 +61,8 @@ Updated after every phase. "Needs a live store" means the step can only be check
 6. Click **Export CSV** and open the file in Excel or Google Sheets: accents show correctly, one row per order.
 7. Tick one order, click **Move to another date**, pick a date. The box shows how full that date is before and after. Click **Move**. The order now shows the new date, here and in Shopify admin (tags and additional details).
 8. Click an order number. The detail page shows the schedule, items and change history (the move from step 7). Click **Change date**, tick **Ignore limits for this change**: closed and full days can be picked. Save.
-9. Open **Pickday > Production**. Tomorrow's products are listed with total quantity and number of orders. Click **Print** and **Export CSV**.
-10. Open **Pickday > Notifications**. Turn on **Send a daily summary** and choose a time one hour from now. Click **Save**. In Shopify Flow, create a workflow with the Pickday trigger **Daily summary ready** and the action **Send internal email** to your address, with the Summary and Orders link in the message; turn it on. After that hour (cron-job.org must be set up), the workflow runs and the email arrives with tomorrow's orders and a working link. It is sent at most once a day. NOT VERIFIED on a live store.
+9. Open **Pickday > Production list**. With nothing scheduled it says "Nothing to make for these dates" with buttons to show the next 7 days or see all orders. Tomorrow's products are listed with total quantity and number of orders. Click **Print** and **Export CSV**.
+10. Open **Pickday > Settings > Order emails & automations**. Turn on **Send a daily summary** and choose a time one hour from now. Click **Save**. In Shopify Flow, create a workflow with the Pickday trigger **Daily summary ready** and the action **Send internal email** to your address, with the Summary and Orders link in the message; turn it on. After that hour (cron-job.org must be set up), the workflow runs and the email arrives with tomorrow's orders and a working link. It is sent at most once a day. NOT VERIFIED on a live store.
 11. Click **Copy** on **Order confirmation email**, click **Where to paste this** and follow the 3 steps. Place a new order: the confirmation email shows "Delivery details" with the date. Click **I've added it**.
 12. Click **Create calendar address**, copy it, and add it in Google Calendar (**Other calendars > + > From URL**). Your orders appear (Google refreshes every few hours). Click **Make a new address**: the old one stops working.
 13. In Shopify Flow, create a workflow with the trigger **Schedule created**. Place an order: the workflow runs.
@@ -74,16 +74,16 @@ Updated after every phase. "Needs a live store" means the step can only be check
 3. **Zones:** add a zone "North" with your postcode and **Different days**: Tuesday only. On the storefront, that postcode only offers Tuesdays. Place an order; on **Orders > Print route sheet** it is listed under North.
 4. **Product rules** (products without a date and extra preparation time: Starter; the rest: Pro): under **Products that don't need a date**, pick a product. A cart with only that product shows no picker and checkout isn't blocked. Under **Needs extra preparation time**, pick another product with 2 days: with it in the cart the first date moves 2 days later.
 5. **Available days:** add a rule "Only on Saturdays" for a product: with it in the cart only Saturdays can be picked.
-6. **Surcharges** (Pro): add "Saturday delivery", weekday Saturday, 5.00, save. In Shopify **Products**, a "Delivery fee" product exists (tag `pickday-hidden`). On the storefront pick a Saturday: a "Delivery fee" line with "Fee: Saturday delivery" appears in the cart; pick a Friday: it goes away. Check out: the fee is charged.
+6. **Extra fees** (Pro): add "Saturday delivery", weekday Saturday, 5.00, save. In Shopify **Products**, a "Delivery fee" product exists (tag `pickday-hidden`). On the storefront pick a Saturday: a "Delivery fee" line with "Fee: Saturday delivery" appears in the cart; pick a Friday: it goes away. Check out: the fee is charged.
 
 ## How to test P7 (needs a live store)
 
-1. Install on a fresh development store. Home shows **Welcome to Pickday**: choose "Bakery or cakes" and your country, click **Set it up for me**. The checklist appears with step 1 open.
-2. Click **Open theme editor**: the theme editor opens with the Pickday embed selected. Switch it on, click **Save**, come back and click **Check again**: step 1 turns green.
+1. Install on a fresh development store. Home shows **Welcome to Pickday**: choose "Bakery or cakes" and your country, click **Set it up for me**. The **Set up Pickday** guide shows "1 of 6 done" (step 2 is ticked by the welcome answers; the pickup location step shows because the bakery preset turns pickup on), step 1 is marked **Next**, and there is no separate "date picker isn't showing" banner while the guide is open.
+2. Click **Open theme editor**: the theme editor opens with the Pickday embed selected. Switch it on, click **Save**, come back and click **Check again**: step 1 turns green. Work through the rest: save **Days & hours** once, add a pickup location, click **Open my store's cart** on step 5, then place a test order. When every numbered step is done the guide folds into "Setup complete" with a **Show setup guide** link. Before that, **Hide setup guide** folds it into "Show setup guide (x of y done)".
 3. **Plans**: on a development store everything is free (a blue banner says so). On a real store the page opens on **Yearly** (Starter shows $4.08 per month, "Billed $49 a year", and a "Most popular" badge). Click **Upgrade to Starter**: Shopify's approval page shows $49 a year with a 14-day trial. Switch the toggle to **Monthly**: Starter shows $4.99, Pro $9.99. After approving, the Starter card is marked **Current plan** and **Billed yearly**; on Monthly its button reads **Switch to monthly billing**.
 4. **Help**: search "drawer": one question is shown. Click **Fix and resend settings**: a green banner confirms. Click **Turn on for 24 hours** under Debug mode, open your storefront with the browser console open: Pickday notes appear.
-5. **Import / Export**: click **Create share code** and copy it. In a second development store, open Import / Export, paste the code, click **Use code**: a preview lists the sections that will change. Click **Import and replace**. Try the same code again: "That code doesn't exist or has expired."
-6. **Widget & text**: change the accent colour and roundness: the preview updates. Choose Deutsch, change "Choose a date" text, save, and open the German storefront: your text is shown.
+5. **Copy settings** (Settings > Emails, automations and tools): click **Create share code** and copy it. In a second development store, open Copy settings, paste the code, click **Use code**: a preview lists the sections that will change. Click **Import and replace**. Try the same code again: "That code doesn't exist or has expired."
+6. **Date picker look**: change the accent colour and roundness: the preview updates. Choose Deutsch, change "Choose a date" text, save, and open the German storefront: your text is shown.
 7. Change your Shopify admin language (your profile → Language) to Español: Pickday's admin is in Spanish.
 
 ## Acceptance tests
@@ -92,7 +92,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 
 | # | Test | Result |
 |---|---|---|
-| 1 | Fresh install → welcome → checklist; theme editor link turns the step green | Needs a live store (embed detection logic automated) |
+| 1 | Fresh install → welcome → setup guide; theme editor link turns the step green | Needs a live store (embed detection logic automated) |
 | 2 | Kolkata store / UTC server / New York shopper: same days before and after 2 PM cutoff, time zone note | ✅ Automated (engine time-zone and cutoff tests; widget note) — confirm on a live store |
 | 3 | German Monday-first, Arabic mirrored RTL, Japanese date format | ✅ Automated (browser test, 28 languages, RTL screenshots) |
 | 4 | Local delivery only for Germany: US market sees Shipping only | ✅ Automated (country rules) — confirm with Markets on a live store |
@@ -104,7 +104,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | 10 | Selection survives reload/drawer; +3-day item clears a too-early date with message | ✅ Automated (browser: saved attributes; engine re-validation) — drawer needs a live theme |
 | 11 | Gift-card-only cart: widget hidden, checkout allowed | ✅ Automated (Function + rules tests) |
 | 12 | Missing date blocked in cart and by the validation Function on a direct checkout link | ✅ Automated (browser gate + Function tests) — live checkout needs a store |
-| 13 | Checkout matching shows only the chosen pickup, renamed; never hides everything; Home warning | ✅ Automated (Function tests); Home warning comes from order webhook mismatch |
+| 13 | Checkout options ("Show only the chosen option at checkout") shows only the chosen pickup, renamed; never hides everything; Home warning | ✅ Automated (Function tests); Home warning comes from order webhook mismatch |
 | 14 | Per-item mode: two dates on order, Orders, Production | ✅ Automated (order parsing + DB tests) — pages need a live store |
 | 15 | Sunday fee added, Monday removed, checkout blocks if fee removed | ✅ Automated (Function surcharge tests, fee product tests) — cart behaviour needs a live store |
 | 16 | Order shows date in details, tags, metafield, lists; thank-you date and .ics | Needs a live store (parsing, tags and .ics generation automated) |

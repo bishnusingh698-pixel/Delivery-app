@@ -84,10 +84,13 @@ export default function HelpPage() {
         <s-ordered-list>
           <s-list-item>{t("help.guide1")} <s-link href={themeLink} target="_top">{t("help.openThemeEditor")}</s-link></s-list-item>
           <s-list-item>{t("help.guide2")} <s-link href="/app/settings/methods">{t("methods.title")}</s-link></s-list-item>
-          <s-list-item>{t("help.guide3")} <s-link href="/app/settings/schedule">{t("schedule.title")}</s-link></s-list-item>
-          <s-list-item>{t("help.guide4")} <s-link href="/app/settings/checkout">{t("checkout.title")}</s-link></s-list-item>
-          <s-list-item>{t("help.guide5")} <s-link href="/app/notifications">{t("notifications.title")}</s-link></s-list-item>
+          <s-list-item>{t("help.guide3")} <s-link href="/app/settings/schedule">{t("schedule.title")}</s-link> · <s-link href="/app/settings/locations">{t("locations.title")}</s-link></s-list-item>
+          <s-list-item>{t("help.guide4")} <s-link href={`https://${diag.shop}/cart`} target="_blank">{t("help.openCart")}</s-link></s-list-item>
+          <s-list-item>{t("help.guide5")}</s-list-item>
         </s-ordered-list>
+        <s-paragraph>
+          {t("help.guidesHome")} <s-link href="/app">{t("help.openGuide")}</s-link>
+        </s-paragraph>
       </Section>
 
       <Section heading={t("help.faqHeading")}>
