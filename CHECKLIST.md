@@ -13,22 +13,25 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | P5 Orders, production, notifications, jobs | ✅ Done | Orders page (list with filters and search, month calendar with counts and capacity bars, order detail with change history and "Change date", bulk move with capacity preview, CSV export, day sheet and route sheet printing); Production list (print, CSV, per-slot split, prep-day offset); Notifications page (daily summary email, 5 copy-paste snippets with steps, secret calendar feed, Flow toggle); hourly and daily jobs (republish, digest, pruning, app embed check). |
 | P6 Locations, areas, product rules, surcharges | ✅ Done | Pickup locations (import from Shopify, own hours and limits, instructions per language); delivery areas by postcode, named area or region, zones with their own days and limits, "Test an address"; product rules (no date needed, extra preparation time, available days, daily limits per product, method-only) with Shopify product and collection pickers; surcharges with an automatically managed hidden fee product. |
 | P7 Billing, import/export, help, polish | ✅ Done | Plans page with Shopify billing (14-day trials, test mode, downgrade), usage bar and catch-up tagging after upgrade; Home (welcome questions with presets, 6-step checklist with app embed detection, overview, alerts, first-order celebration, quick actions); Help (5-step guide, 17 questions with search, diagnostics, debug mode, support email); Import/Export (file or one-time share code, product remapping by handle, recent changes); Widget & text (live preview, per-language text editor); admin in 8 languages; README, PRIVACY, ROADMAP, App Store listing draft. |
+| Round 2 Audit + redesign | ✅ Done | 34 bugs fixed in total (see AUDIT.md); icon navigation; setup wizard; Delivery, Pickup, Days off, Appearance and Settings pages replacing 7 older pages; public holidays that renew every year; regional defaults; date format; notes box; widget position and drawer options; live preview running the real widget; 14-day chart and Close a day; generous Free plan; tricky date tests. |
 
-## How to test P1 (needs a live store)
+## How to test the setup and navigation (needs a live store)
 
-1. Deploy (README → Render) and install the app on a development store.
-2. The app opens on **Home**. The left menu shows Home, Orders, Production, Settings, Widget & text, Notifications & integrations, Plans, Help.
-3. Click each menu item: every page opens with a title and a one-line subtitle.
-4. Open `https://<your-render-url>/healthz` in a browser: it shows `ok` instantly.
-5. In Neon's SQL editor run `select shop, "timeZone", plan from "Shop";` — your store is listed with its time zone.
+1. Deploy (README → "Deploy it for the first time") and install the app on a development store.
+2. The app opens on **Set up Pickday**, step 1 of 3. Pick your country in the searchable list and "Bakery or cakes". Click **Next**.
+3. Step 2 is filled in for you: Store pickup and Local delivery ticked, the pickup address from your Shopify location, working days of your country, 1 day notice, 14:00 cut-off, "Close on public holidays in …" on. The live preview on the right is the real picker: tomorrow's public holiday (if any) is crossed out. Change the cut-off to 10:00: the preview updates. Click **Next**.
+4. Step 3: click **Open theme editor**, switch on **Pickday date picker** under App embeds, click **Save**, come back and click **Check again**: the badge turns green. Click **Finish setup**.
+5. Home shows the icon bar at the top (Home, Orders, Delivery, Pickup, Days off, Appearance, Settings, Help) and the same items in Shopify's left menu. Click each: every page opens with its icon marked. On a phone (Shopify app) the bar scrolls sideways.
+6. In Neon's SQL editor run `select shop, "timeZone", plan from "Shop";`: your store is listed with its time zone. `/healthz` shows `ok`.
 
-## How to test P2 (needs a live store)
+## How to test delivery, pickup and days off (needs a live store)
 
-1. In the app click **Settings**. You see cards for every settings area; Pro-only ones show a lock badge on lower plans.
-2. Click **Methods & countries**. Turn on **Store pickup**, change its name, click **Save** in the bar at the top. Reload: the change is kept.
-3. Click **Schedule**. Set the cutoff to 14:00 and lead time to 1 working day. The preview on the right says "Right now it's … Earliest available …". Use **Simulate time** to pick 15:00: the earliest date moves one working day later.
-4. Click **Slots & capacity**. Click **Generate slots**, choose 09:00–17:00 every 2 hours, click **Add**. Four slots appear. Set a max of 5 on one.
-5. Click **Closures & holidays**. Click **Import holidays**, tick two, click **Import**. They appear in the list and in the year calendar.
+1. **Delivery**: open **Delivery**. Two tabs: Local delivery and Shipping. Set lead time to 1 working day and cut-off 14:00. In the preview tick **Simulate a time**, pick today 15:00: the first date moves one working day later.
+2. Turn on **Time slots**, click **Generate slots**, 09:00–17:00 every 2 hours, **Replace slots**: four slots appear. Set a max of 5 on one (Starter or higher). Click **Save** in the bar at the top. Reload: kept.
+3. **Pickup**: open **Pickup**. The location from the wizard is listed. Click **Edit**, turn on **Own schedule and limits**, untick Monday, save. In the preview, Mondays are crossed out. Click **Days off for this location**: Days off opens filtered to that location.
+4. **Days off**: "Public holidays in <your country>" lists the next 13 months. Untick one holiday and save: that day becomes bookable in the preview and on the storefront, in every year. Add a closed day by clicking it in the year calendar; add a yearly date with **Add closed days** → **Repeat every year**.
+5. **Settings**: choose another country: a box lists what changes (week start, holidays, optionally working days and date format). Click **Apply**, save. Choose the date format **MM/DD/YYYY**, save; place an order: its "Delivery date" reads like `10/18/2026 (2026-10-18)`.
+6. **Home → Close a day**: choose tomorrow, add a reason, confirm. Tomorrow is closed on the storefront; the 14-day chart still shows existing orders for it.
 
 ## How to test P3 (needs a live store)
 
@@ -69,21 +72,20 @@ Updated after every phase. "Needs a live store" means the step can only be check
 
 ## How to test P6 (needs a live store)
 
-1. **Pickup locations:** open **Settings > Pickup locations**, click **Import from Shopify**, add your location. Turn on **Own schedule and limits**, close it on Mondays, click **Save**. On the storefront choose Store pickup: Mondays are not offered for that location.
-2. **Delivery areas** (Pro): open **Settings > Delivery areas**, add your country, choose **Postcodes**, enter one postcode, save. In **Test an address**, type that postcode: "Delivered: Yes"; another postcode: "No". On the storefront choose Local delivery and type a postcode outside the list: the picker says you don't deliver there.
+1. **Pickup locations:** open **Pickup**, click **Import from Shopify**, add your location. Turn on **Own schedule and limits**, close it on Mondays, click **Save**. On the storefront choose Store pickup: Mondays are not offered for that location.
+2. **Delivery areas** (Pro): open **Delivery** → **Delivery areas and zones**, add your country, choose **Postcodes**, enter one postcode, save. In **Test an address**, type that postcode: "Delivered: Yes"; another postcode: "No". On the storefront choose Local delivery and type a postcode outside the list: the picker says you don't deliver there.
 3. **Zones:** add a zone "North" with your postcode and **Different days**: Tuesday only. On the storefront, that postcode only offers Tuesdays. Place an order; on **Orders > Print route sheet** it is listed under North.
-4. **Product rules** (Pro): under **Products that don't need a date**, pick a product. A cart with only that product shows no picker and checkout isn't blocked. Under **Needs extra preparation time**, pick another product with 2 days: with it in the cart the first date moves 2 days later.
+4. **Product rules** (Pro, **Settings → Product rules**): under **Products that don't need a date**, pick a product. A cart with only that product shows no picker and checkout isn't blocked. Under **Needs extra preparation time**, pick another product with 2 days: with it in the cart the first date moves 2 days later.
 5. **Available days:** add a rule "Only on Saturdays" for a product: with it in the cart only Saturdays can be picked.
-6. **Surcharges** (Pro): add "Saturday delivery", weekday Saturday, 5.00, save. In Shopify **Products**, a "Delivery fee" product exists (tag `pickday-hidden`). On the storefront pick a Saturday: a "Delivery fee" line with "Fee: Saturday delivery" appears in the cart; pick a Friday: it goes away. Check out: the fee is charged.
+6. **Delivery fees** (Pro, **Settings → Delivery fees**): add "Saturday delivery", weekday Saturday, 5.00, save. In Shopify **Products**, a "Delivery fee" product exists (tag `pickday-hidden`). On the storefront pick a Saturday: a "Delivery fee" line with "Fee: Saturday delivery" appears in the cart; pick a Friday: it goes away. Check out: the fee is charged.
 
 ## How to test P7 (needs a live store)
 
-1. Install on a fresh development store. Home shows **Welcome to Pickday**: choose "Bakery or cakes" and your country, click **Set it up for me**. The checklist appears with step 1 open.
-2. Click **Open theme editor**: the theme editor opens with the Pickday embed selected. Switch it on, click **Save**, come back and click **Check again**: step 1 turns green.
+1. Setup wizard and embed: see "How to test the setup and navigation" above.
 3. **Plans**: on a development store everything is free (a blue banner says so). On a real store, click **Upgrade to Starter**: Shopify's approval page shows $7.99 with a 14-day trial.
 4. **Help**: search "drawer": one question is shown. Click **Fix and resend settings**: a green banner confirms. Click **Turn on for 24 hours** under Debug mode, open your storefront with the browser console open: Pickday notes appear.
-5. **Import / Export**: click **Create share code** and copy it. In a second development store, open Import / Export, paste the code, click **Use code**: a preview lists the sections that will change. Click **Import and replace**. Try the same code again: "That code doesn't exist or has expired."
-6. **Widget & text**: change the accent colour and roundness: the preview updates. Choose Deutsch, change "Choose a date" text, save, and open the German storefront: your text is shown.
+5. **Import / Export** (Settings → Import and export): click **Create share code** and copy it. In a second development store, open Import / Export, paste the code, click **Use code**: a preview lists the sections that will change. Click **Import and replace**. Try the same code again: "That code doesn't exist or has expired."
+6. **Appearance**: change the accent colour to a light yellow: in the preview the selected day's number turns dark so it stays readable. Choose **Below the checkout button**, turn on **Let customers add delivery instructions**, save: on the storefront the picker sits under the button and has a notes box; the order shows "Delivery instructions" and the printed day sheet includes them. Choose Deutsch, change "Choose a date" text, save, and open the German storefront: your text is shown.
 7. Change your Shopify admin language (your profile → Language) to Español: Pickday's admin is in Spanish.
 
 ## Acceptance tests
@@ -92,7 +94,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 
 | # | Test | Result |
 |---|---|---|
-| 1 | Fresh install → welcome → checklist; theme editor link turns the step green | Needs a live store (embed detection logic automated) |
+| 1 | Fresh install → setup wizard → live; theme editor link turns the step green | Needs a live store (wizard logic, embed detection and page rendering automated) |
 | 2 | Kolkata store / UTC server / New York shopper: same days before and after 2 PM cutoff, time zone note | ✅ Automated (engine time-zone and cutoff tests; widget note) — confirm on a live store |
 | 3 | German Monday-first, Arabic mirrored RTL, Japanese date format | ✅ Automated (browser test, 28 languages, RTL screenshots) |
 | 4 | Local delivery only for Germany: US market sees Shipping only | ✅ Automated (country rules) — confirm with Markets on a live store |
@@ -119,7 +121,12 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | 25 | Server stopped: storefront and Functions still work | ✅ By design (metafields only; widget makes no server calls) — confirm on a live store |
 | 26 | Keyboard and screen reader usable; reduced motion respected | ✅ Automated (keyboard navigation in browser test; reduced-motion CSS); screen reader pass needs a person |
 | 27 | Uninstall leaves no theme code; reinstall works | ✅ By design (theme app extension only) — confirm on a live store |
-| 28 | Widget size target met; cart page not slower | ✅ Automated (20.3 KB gzipped, budget 35 KB, deferred loading) |
+| 28 | Widget size target met; cart page not slower | ✅ Automated (22 KB gzipped, budget 35 KB, deferred loading) |
+| 30 | Pickup with no location: dates can be picked and checkout continues | ✅ Automated (browser) |
+| 31 | Unrecognised cart drawer or cart layout: picker appears next to the clicked button, never a dead button | ✅ Automated (browser) |
+| 32 | Public holidays renew every year; skipped holiday stays open | ✅ Automated (real dataset) |
+| 33 | DST both hemispheres, 30/45-minute zones, cutoff boundary, month/year/leap ends | ✅ Automated (`tests/tricky-dates.test.ts`) |
+| 34 | Admin live preview is the real widget and follows unsaved changes | ✅ Automated (browser) |
 | 29 | Translations: keys, placeholders, plurals in 28 locales; no English leftovers; pseudo-loc; review list | ✅ Automated (translation tests, browser overflow test); TRANSLATION_REVIEW.md lists strings for native review |
 
 ## Automated checks (run `npm test`)
@@ -137,3 +144,5 @@ Updated after every phase. "Needs a live store" means the step can only be check
 ## Browser checks (run `npm run test:browser`)
 
 - Built widget in headless Chromium at 320px: renders, checkout blocked without a date, picking a date and slot saves cart attributes, arrow keys move between days, no overflow with pseudo-localised text or in any of the 28 languages, Arabic and Hebrew mirrored (screenshots in `tests/browser/screenshots/`).
+- Round 2 fixes: pickup without locations, notes box saved, readable text on a light accent, minimum-order message, unknown drawer (picker next to the clicked button, or the cart page when the drawer picker is off).
+- Admin live preview (`tests/browser/preview.browser.ts`): the real widget renders in the admin, shows a public holiday as closed, reacts to setting changes.

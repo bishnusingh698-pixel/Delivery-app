@@ -123,6 +123,28 @@ Short notes on choices made where the brief left room, or where Shopify works di
 - Special open days win over vacation mode, and calendar-day lead time after the cutoff counts from the next working day (D-12).
 - Test orders count toward capacity, so a test order can be used to check the setup.
 
+## Round 2 (October 2026 redesign)
+
+**D-51 Public holidays are sets, not copied dates.** A holiday set is a country (and optional region) plus the holidays the merchant skips. It's expanded into closures for the booking window on every publish (at least daily, by the hourly job), so holidays renew every year with no action. Skips are stored by the dataset's rule ("12-25", "easter 1"), which stays the same every year. Moveable and lunar holidays keep the "may shift" note. Single dates the merchant adds by hand stay ordinary closures.
+
+**D-52 Every plan gets a correct picker.** A delivery-date app that lets customers book Christmas Day or offers only one method looks broken. Free now includes every method, time slots, holidays, closed days and the notes box (1 pickup location, 50 scheduled orders a month). Starter sells what prevents overbooking (daily and per-slot limits) plus checkout matching and 3 locations (500 orders). Pro keeps the advanced rules and tools.
+
+**D-53 No storefront branding.** The free plan's "Powered by Pickday" link is removed: merchants couldn't turn it off, and storefront promotion is a common App Store review objection.
+
+**D-54 Regional defaults are suggestions.** The country decides the first working days, first day of the week and the usual numeric date format (`core/regions.ts`); the wizard and the country selector apply them, and every value stays editable. Changing the country later never changes working days unless the merchant ticks that box. Date format defaults to "in the store's language" for new stores, because a written date ("Friday, 18 October") is clearer for shoppers; merchants who print `MM/DD/YYYY` pick it once.
+
+**D-55 The date format applies to what is written, not the calendar.** It changes the order's "Delivery date" attribute (still followed by the ISO date in brackets, which the email snippets parse; not repeated when the format is already ISO), the cart summary, dropdown and product page text. The calendar grid keeps the shopper's language.
+
+**D-56 Notes box.** Optional, per method, saved as the cart attribute "Delivery instructions" (fixed English key like the others, D-15) so it reaches the order, packing slips and Flow. Pickday doesn't store it; day and route sheets read it live from Shopify. It's never required: a required free-text field blocks checkout for no good reason.
+
+**D-57 The checkout button never traps a shopper.** When a date is required but no picker is visible (a theme layout the widget doesn't recognise), the widget puts the picker right next to the button the shopper clicked; if the merchant turned the drawer picker off, it sends them to the cart page. The validation Function remains the backstop for express buttons.
+
+**D-58 A date chosen on a product page is the cart's choice.** In one-date-per-order mode the product page picker writes the cart attribute straight away (also with an empty cart), never line properties, so an order can't carry two different dates. Date-per-item mode keeps line properties.
+
+**D-59 The admin preview is the storefront widget.** Delivery, Pickup, Appearance and the wizard run `widget/src` itself on the unsaved settings with an in-memory cart, so the preview can't drift from what shoppers see. It's rebuilt on every change (cheap), so a picked date in the preview resets when a setting changes.
+
+**D-60 Admin structure.** Seven task sections plus Help, reachable from an icon bar on every page and the Shopify sidebar: Home, Orders (with Production), Delivery (local delivery + shipping, with Delivery areas), Pickup (with locations), Days off, Appearance, Settings (store & region, what customers choose, order tags, and links to product rules, fees, checkout, notifications, import/export, plan). The old Methods, Schedule, Slots & capacity, Closures, Locations and Widget pages are merged into these and removed.
+
 ## Not yet decided / proposed
 
 Further decisions are added as phases land.

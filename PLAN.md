@@ -133,6 +133,10 @@ Settings live in one JSON document because they are always read, validated, publ
   "widget":    { "theme":"match","accent":"#1f6feb","radius":8,"input":"calendar","compact":false,"icons":true,
                  "spots":true,"pre":false,"drawerSel":"","css":"","brand":true },
   "texts":     { "de": { "heading": "Wann möchten Sie Ihre Bestellung?" } },   // merchant overrides only
+  "dateFormat": "auto",        // auto | long | mdy | dmy | ymd (order attribute + shopper summary)
+  "weekStart": 1,              // null = shopper's language
+  "notes":     { "enabled": true, "methods": "all", "maxLength": 250 },  // "Delivery instructions" attribute
+  // closures also contain the public holidays of the holiday sets for the booking window ("hol:<set>:<date>" ids)
   "debugUntil": null
 }
 ```
@@ -186,3 +190,4 @@ Per-item mode: line properties `Delivery date`, `Time slot` (readable) and `_pic
 | P5 | Orders (list, calendar, detail, change, bulk reschedule, CSV, day/route sheets), Production, Notifications (digest, snippets, ICS, Flow), jobs. |
 | P6 | Locations, delivery areas, product rules, date-per-item, surcharges. |
 | P7 | Billing + gating, import/export + share codes, activity log, help, onboarding, a11y/perf pass, translation review, listing draft. |
+| Round 2 | Audit and redesign (AUDIT.md): admin sections Home, Orders, Delivery (+ areas), Pickup (+ locations), Days off, Appearance, Settings, Help with an icon bar; setup wizard; holiday sets (`core/holidays.ts`, expanded on publish); regional defaults (`core/regions.ts`); date format (`core/dateformat.ts`); notes box; widget position/drawer; contrast (`core/color.ts`); admin live preview running `widget/src` with an in-memory cart (`app/components/live-preview.tsx`). |

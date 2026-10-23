@@ -16,15 +16,15 @@ Pickday adds a date and time-slot picker to your cart, cart drawer and product p
 
 **Feature list** (up to 5 × 80):
 1. Date and time-slot picker for delivery, store pickup and shipping, in 28 languages
-2. Daily and per-slot limits, cut-off times, holidays and vacation mode
+2. Daily and per-slot limits, cut-off times, yearly public holidays, vacation
 3. Checkout shows only the chosen method and blocks orders without a date
 4. Orders calendar, day sheets, route sheets and production list
 5. Works on every Shopify plan; no theme code changes
 
 **Pricing**
-- Free: 30 scheduled orders a month, one method, one location.
-- Starter, $7.99/month: 300 orders a month, all methods, time slots, limits, holidays, checkout matching, no branding. 14-day free trial.
-- Pro, $14.99/month: unlimited orders, several locations, delivery areas and zones, product rules, surcharges, production list, route sheets, daily email, calendar feed, Shopify Flow, settings import/export. 14-day free trial.
+- Free: 50 scheduled orders a month, delivery + pickup + shipping, time slots, public holidays, closed days, delivery instructions, 1 pickup location.
+- Starter, $7.99/month: 500 orders a month, daily and per-slot limits, checkout matching, 3 pickup locations. 14-day free trial.
+- Pro, $14.99/month: unlimited orders and locations, delivery areas and zones, product rules, delivery fees, date per item, production list, route sheets, daily email, calendar feed, Shopify Flow, settings import/export. 14-day free trial.
 
 **Categories:** Orders and shipping → Delivery and pickup; secondary: Store design → Cart customization.
 
@@ -37,7 +37,7 @@ Pickday adds a date and time-slot picker to your cart, cart drawer and product p
 2. Cart drawer with the picker and a chosen date.
 3. Checkout with only "Store pickup – Fri 18 Oct" shown.
 4. Admin Orders calendar month view with capacity bars.
-5. Admin Schedule settings with the live preview.
+5. Admin Delivery page with the live preview, and the 3-step setup wizard.
 6. Printed day sheet.
 Mobile: cart page at 390 px with the picker.
 
