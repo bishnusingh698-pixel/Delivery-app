@@ -8,7 +8,6 @@ import type { Settings } from "../../core/types";
 import { Button, Checkbox, ChoiceList, Locked, Page, Section, Stack, Switch, TextField, TimeSelect } from "../components/polaris";
 import { SettingsChrome, useSettingsForm } from "../components/settings-form";
 import { useT } from "../i18n/react";
-import { emailConfigured } from "../services/email.server";
 import { regenerateFeedToken } from "../services/feed.server";
 import { adminContext, patchSettingsAction, saveSettings, shopMeta } from "../services/settings.server";
 
@@ -20,7 +19,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     meta: shopMeta(ctx),
     initial: { notifications: ctx.settings.notifications } as Pick<Settings, "notifications">,
     feedUrl: ctx.row.feedToken ? `${appUrl()}/feeds/${ctx.row.feedToken}.ics` : null,
-    emailReady: emailConfigured(),
     locale: ctx.row.adminLocale,
   };
 };
@@ -43,19 +41,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function NotificationsPage() {
-  const { meta, initial, feedUrl, emailReady, locale } = useLoaderData<typeof loader>();
+  const { meta, initial, feedUrl, locale } = useLoaderData<typeof loader>();
   const t = useT();
   const shopify = useAppBridge();
-  const form = useSettingsForm(initial, {
-    validate: (d) => {
-      const g = d.notifications.digest;
-      if (!g.enabled) return [];
-      if (!g.flow && !g.email) return [{ path: "notifications.digest.flow", message: t("notifications.channelRequired") }];
-      if (g.email && !g.recipients.length) return [{ path: "notifications.digest.recipients", message: t("notifications.recipientsRequired") }];
-      return [];
-    },
-  });
-  const { draft, update, errorFor } = form;
+  const form = useSettingsForm(initial);
+  const { draft, update } = form;
   const n = draft.notifications;
   const pro = hasFeature(meta.plan, "digest");
   const feedAllowed = hasFeature(meta.plan, "calendarFeed");
@@ -64,7 +54,6 @@ export default function NotificationsPage() {
   const confirm = useFetcher<typeof action>();
   const [url, setUrl] = useState(feedUrl);
   const [confirmed, setConfirmed] = useState(initial.notifications.emailSnippetConfirmed);
-  const [recipients, setRecipients] = useState(n.digest.recipients.join(", "));
 
   useEffect(() => {
     const d = feed.data as { intent?: string; feedUrl?: string } | undefined;
@@ -95,7 +84,7 @@ export default function NotificationsPage() {
 
   return (
     <Page title={t("notifications.title")} subtitle={t("notifications.subtitle")}>
-      <SettingsChrome form={form} fieldLabels={{ "notifications.digest.recipients": t("notifications.recipients"), "notifications.digest.flow": t("notifications.digestFlow") }} />
+      <SettingsChrome form={form} />
 
       <Section heading={t("notifications.digestHeading")}>
         {!pro ? <Locked plan="Pro" label={t("notifications.digestLocked")} upgradeLabel={t("common.upgrade")} /> : null}
@@ -115,15 +104,6 @@ export default function NotificationsPage() {
           </s-grid>
           <Checkbox label={t("notifications.includeProduction")} checked={n.digest.includeProduction} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.includeProduction = v))} />
 
-          <s-heading>{t("notifications.digestFlowHeading")}</s-heading>
-          <Checkbox
-            label={t("notifications.digestFlow")}
-            details={t("notifications.digestFlowHelp")}
-            checked={n.digest.flow}
-            disabled={!pro}
-            error={errorFor("notifications.digest.flow")}
-            onChange={(v) => update((d) => (d.notifications.digest.flow = v))}
-          />
           <s-box background="subdued" borderRadius="base" padding="base">
             <Stack gap="small-200">
               <s-text type="strong">{t("notifications.digestHowToHeading")}</s-text>
@@ -135,29 +115,6 @@ export default function NotificationsPage() {
             </Stack>
           </s-box>
 
-          <s-heading>{t("notifications.digestEmailHeading")}</s-heading>
-          {pro && !emailReady ? <s-banner tone="info">{t("notifications.emailNotConfigured")}</s-banner> : null}
-          <Checkbox
-            label={t("notifications.digestEmail")}
-            details={t("notifications.digestEmailHelp")}
-            checked={n.digest.email}
-            disabled={!pro}
-            onChange={(v) => update((d) => (d.notifications.digest.email = v))}
-          />
-          {n.digest.email ? (
-            <TextField
-              id="f-notifications-digest-recipients"
-              label={t("notifications.recipients")}
-              details={t("notifications.recipientsHelp")}
-              value={recipients}
-              disabled={!pro}
-              error={errorFor("notifications.digest.recipients")}
-              onChange={(v) => {
-                setRecipients(v);
-                update((d) => (d.notifications.digest.recipients = v.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean).slice(0, 3)));
-              }}
-            />
-          ) : null}
         </Stack>
       </Section>
 

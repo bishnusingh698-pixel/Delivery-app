@@ -15,8 +15,6 @@ export function portable(s: Settings): Settings {
   out.locations = out.locations.map((l) => ({ ...l, shopifyLocationId: null }));
   out.surcharges = out.surcharges.map((f) => ({ ...f, variantId: null }));
   out.productRules.collectionProducts = {};
-  // Email addresses stay in the source store.
-  out.notifications = { ...out.notifications, digest: { ...out.notifications.digest, recipients: [] } };
   return out;
 }
 

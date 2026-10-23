@@ -229,8 +229,8 @@ export interface WidgetSettings {
 }
 
 export interface NotificationSettings {
-  /** Daily summary (D-56). `flow`: fire the "Daily summary ready" Flow trigger. `email`: also email `recipients` (needs Brevo on the server). */
-  digest: { enabled: boolean; time: string; recipients: string[]; includeProduction: boolean; flow: boolean; email: boolean };
+  /** Daily summary (D-56, D-57): fires the "Daily summary ready" Flow trigger at `time` (store time zone). */
+  digest: { enabled: boolean; time: string; includeProduction: boolean };
   emailSnippetConfirmed: boolean;
   calendarFeed: { mode: "order" | "day"; includeDetails: boolean };
   flowEnabled: boolean;

@@ -9,13 +9,11 @@ export const BRAND = {
   tagline: "Let customers pick the day. Set daily limits and stop most overbooking.",
   supportEmail: process.env.SUPPORT_EMAIL || "support@pickday.app",
   website: "https://pickday.app",
-  /** Primary colour used in admin illustrations and emails. */
+  /** Primary colour used in admin illustrations. */
   primaryColor: "#2c6ecb",
   /** Default accent for the storefront widget (merchants can change it). */
   accentColor: "#2c6ecb",
   logoUrl: "/logo.svg",
   /** "Powered by" link on the Free plan. */
   poweredByUrl: "https://pickday.app/?utm_source=widget",
-  emailFromName: "Pickday",
-  emailFromAddress: process.env.EMAIL_FROM || "digest@pickday.app",
 } as const;

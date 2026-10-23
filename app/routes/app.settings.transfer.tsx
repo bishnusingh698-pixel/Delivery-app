@@ -53,7 +53,7 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
     if (!used) return { intent: "apply", ok: false, error: "badCode" };
     if (used.from !== ctx.shop) await logActivity(used.from, "export", `Your share code was used by ${ctx.shop}`, null).catch(() => {});
   }
-  // Email recipients and the Flow switch never come along: keep this store's own.
+  // Notification settings (daily summary, feed, Flow switch) never come along: keep this store's own.
   mapped.notifications = ctx.settings.notifications;
   const cols = collectionIdsIn(mapped.productRules);
   if (cols.length) mapped.productRules.collectionProducts = await resolveCollectionProducts(ctx.admin, cols).catch(() => ({}));

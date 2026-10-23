@@ -26,7 +26,7 @@ This file is the map of the code. Decisions and deviations from the brief are in
               cron-job.org ──► GET /healthz (no DB)        ┌──────────────────────────────────┐
                           ──► POST /jobs/hourly|daily ───► │ Render free web service (Node)   │
                                                            │  React Router + Prisma           │──► Neon Postgres (free)
-                                                           │  publishes JSON to metafields    │──► Brevo (merchant digest)
+                                                           │  publishes JSON to metafields    │──► Shopify Flow (daily summary)
                                                            └──────────────────────────────────┘
 ```
 
@@ -54,7 +54,7 @@ app/                          Embedded admin + server (Shopify React Router temp
   i18n/admin/*.json           Admin strings (en, es, fr, de, pt, it, nl, ja).
   components/                 Small Polaris wrappers, settings form helpers.
   models/*.server.ts          Prisma access, always scoped by shop.
-  services/*.server.ts        Publishing, Shopify GraphQL, orders, billing, email, holidays.
+  services/*.server.ts        Publishing, Shopify GraphQL, orders, billing, Flow, holidays.
   routes/                     Pages, webhooks, jobs, feeds, APIs.
 widget/src/                   Storefront widget (vanilla TypeScript, built with esbuild).
 extensions/
@@ -83,7 +83,7 @@ prisma/                       Schema + migrations (PostgreSQL / Neon).
 | `CapacityCount` | Materialised counts per shop + capacity key + date (+ slot): orders, items. Rebuilt from `ScheduledOrder` for the affected dates on every change. |
 | `ProductCount` | Product daily-limit counts per shop + rule + date (+ location). |
 | `ActivityLog` | Settings changes and manual date changes (90-day retention). |
-| `DigestLog` | One row per shop per day sent (unique) — guarantees one email per day. |
+| `DigestLog` | One row per shop per day sent (unique) — guarantees one daily summary per day. |
 | `ShareCode` | One-time settings share codes (24 h). |
 | `WebhookLog` | Webhook ids already processed (idempotency, 7-day retention). |
 

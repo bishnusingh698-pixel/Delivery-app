@@ -1,35 +1,23 @@
 /**
- * Daily summary for the merchant (D-56): tomorrow's orders per method and slot,
- * optional production list, capacity warnings for the next 7 days.
- * Built once, then sent through two channels:
- *  - Shopify Flow trigger "Daily summary ready" (main channel; the merchant adds
- *    "Send internal email", Slack, etc. in Flow, no own email domain needed);
- *  - email through Brevo (optional; only when the server has BREVO_API_KEY).
+ * Daily summary for the merchant (D-56, D-57): tomorrow's orders per method and slot,
+ * optional production list, days filling up in the next 7 days.
+ * Sent only through the Shopify Flow trigger "Daily summary ready"; the merchant
+ * adds Flow's "Send internal email", Slack, etc. Pickday sends no email itself.
  * At most one per store per day (DigestLog primary key).
  */
 import prisma from "../db.server";
 import { addDays, toMinutes } from "../../core/civil";
 import { nowInZone } from "../../core/tz";
 import { hasFeature } from "../../core/publish";
-import type { MethodId, NotificationSettings } from "../../core/types";
+import type { MethodId } from "../../core/types";
 import { planOf } from "../models/shop.server";
 import { loadSettings } from "../models/settings.server";
 import { unauthenticated } from "../shopify.server";
 import { adminT } from "./admin-t.server";
 import { dayCounts, production } from "./orders-query.server";
 import { storefrontConfigFor } from "./publish.server";
-import { emailConfigured, sendEmail } from "./email.server";
 import { flowDailySummary } from "./flow.server";
 import type { AdminGraphql } from "./graphql.server";
-
-const esc = (s: unknown) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
-
-type DigestSettings = NotificationSettings["digest"];
-
-/** Which channels would send for these settings. Pure. */
-export function digestChannels(d: DigestSettings, emailReady: boolean): { flow: boolean; email: boolean } {
-  return { flow: !!d.flow, email: !!d.email && d.recipients.length > 0 && emailReady };
-}
 
 /** Is it time to send today's summary for this shop? */
 export async function digestDue(shop: string): Promise<{ due: boolean; today: string }> {
@@ -38,8 +26,7 @@ export async function digestDue(shop: string): Promise<{ due: boolean; today: st
   const { settings } = await loadSettings(shop);
   const d = settings.notifications.digest;
   const now = nowInZone(row.timeZone || "UTC");
-  const ch = digestChannels(d, emailConfigured());
-  if (!d.enabled || (!ch.flow && !ch.email) || !hasFeature(planOf(row), "digest")) return { due: false, today: now.date };
+  if (!d.enabled || !hasFeature(planOf(row), "digest")) return { due: false, today: now.date };
   if (now.minutes < toMinutes(d.time || "18:00")) return { due: false, today: now.date };
   const sent = await prisma.digestLog.findUnique({ where: { shop_day: { shop, day: now.date } } });
   return { due: !sent, today: now.date };
@@ -53,10 +40,6 @@ export interface DigestData {
   /** Plain-text summary lines (no link). */
   lines: string[];
   link: string;
-  subject: string;
-  html: string;
-  text: string;
-  recipients: string[];
   /** "…and {count} more" in the admin language. */
   more: (n: number) => string;
 }
@@ -78,45 +61,25 @@ export async function buildDigest(shop: string, today: string): Promise<DigestDa
     byMethod.set(o.method, slots);
   }
   const lines: string[] = [];
-  let html = `<h2 style="margin:0 0 8px">${esc(t("digest.heading", { date: dateLabel(tomorrow) }))}</h2>`;
-  if (!orders.length) {
-    html += `<p>${esc(t("digest.none"))}</p>`;
-    lines.push(t("digest.none"));
-  }
+  if (!orders.length) lines.push(t("digest.none"));
   for (const [m, slots] of byMethod) {
     const total = [...slots.values()].reduce((a, b) => a + b, 0);
-    html += `<h3 style="margin:16px 0 4px">${esc(methodName(m))}: ${total}</h3>`;
     lines.push(`${methodName(m)}: ${total}`);
     const timed = [...slots].filter(([s]) => s).sort(([a], [b]) => a.localeCompare(b));
-    if (timed.length) {
-      html += `<ul style="margin:0;padding-inline-start:18px">${timed.map(([s, n]) => `<li>${esc(s.replace("-", "–"))}: ${n}</li>`).join("")}</ul>`;
-      for (const [s, n] of timed) lines.push(`  ${s}: ${n}`);
-    }
+    for (const [s, n] of timed) lines.push(`  ${s}: ${n}`);
   }
   if (settings.notifications.digest.includeProduction && hasFeature(planOf(row), "production")) {
     const prod = await production(shop, tomorrow, tomorrow, {}, settings.productionPrepOffsetDays);
-    if (prod.length) {
-      html += `<h3 style="margin:16px 0 4px">${esc(t("production.title"))}</h3><table cellpadding="4" style="border-collapse:collapse">${prod.map((p) => `<tr><td style="border-bottom:1px solid #eee"><strong>${p.qty}</strong></td><td style="border-bottom:1px solid #eee">${esc(p.title)}${p.variant ? ` (${esc(p.variant)})` : ""}</td></tr>`).join("")}</table>`;
-      lines.push("", t("production.title"), ...prod.map((p) => `  ${p.qty} x ${p.title}${p.variant ? ` (${p.variant})` : ""}`));
-    }
+    if (prod.length) lines.push("", t("production.title"), ...prod.map((p) => `  ${p.qty} x ${p.title}${p.variant ? ` (${p.variant})` : ""}`));
   }
   const busy = Object.entries(week).filter(([, d]) => d.max && d.used / d.max >= 0.8);
-  if (busy.length) {
-    html += `<h3 style="margin:16px 0 4px">${esc(t("digest.capacity"))}</h3><ul style="margin:0;padding-inline-start:18px">${busy.map(([d, c]) => `<li>${esc(dateLabel(d))}: ${c.used} / ${c.max}</li>`).join("")}</ul>`;
-    lines.push("", t("digest.capacity"), ...busy.map(([d, c]) => `  ${dateLabel(d)}: ${c.used} / ${c.max}`));
-  }
-  const link = ordersLink(shop, tomorrow);
-  html += `<p style="margin-top:20px"><a href="${esc(link)}">${esc(t("digest.open"))}</a></p><p style="color:#777;font-size:12px">${esc(t("digest.footer"))}</p>`;
+  if (busy.length) lines.push("", t("digest.capacity"), ...busy.map(([d, c]) => `  ${dateLabel(d)}: ${c.used} / ${c.max}`));
   return {
     date: tomorrow,
     dateLabel: dateLabel(tomorrow),
     counts,
     lines,
-    link,
-    subject: t("digest.subject", { count: orders.length, date: dateLabel(tomorrow) }),
-    html: `<div style="font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;color:#111;max-width:600px">${html}</div>`,
-    text: [...lines, "", `${t("digest.open")}: ${link}`].join("\n"),
-    recipients: settings.notifications.digest.recipients,
+    link: ordersLink(shop, tomorrow),
     more: (n) => t("digest.more", { count: n }),
   };
 }
@@ -163,31 +126,6 @@ export function flowSummaryPayload(d: Pick<DigestData, "date" | "dateLabel" | "c
   };
 }
 
-export interface DigestSenders {
-  flow: (payload: ReturnType<typeof flowSummaryPayload>) => Promise<boolean>;
-  email: (to: string[], subject: string, html: string, text: string) => Promise<boolean>;
-}
-
-/** Send the built summary through the chosen channels. One failing never stops the other. */
-export async function deliverDigest(d: DigestData, channels: { flow: boolean; email: boolean }, send: DigestSenders) {
-  const out = { flow: false, email: false };
-  if (channels.flow) {
-    try {
-      out.flow = await send.flow(flowSummaryPayload(d));
-    } catch (e) {
-      console.error("[digest] flow", (e as Error).message);
-    }
-  }
-  if (channels.email) {
-    try {
-      out.email = await send.email(d.recipients, d.subject, d.html, d.text);
-    } catch (e) {
-      console.error("[digest] email", (e as Error).message);
-    }
-  }
-  return out;
-}
-
 /** Send if due. Records the day first so a crash can never send twice. */
 export async function sendDigestIfDue(shop: string, getAdmin: () => Promise<AdminGraphql> = async () => (await unauthenticated.admin(shop)).admin): Promise<boolean> {
   const { due, today } = await digestDue(shop);
@@ -197,12 +135,11 @@ export async function sendDigestIfDue(shop: string, getAdmin: () => Promise<Admi
   } catch {
     return false; // another run got there first
   }
-  const { settings } = await loadSettings(shop);
-  const channels = digestChannels(settings.notifications.digest, emailConfigured());
-  const d = await buildDigest(shop, today);
-  const r = await deliverDigest(d, channels, {
-    flow: async (payload) => flowDailySummary(await getAdmin(), payload),
-    email: sendEmail,
-  });
-  return r.flow || r.email;
+  try {
+    const d = await buildDigest(shop, today);
+    return await flowDailySummary(await getAdmin(), flowSummaryPayload(d));
+  } catch (e) {
+    console.error("[digest] flow", (e as Error).message);
+    return false;
+  }
 }
