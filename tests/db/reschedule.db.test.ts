@@ -32,6 +32,8 @@ describe.skipIf(!process.env.DATABASE_URL)("admin reschedule", async () => {
     s.methods.shipping.capacity.maxPerDay = 1;
     s.methods.shipping.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
     s.methods.shipping.schedule.windowDays = 400;
+    // Time slots set up but switched off: no order may get one.
+    s.methods.shipping.capacity.slots = [{ id: "am", start: "09:00", end: "12:00", weekdays: [], max: null }];
     await prisma.settings.create({ data: { shop: SHOP, version: 1, data: s as any } });
     await prisma.capacityCount.create({ data: { shop: SHOP, key: "shipping", date: "2027-03-10", slotId: "", orders: 1, items: 1 } });
   });
@@ -60,5 +62,12 @@ describe.skipIf(!process.env.DATABASE_URL)("admin reschedule", async () => {
     expect(remove).toContain("Date: 2027-03-10");
     const count = await prisma.capacityCount.findFirst({ where: { shop: SHOP, key: "shipping", date: "2027-03-10", slotId: "" } });
     expect(count?.orders ?? 0).toBe(0);
+  });
+
+  it("never attaches a time slot the day doesn't offer", async () => {
+    const r = await setOrderSchedule(SHOP, admin, "2001", { method: "shipping", date: "2027-03-12", slotId: "am", locationId: null });
+    expect(r.ok).toBe(true);
+    const row = await prisma.scheduledOrder.findFirst({ where: { shop: SHOP, orderId: "2001" } });
+    expect(row).toMatchObject({ date: "2027-03-12", slotId: null, slotLabel: null });
   });
 });

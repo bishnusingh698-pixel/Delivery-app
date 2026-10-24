@@ -56,6 +56,9 @@ const cartState = {
 const cartPage = `<main><form action="/cart" method="post"><div data-pickday-mount="block"></div><button type="submit" name="checkout">Check out</button></form></main>`;
 
 async function open(page: Page, locale: string, pseudo = false, opts: { cfg?: ReturnType<typeof config>; body?: string; path?: string; wait?: boolean } = {}) {
+  // Leave the previous page first: the widget saves a choice at once, and a save still on its way
+  // must not reach this page's fresh cart.
+  await page.goto("about:blank");
   cartState.attributes = {};
   const doc = (body: string, template: string) => {
     const boot = { config: opts.cfg ?? config(), availability: null, locale, country: "US", currency: "USD", rate: 1, template, pseudo, assetBase: "/assets/" };

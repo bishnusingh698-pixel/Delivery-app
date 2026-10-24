@@ -304,7 +304,7 @@ export class Pickday {
     if (!this.dated.length || !methods.length) {
       // Nothing needs a date (e.g. gift-card-only cart) or no method offered here: clear and hide.
       // An empty cart keeps a date picked on a product page until the product is added.
-      if (this.cart?.items.length && this.cart.attributes?.[ATTR_KEY]) await this.persist(true);
+      if (this.cart?.items.length && this.cart.attributes?.[ATTR_KEY]) await this.track(() => this.persist(true));
       return false;
     }
     if (this.st.method && !methods.includes(this.st.method)) {
@@ -389,18 +389,29 @@ export class Pickday {
     return slot ? `${d}, ${tx.range(slot[0], slot[1])}` : d;
   }
 
-  schedulePersist() {
+  /**
+   * Save the choice to the cart. Choices (date, slot, method, location, area) save at once, so an
+   * express checkout button tapped right after still gets them; typing (notes) waits for a pause.
+   */
+  schedulePersist(delay = 300) {
     window.clearTimeout(this.saving);
     this.saving = window.setTimeout(() => {
       this.saving = undefined;
-      void this.track(this.persist(false));
-    }, 300);
+      void this.track(() => this.persist(false));
+    }, delay);
   }
 
-  private track(p: Promise<void>): Promise<void> {
-    const run = p.catch((e) => log(this.cfg, "save failed", e)).finally(() => {
-      if (this.inflight === run) this.inflight = null;
-    });
+  /**
+   * Run cart saves one after the other: each starts when the previous one has finished and reads the
+   * choice as it is then, so two requests can never reach Shopify in the wrong order.
+   */
+  private track(save: () => Promise<void>): Promise<void> {
+    const run: Promise<void> = (this.inflight ?? Promise.resolve())
+      .then(save)
+      .catch((e) => log(this.cfg, "save failed", e))
+      .finally(() => {
+        if (this.inflight === run) this.inflight = null;
+      });
     this.inflight = run;
     return run;
   }
@@ -415,7 +426,7 @@ export class Pickday {
     if (this.saving !== undefined) {
       window.clearTimeout(this.saving);
       this.saving = undefined;
-      await this.track(this.persist(false));
+      await this.track(() => this.persist(false));
     }
     while (this.inflight) await this.inflight;
   }
@@ -456,14 +467,22 @@ export class Pickday {
     if (this.cfg.dateMode === "item") await this.persistItems(clear);
     // Also when the attributes didn't change: the shopper or the theme may have removed a fee line
     // (or changed its quantity), and checkout rejects a cart whose fees don't match the date.
-    await this.syncFees(clear ? [] : this.currentFees());
+    await this.syncFees(clear ? [] : this.cartFees());
+  }
+
+  /**
+   * Fee lines the cart should hold: none while nothing in it needs a date (a date picked on a product
+   * page before the product is added must not put a lone fee line in the cart).
+   */
+  cartFees(): Surcharge[] {
+    return this.dated.length ? this.currentFees() : [];
   }
 
   /** Do the cart's fee lines match the chosen date and slot (one line per fee, quantity 1)? */
   feesInSync(): boolean {
     const fees = this.surchargeVariants();
     if (!fees.size || !this.cart) return true;
-    const wanted = new Set(this.currentFees().map((f) => f.variantId!));
+    const wanted = new Set(this.cartFees().map((f) => f.variantId!));
     const have = this.cart.items.filter((i) => fees.has(String(i.variant_id)));
     return have.length === wanted.size && have.every((i) => i.quantity === 1 && wanted.has(String(i.variant_id)));
   }
@@ -730,7 +749,7 @@ export class Pickday {
               this.st.notice = null;
               this.ensureLocation();
               this.render();
-              this.schedulePersist();
+              this.schedulePersist(0);
             },
           }),
           this.cfg.widget.icons
@@ -766,7 +785,7 @@ export class Pickday {
                   this.st.slotId = null;
                   this.st.editing = true;
                   this.render();
-                  this.schedulePersist();
+                  this.schedulePersist(0);
                 },
               },
               h("option", { value: "" }, "—"),
@@ -802,7 +821,7 @@ export class Pickday {
       this.st.editing = true;
       remember();
       this.render();
-      this.schedulePersist();
+      this.schedulePersist(0);
     };
     const result =
       covered === null
@@ -1007,7 +1026,7 @@ export class Pickday {
     const day = buildCalendar(this.input(), date, date).days[0];
     if (!day.slots.length) this.st.editing = false;
     this.render();
-    this.schedulePersist();
+    this.schedulePersist(0);
   }
 
   dateDropdown(days: DayStatus[]): Node {
@@ -1199,7 +1218,7 @@ export class Pickday {
                 this.st.error = null;
                 this.st.editing = false;
                 this.render();
-                this.schedulePersist();
+                this.schedulePersist(0);
               },
             }),
             h("span", null, this.tx.range(s.slot.start, s.slot.end)),
@@ -1239,7 +1258,7 @@ export class Pickday {
                     this.st.items[line.key] = { d: v, s: null };
                     this.st.error = null;
                     this.render();
-                    this.schedulePersist();
+                    this.schedulePersist(0);
                   },
                 },
                 h("option", { value: "" }, this.tx.t("date.choose")),
@@ -1256,7 +1275,7 @@ export class Pickday {
                   onchange: (e: Event) => {
                     this.st.items[line.key] = { d: it.d, s: (e.target as HTMLSelectElement).value || null };
                     this.render();
-                    this.schedulePersist();
+                    this.schedulePersist(0);
                   },
                 },
                 h("option", { value: "" }, this.tx.t("slot.label")),
@@ -1283,7 +1302,7 @@ export class Pickday {
     this.st.editing = !date;
     this.st.error = null;
     this.render();
-    this.schedulePersist();
+    this.schedulePersist(0);
   }
 
   /** Earliest-date message / countdown for a product page. */

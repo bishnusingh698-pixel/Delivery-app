@@ -106,6 +106,47 @@ describe("storefront widget", () => {
     pd.stop();
   });
 
+  it("keeps a date picked on a product page (empty cart) without adding a lone fee line", async () => {
+    const { cart, api, calls } = memoryCart([]);
+    const pd = new Pickday(boot(withThursdayFee), api);
+    await pd.start();
+    pd.chooseFromProduct("shipping", null, "2026-10-15");
+    await pd.flush();
+    expect(calls).not.toContain("add:900");
+    await pd.refresh(); // what a cart event from the theme does
+    await pd.flush();
+    expect(cart.attributes[ATTR_KEY]).toContain("2026-10-15");
+    // The product is added: now its fee comes along.
+    cart.items.push(item());
+    await pd.refresh();
+    await pd.flush();
+    expect(cart.items.filter((i) => i.variant_id === 900)).toHaveLength(1);
+    pd.stop();
+  });
+
+  it("saves a choice at once, and quick changes reach the cart in order (express checkout)", async () => {
+    const { cart, api } = memoryCart([item()]);
+    // The first request is slow on the network: if both ran at once, the older date would land last.
+    const delays = [40, 0];
+    const update = api.updateAttributes;
+    api.updateAttributes = async (attrs) => {
+      await new Promise((r) => setTimeout(r, delays.shift() ?? 0));
+      return update(attrs);
+    };
+    const pd = new Pickday(boot(), api);
+    await pd.start();
+    await pd.flush();
+    delays.splice(0, delays.length, 40, 0);
+    pd.pick("2026-10-15");
+    await new Promise((r) => setTimeout(r, 5)); // no 300 ms wait: already on its way
+    expect(pd.hasPendingSave()).toBe(true);
+    pd.pick("2026-10-16");
+    await pd.flush();
+    await new Promise((r) => setTimeout(r, 60)); // anything still on the network has landed
+    expect(cart.attributes[ATTR_KEY]).toContain("2026-10-16");
+    pd.stop();
+  });
+
   it("date per item: a line with a date but no time slot can't go to checkout", async () => {
     const slots = (s: Settings) => {
       s.dateMode = "item";

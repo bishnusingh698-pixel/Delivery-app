@@ -7,7 +7,7 @@ import prisma from "../db.server";
 import { addDays } from "../../core/civil";
 import { buildCalendar, checkSelection, type EngineInput } from "../../core/engine";
 import { ATTR_KEY, READABLE_KEYS, encodeSelection } from "../../core/selection";
-import type { CartLine, DayStatus, MethodId, Selection, StorefrontConfig } from "../../core/types";
+import type { CartLine, DayStatus, MethodId, Selection, Slot, StorefrontConfig } from "../../core/types";
 import { logActivity } from "../models/settings.server";
 import { nowInZone } from "../../core/tz";
 import { buildAvailability, recountDates, toLine, type StoredItem } from "./counts.server";
@@ -119,11 +119,14 @@ export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderI
   const info = await orderItems(shop, admin, orderId, existing);
   const lines = info.items.filter((i) => i.needsDate !== false).map(toLine);
   const { config, input } = await adminCalendar(shop, choice.method, choice.locationId, existing, lines, 400);
+  let checked: Slot | null = null;
   if (!opts.force) {
     const r = checkSelection(input, choice.date, choice.slotId);
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
+    checked = r.slot?.slot ?? null;
   }
-  const slot = findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, existing?.zoneId ?? null, choice.date, choice.slotId);
+  // Checked: the slot the day really offers (none on a day without slots). Override: whatever slot was asked for.
+  const slot = opts.force ? findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, existing?.zoneId ?? null, choice.date, choice.slotId) : checked;
   const slotLabel = slot ? `${slot.start}-${slot.end}` : null;
   const history = [
     ...(((existing?.history as unknown as unknown[]) ?? []) as unknown[]),
@@ -188,11 +191,13 @@ export async function scheduleDraftOrder(shop: string, admin: AdminGraphql, draf
     .filter((l: any) => l.requiresShipping && !l.isGiftCard)
     .map((l: any) => ({ key: numericId(l.id), productId: numericId(l.product?.id), variantId: numericId(l.variant?.id), quantity: l.quantity, title: l.title }));
   const { config, input } = await adminCalendar(shop, choice.method, choice.locationId, null, lines, 400);
+  let checked: Slot | null = null;
   if (!opts.force) {
     const r = checkSelection(input, choice.date, choice.slotId);
     if (!r.ok) return { ok: false as const, reason: r.reason, detail: r.detail };
+    checked = r.slot?.slot ?? null;
   }
-  const slot = findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, null, choice.date, choice.slotId);
+  const slot = opts.force ? findSlot(config, choice.method, choice.method === "pickup" ? choice.locationId : null, null, choice.date, choice.slotId) : checked;
   const sel: Selection = { v: 1, m: choice.method, d: choice.date, s: slot?.id ?? null, t: slot ? `${slot.start}-${slot.end}` : null, l: choice.method === "pickup" ? choice.locationId : null, z: null, a: null, c: null, lbl: null, lc: config.primaryLocale, f: null };
   const merged = new Map<string, string>((d.draftOrder.customAttributes as { key: string; value: string }[]).map((a) => [a.key, a.value]));
   setReadableAttributes(merged, config, sel);

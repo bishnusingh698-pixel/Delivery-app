@@ -47,6 +47,8 @@ async function call<T>(path: string, body?: unknown): Promise<T> {
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: body ? JSON.stringify(body) : undefined,
       credentials: "same-origin",
+      // A choice saved just before the shopper leaves the page still reaches the cart.
+      keepalive: !!body,
     });
     if (!res.ok) throw new Error(`cart ${path} ${res.status}`);
     return (await res.json()) as T;
