@@ -30,6 +30,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     methods: s.methodOrder.filter((m) => s.methods[m].enabled),
     locations: s.locations.map((l) => ({ id: l.id, name: l.name })),
     zones: s.zones.map((z) => ({ id: z.id, name: z.name })),
+    weekStart: s.weekStart,
     slotsByMethod: Object.fromEntries(s.methodOrder.map((m) => [m, s.methods[m].capacity.slots.map((x) => ({ id: x.id, label: `${x.start}–${x.end}` }))])) as Record<MethodId, { id: string; label: string }[]>,
     anyOrders: (await prisma.scheduledOrder.count({ where: { shop: ctx.shop } })) > 0,
   };
@@ -69,7 +70,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (r.ok) moved.push(o.orderName);
       else failed.push({ name: o.orderName, reason: r.reason });
     } catch (e) {
-      failed.push({ name: o.orderName, reason: (e as Error).message });
+      // Shown with the "reason.*" texts: log the details, show a generic reason.
+      console.error("[orders] bulk move", ctx.shop, o.orderName, (e as Error).message);
+      failed.push({ name: o.orderName, reason: "invalid" });
     }
   }
   return { ok: true as const, moved, failed };
@@ -316,7 +319,7 @@ function CalendarView({ data, onPick, onMonth }: { data: Data; onPick: (d: strin
   const label = useMethodLabel();
   const month = data.month!;
   const days = data.days!;
-  const order = weekOrder(locale);
+  const order = weekOrder(locale, data.weekStart);
   const lead = (weekday(month) - order[0] + 7) % 7;
   const n = daysInMonth(Number(month.slice(0, 4)), Number(month.slice(5, 7)));
   const cells = [...Array(lead).fill(null), ...Array.from({ length: n }, (_, i) => addDays(month, i))] as (string | null)[];

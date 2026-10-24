@@ -106,7 +106,7 @@ export default function PickupPage() {
     shopifyLocationId: s.id,
     name: s.name.slice(0, 100),
     address: s.address,
-    instructions: s.instructions ? { [meta.primaryLocale]: s.instructions.slice(0, 1000) } : {},
+    instructions: s.instructions ? { [meta.primaryLocale]: s.instructions.slice(0, 600) } : {},
   });
   const linked = new Set(draft.locations.map((l) => l.shopifyLocationId).filter(Boolean));
   const unlinked = (imported?.locations ?? []).filter((s) => !linked.has(s.id));

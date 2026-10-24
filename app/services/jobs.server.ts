@@ -10,7 +10,7 @@ import { addDays } from "../../core/civil";
 import { shopToday } from "../models/shop.server";
 import { unauthenticated } from "../shopify.server";
 import { checkEmbed } from "./embed.server";
-import { publishShop, schedulePublish } from "./publish.server";
+import { locationTimeShifts, publishShop, schedulePublish } from "./publish.server";
 import { collectionIdsIn, resolveCollectionProducts } from "./collections.server";
 import { loadSettings, storeSettings } from "../models/settings.server";
 import { syncShopInfo } from "./install.server";
@@ -38,7 +38,16 @@ export async function hourly() {
   for (const s of shops) {
     try {
       const today = shopToday(s);
-      const stale = s.publishedFor !== today || s.countsDirty || !s.publishedAt || Date.now() - s.publishedAt.getTime() > 6 * 3600_000;
+      let stale = s.publishedFor !== today || s.countsDirty || !s.publishedAt || Date.now() - s.publishedAt.getTime() > 6 * 3600_000;
+      // Pickup locations in another time zone: after a daylight-saving change the checkout Function
+      // needs the new offset (tzShift) right away, not up to 6 hours later.
+      if (!stale && s.publishedAt) {
+        const { settings } = await loadSettings(s.shop);
+        if (settings.locations.some((l) => l.timeZone && l.timeZone !== s.timeZone)) {
+          const zones = { tz: s.timeZone, locations: settings.locations };
+          stale = JSON.stringify(locationTimeShifts(zones, s.publishedAt)) !== JSON.stringify(locationTimeShifts(zones));
+        }
+      }
       if (stale) {
         await publishShop(s.shop, undefined, { functions: false });
         published++;

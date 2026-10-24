@@ -151,7 +151,7 @@ async function publishNow(shop: string, admin: AdminGraphql | undefined, opts: {
   const { row, settings, config, today } = await storefrontConfigFor(shop);
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
   const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null; tzShift?: Record<string, number> } = toFunctionConfig(config);
-  // The Function only knows the shop's local time; pickup locations in other zones get an offset (republished hourly, so DST is followed).
+  // The Function only knows the shop's local time; pickup locations in other zones get an offset (the hourly job republishes when it changes, so DST is followed).
   const tzShift = locationTimeShifts(config);
   if (Object.keys(tzShift).length) fnConfig.tzShift = tzShift;
   if (embedOffFor(flagsOf(row))) (fnConfig as { embedOff?: boolean }).embedOff = true;

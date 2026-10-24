@@ -42,14 +42,28 @@ export function icsText(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
+/** UTF-8 length of one character (code point). */
+const octets = (ch: string) => {
+  const cp = ch.codePointAt(0) ?? 0;
+  return cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+};
+
+/** Fold lines at 75 octets (RFC 5545), never inside a character; continuation lines start with a space. */
 function fold(line: string): string {
   const out: string[] = [];
-  let rest = line;
-  while (rest.length > 74) {
-    out.push(rest.slice(0, 74));
-    rest = " " + rest.slice(74);
+  let cur = "";
+  let size = 0;
+  for (const ch of line) {
+    const n = octets(ch);
+    if (size + n > 75) {
+      out.push(cur);
+      cur = " ";
+      size = 1;
+    }
+    cur += ch;
+    size += n;
   }
-  out.push(rest);
+  out.push(cur);
   return out.join("\r\n");
 }
 

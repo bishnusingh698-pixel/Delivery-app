@@ -28,7 +28,9 @@ function ScheduleAction() {
         setState(s);
         if (method === undefined) {
           setMethod(s.method);
-          setLocation(s.locationId);
+          // Pickup at a store with locations: start with the first one, as the location list shows.
+          const loc = s.locationId ?? (s.method === "pickup" ? s.locations[0]?.id ?? null : null);
+          setLocation(loc);
           if (s.order?.date) setDate(s.order.date);
         }
       },
@@ -58,7 +60,7 @@ function ScheduleAction() {
     <s-admin-action heading={t("actionTitle")}>
       <s-stack direction="block" gap="base">
         {message ? <s-banner tone="critical">{message}</s-banner> : null}
-        <s-select label={t("method")} value={method} onChange={(e: any) => { setMethod(e.currentTarget.value); setDate(""); setSlot(""); }}>
+        <s-select label={t("method")} value={method} onChange={(e: any) => { const m = e.currentTarget.value; setMethod(m); setLocation(m === "pickup" ? location ?? state.locations[0]?.id ?? null : null); setDate(""); setSlot(""); }}>
           {state.methods.map((m) => <s-option key={m.id} value={m.id}>{m.name}</s-option>)}
         </s-select>
         {method === "pickup" && state.locations.length ? (

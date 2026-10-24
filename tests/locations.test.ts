@@ -23,3 +23,17 @@ describe("toShopifyLocation", () => {
     expect(l.instructions).toBe("");
   });
 });
+
+describe("pickup locations in another time zone", () => {
+  it("get a new checkout time offset after a daylight-saving change (the hourly job compares them)", async () => {
+    const { vi } = await import("vitest");
+    vi.doMock("../app/db.server", () => ({ default: {} }));
+    vi.doMock("../app/shopify.server", () => ({ unauthenticated: {} }));
+    const { locationTimeShifts } = await import("../app/services/publish.server");
+    const zones = { tz: "Europe/Berlin", locations: [{ id: "ny", timeZone: "America/New_York" }] as never };
+    // Europe goes back on 25 Oct 2026, the US on 1 Nov: for that week New York is 5 hours behind, not 6.
+    expect(locationTimeShifts(zones, new Date("2026-10-24T12:00:00Z"))).toEqual({ ny: -360 });
+    expect(locationTimeShifts(zones, new Date("2026-10-26T12:00:00Z"))).toEqual({ ny: -300 });
+    expect(locationTimeShifts(zones, new Date("2026-11-02T12:00:00Z"))).toEqual({ ny: -360 });
+  });
+});

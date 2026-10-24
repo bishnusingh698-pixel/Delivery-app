@@ -25,3 +25,15 @@ describe("calendar links and files", () => {
     expect(cal.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
   });
 });
+
+describe(".ics line folding", () => {
+  it("folds at 75 octets without splitting a character", () => {
+    const title = "ご注文 #1001 ケーキ 🎂 ".repeat(8);
+    const ev = icsEvent({ uid: "u2", stamp: "20261016T000000Z", title, date: "2026-10-18", start: null, end: null, timeZone: null });
+    const lines = ev.split("\r\n");
+    for (const l of lines) expect(new TextEncoder().encode(l).length).toBeLessThanOrEqual(75);
+    // Unfolding (drop CRLF + one space) gives back the exact text, emoji included.
+    const summary = ev.replace(/\r\n /g, "").split("\r\n").find((l) => l.startsWith("SUMMARY:"));
+    expect(summary).toBe(`SUMMARY:${title}`);
+  });
+});

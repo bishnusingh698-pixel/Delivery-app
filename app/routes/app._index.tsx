@@ -2,9 +2,10 @@
  * Home: the 3-step setup wizard for a new store, then the dashboard (alerts, what's left to
  * set up, today / tomorrow / next 7 days, the next 14 days at a glance, quick actions).
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useFetcher, useLoaderData } from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { addDays, isValidDate, isValidTime } from "../../core/civil";
 import { BUSINESS_TYPES, applyWizard, wizardSuggestion, type BusinessType, type WizardChoices } from "../../core/defaults";
 import { alerts, busyDays, checklist, type ChecklistId } from "../../core/home";
@@ -112,6 +113,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const date = String(body.date ?? "");
     if (!isValidDate(date) || date < ctx.today) return { ok: false as const, error: "date" };
     const label = String(body.label ?? "").slice(0, 100);
+    // Already closed for everyone (double click, or closed twice): nothing to add.
+    if (ctx.settings.closures.some((c) => !c.yearly && c.start <= date && c.end >= date && c.methods === "all" && c.locations === "all")) return { ok: true as const, closed: date };
     const next = { ...ctx.settings, closures: [...ctx.settings.closures, { id: newId("c"), label, start: date, end: date, yearly: false, methods: "all" as const, locations: "all" as const, kind: "blackout" as const }] };
     const r = await saveSettings(ctx, next, `Closed ${date}${label ? ` (${label})` : ""}`);
     return { ok: r.ok, closed: date };
@@ -344,9 +347,17 @@ function Dashboard({ d }: { d: DashData }) {
 function CloseDayModal({ d }: { d: DashData }) {
   const t = useT();
   const fmt = useFormatDate();
+  const shopify = useAppBridge();
   const fetcher = useFetcher<{ ok: boolean; closed?: string }>();
   const [date, setDate] = useState<string | null>(d.today);
   const [why, setWhy] = useState("");
+  // The modal closes at once: say whether the day was really closed.
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.ok) shopify.toast.show(t("common.saved"));
+    else shopify.toast.show(t("orders.actionFailed"), { isError: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.data, fetcher.state]);
   const orders = d.chart.find((c) => c.date === date)?.orders ?? 0;
   return (
     <Modal

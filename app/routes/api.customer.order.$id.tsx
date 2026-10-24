@@ -2,7 +2,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import prisma from "../db.server";
 import { isValidDate } from "../../core/civil";
 import { CUSTOMER_ACTOR, changeDeadline, customerChangeBlock, type ChangeBlock } from "../../core/customer-change";
-import { engineTimeZone } from "../../core/engine";
+import { engineTimeZone, type EngineConfig } from "../../core/engine";
 import { hasFeature } from "../../core/publish";
 import type { MethodId, Settings } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
@@ -10,7 +10,6 @@ import { planOf } from "../models/shop.server";
 import { authenticate, unauthenticated } from "../shopify.server";
 import { toLine, type StoredItem } from "../services/counts.server";
 import { gid, gql, numericId } from "../services/graphql.server";
-import { storefrontConfigFor } from "../services/publish.server";
 import { adminCalendar, setOrderSchedule } from "../services/reschedule.server";
 
 /**
@@ -43,8 +42,8 @@ async function check(rawId: string | undefined, sub: string | undefined, dest: s
   const live = await gql(admin, `query($id: ID!) { order(id: $id) { customer { id } cancelledAt displayFulfillmentStatus } }`, { id: gid("Order", orderId) });
   const o = live.order;
   if (!o || !o.customer?.id || numericId(o.customer.id) !== numericId(sub)) return { ok: false, status: 404, block: "notFound" };
-  const { config } = await storefrontConfigFor(shop);
-  const timeZone = engineTimeZone(config, existing.method as MethodId, existing.locationId);
+  // Only the time zone is needed here (the store's, or the pickup location's own): no full config build per page view.
+  const timeZone = engineTimeZone({ tz: row.timeZone, locations: settings.locations } as EngineConfig, existing.method as MethodId, existing.locationId);
   let block = customerChangeBlock(settings.customerChanges, existing, timeZone);
   if (!block && o.cancelledAt) block = "cancelled";
   if (!block && o.displayFulfillmentStatus !== "UNFULFILLED") block = "fulfilled";
