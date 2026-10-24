@@ -25,4 +25,19 @@ describe("settings validation", () => {
     expect(validateSettings(settings((x) => (x.methods.shipping.schedule.windowDays = 401))).ok).toBe(false);
     expect(validateSettings(settings((x) => (x.methods.shipping.schedule.windowDays = 400))).ok).toBe(true);
   });
+
+  it("refuses an offered method or pickup location with no working day (nobody could order)", () => {
+    const r = validateSettings(settings((x) => (x.methods.shipping.schedule.weekdays = [])));
+    expect(r.ok ? [] : r.issues.map((i) => i.path)).toEqual(["methods.shipping.schedule.weekdays"]);
+    // Switched off: fine.
+    expect(validateSettings(settings((x) => (x.methods.delivery.schedule.weekdays = []))).ok).toBe(true);
+    const loc = validateSettings(
+      settings((x) => {
+        x.methods.pickup.enabled = true;
+        const custom = { schedule: { ...x.methods.pickup.schedule, weekdays: [] }, capacity: x.methods.pickup.capacity };
+        x.locations.push({ id: "a", shopifyLocationId: null, name: "A", address: "", mapUrl: "", instructions: {}, timeZone: null, enabled: true, countries: "all", custom });
+      }),
+    );
+    expect(loc.ok ? [] : loc.issues.map((i) => i.path)).toEqual(["locations.0.custom.schedule.weekdays"]);
+  });
 });

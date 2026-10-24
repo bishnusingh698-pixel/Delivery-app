@@ -252,6 +252,13 @@ export const settingsSchema = z
     if (!Object.values(s.methods).some((m) => m.enabled)) {
       ctx.addIssue({ code: "custom", path: ["methods"], message: "Turn on at least one method" });
     }
+    // An offered method with no working day has no date to offer: with "date required", nobody could order.
+    for (const [id, m] of Object.entries(s.methods)) {
+      if (m.enabled && !m.schedule.weekdays.length) ctx.addIssue({ code: "custom", path: ["methods", id, "schedule", "weekdays"], message: "Choose at least one day" });
+    }
+    s.locations.forEach((l, i) => {
+      if (l.enabled && l.custom && !l.custom.schedule.weekdays.length) ctx.addIssue({ code: "custom", path: ["locations", i, "custom", "schedule", "weekdays"], message: "Choose at least one day" });
+    });
   });
 
 /** Deep-merge `value` over `base` (objects only; arrays and primitives replace). */
