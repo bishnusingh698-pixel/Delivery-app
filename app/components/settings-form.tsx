@@ -47,8 +47,12 @@ export function useSettingsForm<K extends keyof Settings>(initial: Pick<Settings
       setIssues(local);
       return;
     }
-    fetcher.submit(JSON.stringify({ patch: draft }), { method: "post", encType: "application/json" });
-  }, [draft, fetcher, opts]);
+    // Only the sections changed here: a page's untouched copy of other sections (e.g. the Settings page's
+    // delivery hours) must not undo changes saved meanwhile somewhere else.
+    const keys = (Object.keys(draft) as K[]).filter((k) => JSON.stringify(draft[k]) !== JSON.stringify(base[k]));
+    const patch = Object.fromEntries(keys.map((k) => [k, draft[k]]));
+    fetcher.submit(JSON.stringify({ patch }), { method: "post", encType: "application/json" });
+  }, [base, draft, fetcher, opts]);
 
   const discard = useCallback(() => {
     setDraft(clone(base));
