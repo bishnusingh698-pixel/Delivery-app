@@ -126,6 +126,8 @@ export function orderRow(o: ScheduledOrder, settings: Settings) {
     customer: o.customerFirst,
     method: o.method as MethodId,
     date: o.date,
+    /** Date per item with different dates: the items' dates (the order itself has none). */
+    itemDates: o.date ? [] : [...new Set(items.map((i) => i.date).filter(Boolean) as string[])].sort(),
     slot: o.slotLabel,
     place: loc ?? zone ?? o.area ?? null,
     items: o.itemCount,

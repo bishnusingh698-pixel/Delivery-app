@@ -234,7 +234,7 @@ function ListView({ data, set }: { data: Data; set: (p: Record<string, string | 
                   </s-table-cell>
                   <s-table-cell>{r.customer ?? ""}</s-table-cell>
                   <s-table-cell>{label(r.method)}</s-table-cell>
-                  <s-table-cell>{fmt(r.date)}</s-table-cell>
+                  <s-table-cell>{r.date ? fmt(r.date) : r.itemDates.map((d) => fmt(d)).join(", ")}</s-table-cell>
                   <s-table-cell>{r.slot?.replace("-", "–") ?? ""}</s-table-cell>
                   <s-table-cell>{r.place ?? ""}</s-table-cell>
                   <s-table-cell>{r.items}</s-table-cell>

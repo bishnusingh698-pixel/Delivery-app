@@ -34,7 +34,7 @@ export const loader = async ({ request, params }: LoaderFunctionArgs) => {
     name: base.info.name,
     customer: base.info.first,
     order: o ? { method: o.method as MethodId, date: o.date, slot: o.slotLabel, slotId: o.slotId, locationId: o.locationId, status: o.status, limited: o.limited, tags: o.tags, history: (o.history ?? []) as { at: string; by: string | null; from: { method: string; date: string | null; slot: string | null } | null; to: { method: string; date: string; slot: string | null }; forced?: boolean }[] } : null,
-    items: (base.info.items as StoredItem[]).map((i) => ({ title: i.title, variant: i.variant ?? null, qty: i.qty, needsDate: i.needsDate !== false })),
+    items: (base.info.items as StoredItem[]).map((i) => ({ title: i.title, variant: i.variant ?? null, qty: i.qty, needsDate: i.needsDate !== false, date: i.date ?? null })),
     methods: s.methodOrder.filter((m) => s.methods[m].enabled),
     locations: s.locations.filter((l) => l.enabled).map((l) => ({ id: l.id, name: l.name })),
     place: s.locations.find((l) => l.id === o?.locationId)?.name ?? s.zones.find((z) => z.id === o?.zoneId)?.name ?? o?.area ?? null,
@@ -67,6 +67,8 @@ export default function OrderDetail() {
     );
   }
   const o = data.order;
+  // Date per item with different dates: the order has no single date, each item shows its own.
+  const perItem = !o?.date && data.items.some((i) => i.date);
   return (
     <Page
       title={data.name}
@@ -85,6 +87,8 @@ export default function OrderDetail() {
               {o.limited ? <s-badge tone="warning">{t("order.limited")}</s-badge> : null}
             </s-stack>
           </Stack>
+        ) : perItem && o ? (
+          <s-text>{label(o.method)}{data.place ? ` · ${data.place}` : ""}</s-text>
         ) : (
           <s-text>{t("order.noSchedule")}</s-text>
         )}
@@ -95,6 +99,7 @@ export default function OrderDetail() {
             <s-table-header listSlot="primary">{t("production.colProduct")}</s-table-header>
             <s-table-header>{t("production.colVariant")}</s-table-header>
             <s-table-header format="numeric">{t("production.colQty")}</s-table-header>
+            {perItem ? <s-table-header>{t("orders.colDate")}</s-table-header> : null}
           </s-table-header-row>
           <s-table-body>
             {data.items.map((i, n) => (
@@ -102,6 +107,7 @@ export default function OrderDetail() {
                 <s-table-cell>{i.title}{i.needsDate ? "" : ` (${t("order.noDateNeeded")})`}</s-table-cell>
                 <s-table-cell>{i.variant ?? ""}</s-table-cell>
                 <s-table-cell>{i.qty}</s-table-cell>
+                {perItem ? <s-table-cell>{i.date ? fmt(i.date, true) : ""}</s-table-cell> : null}
               </s-table-row>
             ))}
           </s-table-body>

@@ -33,6 +33,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const rows = orders.map((o) => orderRow(o, ctx.settings));
   return csv(`orders-${ctx.today}.csv`, toCsv(
     [t("orders.colOrder"), t("orders.colCustomer"), t("orders.colMethod"), t("orders.colDate"), t("orders.colSlot"), t("orders.colPlace"), t("orders.colItems"), t("orders.colStatus"), t("print.items")],
-    rows.map((r) => [r.name, r.customer, t(`method.${r.method}`), r.date, r.slot, r.place, r.items, t(`orders.status.${r.status}`), r.lines.map((l) => `${l.qty} x ${l.title}${l.variant ? ` (${l.variant})` : ""}`).join("; ")]),
+    rows.map((r) => [r.name, r.customer, t(`method.${r.method}`), r.date ?? r.itemDates.join(" "), r.slot, r.place, r.items, t(`orders.status.${r.status}`), r.lines.map((l) => `${l.qty} x ${l.title}${l.variant ? ` (${l.variant})` : ""}`).join("; ")]),
   ));
 };
