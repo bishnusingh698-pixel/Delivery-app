@@ -104,6 +104,7 @@ export function defaultSettings(country: string | null = null): Settings {
       emailSnippetConfirmed: false,
       calendarFeed: { mode: "order", includeDetails: false },
       flowEnabled: true,
+      dailySummary: { enabled: false, hour: 7, day: "tomorrow" },
     },
     tagging: { enabled: true, prefix: "" },
     productionPrepOffsetDays: 0,

@@ -242,6 +242,7 @@ export const settingsSchema = z
       emailSnippetConfirmed: z.boolean(),
       calendarFeed: z.object({ mode: z.enum(["order", "day"]), includeDetails: z.boolean() }),
       flowEnabled: z.boolean(),
+      dailySummary: z.object({ enabled: z.boolean(), hour: z.number().int().min(0).max(23), day: z.enum(["today", "tomorrow"]) }),
     }),
     tagging: z.object({ enabled: z.boolean(), prefix: z.string().max(20) }),
     productionPrepOffsetDays: z.number().int().min(0).max(30),

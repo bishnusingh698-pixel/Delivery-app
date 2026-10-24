@@ -22,7 +22,7 @@ export interface PublishMeta {
 }
 
 /** Features each plan unlocks (also used by the admin for lock badges). */
-const BASICS = ["allMethods", "slots", "closures", "holidays", "notes"];
+const BASICS = ["allMethods", "slots", "closures", "holidays", "notes", "dailySummary"];
 const STARTER = [...BASICS, "capacity", "checkoutMatching"];
 
 /**

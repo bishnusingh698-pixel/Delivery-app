@@ -1,6 +1,7 @@
 /**
  * Scheduled work, triggered by cron-job.org (POST with X-Pickday-Secret).
- * Hourly: roll each store's availability window and public holidays forward (republish if stale).
+ * Hourly: roll each store's availability window and public holidays forward (republish if stale),
+ * and fire the "Daily schedule" Flow trigger at each store's chosen hour.
  * Daily: prune old data, re-check the theme app embed.
  * Each store is handled on its own; one failure never stops the rest.
  */
@@ -13,6 +14,7 @@ import { publishShop, schedulePublish } from "./publish.server";
 import { collectionIdsIn, resolveCollectionProducts } from "./collections.server";
 import { loadSettings, storeSettings } from "../models/settings.server";
 import { syncShopInfo } from "./install.server";
+import { sendDailySummaryIfDue } from "./daily-summary.server";
 
 const running = new Map<string, Promise<unknown>>();
 
@@ -29,8 +31,9 @@ export function runInBackground(name: string, fn: () => Promise<unknown>): boole
 }
 
 export async function hourly() {
-  const shops = await prisma.shop.findMany({ where: { active: true }, select: { shop: true, timeZone: true, publishedFor: true, countsDirty: true, publishedAt: true } });
+  const shops = await prisma.shop.findMany({ where: { active: true } });
   let published = 0;
+  let summaries = 0;
   let errors = 0;
   for (const s of shops) {
     try {
@@ -44,8 +47,14 @@ export async function hourly() {
       errors++;
       console.error("[jobs] hourly", s.shop, (e as Error).message);
     }
+    try {
+      if (await sendDailySummaryIfDue(s, async () => (await unauthenticated.admin(s.shop)).admin)) summaries++;
+    } catch (e) {
+      errors++;
+      console.error("[jobs] daily summary", s.shop, (e as Error).message);
+    }
   }
-  return { shops: shops.length, published, errors };
+  return { shops: shops.length, published, summaries, errors };
 }
 
 export async function daily() {

@@ -60,6 +60,8 @@ model Shop {
   publishedAt     DateTime?
   publishedFor    String? // store-local date the availability window starts on
   countsDirty     Boolean   @default(false)
+  /// Store-local date the "Daily schedule" Flow trigger was last sent for (once a day).
+  dailySummaryFor String?
   validationId    String?
   deliveryCustomizationId String?
   surchargeProductId String?

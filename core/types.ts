@@ -271,6 +271,16 @@ export interface NotificationSettings {
   emailSnippetConfirmed: boolean;
   calendarFeed: { mode: "order" | "day"; includeDetails: boolean };
   flowEnabled: boolean;
+  /** Once a day, fire the "Daily schedule" Flow trigger (merchants send it as a staff email with Flow). */
+  dailySummary: DailySummarySettings;
+}
+
+export interface DailySummarySettings {
+  enabled: boolean;
+  /** Store-local hour (0–23) to send it at. */
+  hour: number;
+  /** Which day it describes. */
+  day: "today" | "tomorrow";
 }
 
 export interface TaggingSettings {
