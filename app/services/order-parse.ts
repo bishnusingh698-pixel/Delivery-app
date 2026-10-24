@@ -47,21 +47,25 @@ export interface ParsedOrder {
   items: StoredItem[];
   itemCount: number;
   /** Per-item mode: lines with their own date. */
-  perItem: { lineId: string; productId: string; variantId: string; title: string; qty: number; date: string; slotId: string | null }[];
+  perItem: { lineId: string; productId: string; variantId: string; title: string; qty: number; date: string; slotId: string | null; tags?: string[] }[];
   updatedAt: Date | null;
   shippingTitle: string | null;
 }
 
 const attr = (list: { name: string; value: string }[] | undefined, key: string) => list?.find((a) => a.name === key)?.value ?? null;
 
-/** null when the order has no Pickday choice at all. */
-export function parseOrder(p: OrderPayload, settings: Pick<Settings, "productRules" | "surcharges">): ParsedOrder | null {
+/**
+ * null when the order has no Pickday choice at all. `tags` (product id -> tags) comes from the Admin API:
+ * order webhooks don't include product tags, and product rules can target them.
+ */
+export function parseOrder(p: OrderPayload, settings: Pick<Settings, "productRules" | "surcharges">, tags: Record<string, string[]> = {}): ParsedOrder | null {
   const sel = decodeSelection(attr(p.note_attributes, ATTR_KEY));
   const fees = new Set(settings.surcharges.map((s) => s.variantId).filter(Boolean) as string[]);
   const lines = p.line_items.filter((l) => !fees.has(String(l.variant_id)));
   const itemSel = new Map(lines.map((l) => [String(l.id), decodeItemSelection(attr(l.properties, ATTR_KEY))]));
   if (!sel && ![...itemSel.values()].some((s) => s?.d)) return null;
 
+  const tagsOf = (l: OrderPayload["line_items"][number]) => tags[String(l.product_id ?? "")];
   const cartLines: CartLine[] = lines.map((l) => ({
     key: String(l.id),
     productId: String(l.product_id ?? ""),
@@ -70,6 +74,7 @@ export function parseOrder(p: OrderPayload, settings: Pick<Settings, "productRul
     title: l.title,
     giftCard: !!l.gift_card,
     requiresShipping: l.requires_shipping !== false,
+    tags: tagsOf(l),
   }));
   const dated = new Set(datedLines(cartLines, settings.productRules).map((l) => l.key));
   const items: StoredItem[] = lines
@@ -81,13 +86,14 @@ export function parseOrder(p: OrderPayload, settings: Pick<Settings, "productRul
       title: l.title,
       variant: l.variant_title || null,
       qty: l.current_quantity ?? l.quantity,
+      ...(tagsOf(l)?.length ? { tags: tagsOf(l) } : {}),
       date: itemSel.get(String(l.id))?.d ?? null,
       slotId: itemSel.get(String(l.id))?.s ?? null,
       needsDate: dated.has(String(l.id)),
     }));
   const perItem = items
     .filter((i) => i.needsDate && i.date)
-    .map((i) => ({ lineId: i.lineId, productId: i.productId, variantId: i.variantId, title: i.title, qty: i.qty, date: i.date!, slotId: i.slotId ?? null }));
+    .map((i) => ({ lineId: i.lineId, productId: i.productId, variantId: i.variantId, title: i.title, qty: i.qty, date: i.date!, slotId: i.slotId ?? null, tags: i.tags ?? [] }));
   const firstItemDate = perItem[0]?.date ?? null;
   const sameDate = perItem.every((i) => i.date === firstItemDate);
 

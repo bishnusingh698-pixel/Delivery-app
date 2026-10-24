@@ -4,7 +4,7 @@ import { isValidDate } from "../../core/civil";
 import { adminContext } from "../services/settings.server";
 import { adminT } from "../services/admin-t.server";
 import { daySheet, liveDetails, productionSheet, routeSheet } from "../services/print.server";
-import { parseFilters, production, whereFor } from "../services/orders-query.server";
+import { parseFilters, production, resolveWhere } from "../services/orders-query.server";
 import { hasFeature } from "../../core/publish";
 
 /**
@@ -31,7 +31,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // Day and route sheets use the Orders page filters, or explicit order ids (selection).
   const f = parseFilters(url, ctx.today, ctx.settings.weekStart);
   const ids = url.searchParams.get("ids")?.split(",").filter(Boolean).slice(0, 500);
-  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : whereFor(ctx.shop, f);
+  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : await resolveWhere(ctx.shop, f);
   const orders = await prisma.scheduledOrder.findMany({ where, orderBy: [{ date: "asc" }, { slotLabel: "asc" }, { orderName: "asc" }], take: 500 });
   const live = await liveDetails(ctx.admin, orders.map((o) => o.orderId));
   const dates = [...new Set(orders.map((o) => o.date).filter(Boolean))] as string[];

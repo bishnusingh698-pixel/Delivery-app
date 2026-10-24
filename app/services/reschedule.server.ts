@@ -59,7 +59,7 @@ async function orderItems(shop: string, admin: AdminGraphql, orderId: string, ex
   if (existing) return { name: existing.orderName, first: existing.customerFirst, items: existing.items as unknown as StoredItem[] };
   const data = await gql(
     admin,
-    `query($id: ID!) { order(id: $id) { name customer { firstName } lineItems(first: 100) { nodes { id title variantTitle quantity: currentQuantity requiresShipping isGiftCard product { id } variant { id } } } } }`,
+    `query($id: ID!) { order(id: $id) { name customer { firstName } lineItems(first: 100) { nodes { id title variantTitle quantity: currentQuantity requiresShipping isGiftCard product { id tags } variant { id } } } } }`,
     { id: gid("Order", orderId) },
   );
   const o = data.order;
@@ -73,6 +73,7 @@ async function orderItems(shop: string, admin: AdminGraphql, orderId: string, ex
       title: l.title,
       variant: l.variantTitle,
       qty: l.quantity,
+      ...(l.product?.tags?.length ? { tags: l.product.tags as string[] } : {}),
       needsDate: l.requiresShipping && !l.isGiftCard,
     }));
   return { name: o.name as string, first: (o.customer?.firstName as string | null) ?? null, items };

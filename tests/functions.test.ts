@@ -140,6 +140,39 @@ describe("validation Function", () => {
     expect(validate(input, messages)[0].message).toContain("20095");
   });
 
+  it("checks region-based delivery areas with the province typed at checkout, and only when there is one", () => {
+    const c = config((s) => {
+      s.methods.delivery.enabled = true;
+      s.methods.delivery.dateRequired = true;
+      s.areas.push({ country: "DE", mode: "region", postcodes: [], areas: [], regions: ["BE"], askFirst: false });
+    });
+    const at = (address: { zip?: string | null; provinceCode?: string | null }) => {
+      const input = vInput(c, { attr: sel({ m: "delivery", a: "BE" }) });
+      input.cart.deliveryGroups = [{ deliveryAddress: { countryCode: "DE", ...address } }];
+      return validate(input, messages);
+    };
+    expect(at({ zip: null, provinceCode: "DE-BE" })).toEqual([]);
+    expect(at({ zip: null, provinceCode: "DE-HH" })[0].message).toBe(messages.en["area.notCovered"].replace(/\{postcode\}/, "DE-HH"));
+    // German addresses have no province at checkout: a postcode alone can't tell the region, so don't block.
+    expect(at({ zip: "10115", provinceCode: null })).toEqual([]);
+  });
+
+  it("still requires a date for a zone when the config had to be trimmed", () => {
+    const c = config((s) => {
+      s.methods.delivery.enabled = true;
+      s.methods.delivery.dateRequired = true;
+      s.zones.push({ id: "north", name: "North", country: "DE", postcodes: ["10115"], areas: [], regions: [], schedule: {}, capacity: null });
+    });
+    const run = (attr: string) => {
+      const input = vInput(c, { attr });
+      (input.validation!.metafield!.jsonValue as any).trimmed = true;
+      return validate(input, messages);
+    };
+    expect(run(sel({ m: "delivery", z: "north", d: null }))[0].message).toBe(messages.en["validation.missingDate"]);
+    // With a date, the zone's own rules can't be checked from a trimmed config: let it through (D-11).
+    expect(run(sel({ m: "delivery", z: "north", d: "2026-10-14" }))).toEqual([]);
+  });
+
   it("adds minutes across midnight", () => {
     expect(shiftTime({ date: "2026-10-14", minutes: 60 }, -120)).toEqual({ date: "2026-10-13", minutes: 1380 });
     expect(shiftTime({ date: "2026-10-14", minutes: 1400 }, 59)).toEqual({ date: "2026-10-15", minutes: 19 });

@@ -62,3 +62,16 @@ describe("order parsing", () => {
     expect(methodMismatch(p, [{ title: "express", method: "pickup" }])).toBe(false);
   });
 });
+
+describe("order parsing with product tags", () => {
+  it("applies tag rules with the tags looked up for the order (webhooks don't include them)", () => {
+    const s = settings((x) => (x.productRules.exclude.tags = ["no-date"]));
+    const o = order({ note_attributes: [{ name: "_pickday", value: JSON.stringify({ ...sel, m: "shipping" }) }] });
+    o.line_items[1] = { id: 2, product_id: 20, variant_id: 200, title: "Card", quantity: 3 };
+    // Without tags the excluded product would count toward the day's items.
+    expect(parseOrder(o, s)!.itemCount).toBe(5);
+    const p = parseOrder(o, s, { "20": ["No-Date"], "10": ["cake"] })!;
+    expect(p.itemCount).toBe(2);
+    expect(p.items.map((i) => i.tags)).toEqual([["cake"], ["No-Date"]]);
+  });
+});

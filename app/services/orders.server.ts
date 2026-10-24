@@ -5,15 +5,16 @@
  * - Out-of-order safe: a payload older than what we stored is ignored.
  * - Counts are rebuilt for every date touched (old and new), never incremented.
  */
-import type { Prisma } from "@prisma/client";
+import type { Prisma, ScheduledOrder } from "@prisma/client";
 import prisma from "../db.server";
 import { loadSettings, logActivity } from "../models/settings.server";
 import { addWarning, flagsOf, planOf, requireShop, setFlags, shopToday } from "../models/shop.server";
 import { zonedToUtc } from "../../core/tz";
 import { PLAN_ORDER_LIMIT } from "../../core/publish";
+import { rulesUseTags } from "../../core/rules";
 import type { Settings } from "../../core/types";
-import { recountDates } from "./counts.server";
-import { assertNoUserErrors, gid, gql, type AdminGraphql } from "./graphql.server";
+import { recountDates, type StoredItem } from "./counts.server";
+import { assertNoUserErrors, gid, gql, numericId, type AdminGraphql } from "./graphql.server";
 import { methodMismatch, orderTags, parseOrder, type OrderPayload, type ParsedOrder } from "./order-parse";
 import { schedulePublish } from "./publish.server";
 import { monthlyUsage } from "./usage.server";
@@ -24,8 +25,9 @@ export type OrderTopic = "ORDERS_CREATE" | "ORDERS_UPDATED" | "ORDERS_EDITED" | 
 /** Record (or update) one order. Returns what happened, for logs and tests. */
 export async function recordOrder(shop: string, payload: OrderPayload, admin: AdminGraphql | null, topic: OrderTopic | "ADMIN" = "ORDERS_UPDATED") {
   const { settings } = await loadSettings(shop);
-  const parsed = parseOrder(payload, settings);
   const existing = await prisma.scheduledOrder.findUnique({ where: { shop_orderId: { shop, orderId: String(payload.id) } } });
+  const tags = rulesUseTags(settings.productRules) ? await productTags(admin, payload, existing) : {};
+  const parsed = parseOrder(payload, settings, tags);
   const sourceAt = payload.updated_at ? new Date(payload.updated_at) : null;
   if (existing?.sourceUpdatedAt && sourceAt && sourceAt < existing.sourceUpdatedAt) return "stale";
 
@@ -91,7 +93,7 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
       data:
         parsed.status === "cancelled"
           ? []
-          : parsed.perItem.map((i) => ({ shop, orderId: parsed.orderId, lineId: i.lineId, productId: i.productId, variantId: i.variantId, title: i.title, qty: i.qty, date: i.date, slotId: i.slotId, method: parsed.method, locationId: parsed.locationId })),
+          : parsed.perItem.map((i) => ({ shop, orderId: parsed.orderId, lineId: i.lineId, productId: i.productId, variantId: i.variantId, title: i.title, qty: i.qty, date: i.date, slotId: i.slotId, method: parsed.method, locationId: parsed.locationId, zoneId: parsed.zoneId, tags: i.tags ?? [] })),
     }),
   ]);
 
@@ -116,6 +118,26 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     }
   }
   return existing ? "updated" : "created";
+}
+
+/**
+ * Product tags of the order's lines (product id -> tags), for product rules that target tags: order
+ * webhooks don't include them. Falls back to the tags recorded before when Shopify can't be asked.
+ */
+async function productTags(admin: AdminGraphql | null, payload: OrderPayload, existing: ScheduledOrder | null): Promise<Record<string, string[]>> {
+  const out: Record<string, string[]> = {};
+  for (const it of ((existing?.items as unknown as StoredItem[]) ?? [])) if (it.tags?.length) out[it.productId] = it.tags;
+  const ids = [...new Set(payload.line_items.map((l) => String(l.product_id ?? "")).filter(Boolean))].slice(0, 250);
+  if (!admin || !ids.length) return out;
+  try {
+    const d = await gql<{ nodes: ({ id?: string; tags?: string[] } | null)[] }>(admin, `query PickdayOrderTags($ids: [ID!]!) { nodes(ids: $ids) { ... on Product { id tags } } }`, {
+      ids: ids.map((id) => gid("Product", id)),
+    });
+    for (const n of d.nodes ?? []) if (n?.id) out[numericId(n.id)] = n.tags ?? [];
+  } catch (e) {
+    console.error("[orders] product tags", (e as Error).message);
+  }
+  return out;
 }
 
 /** JSON with sorted keys (jsonb reorders keys and drops undefined). */

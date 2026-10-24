@@ -4,7 +4,7 @@ import prisma from "../db.server";
 import { adminContext } from "../services/settings.server";
 import { adminT } from "../services/admin-t.server";
 import { isValidDate } from "../../core/civil";
-import { orderRow, parseFilters, production, toCsv, whereFor } from "../services/orders-query.server";
+import { orderRow, parseFilters, production, resolveWhere, toCsv } from "../services/orders-query.server";
 
 /** CSV export of the filtered (or selected) orders, or of the production list (?kind=production). */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -28,7 +28,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const f = parseFilters(url, ctx.today, ctx.settings.weekStart);
   const ids = url.searchParams.get("ids")?.split(",").filter(Boolean).slice(0, 5000);
-  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : whereFor(ctx.shop, f);
+  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : await resolveWhere(ctx.shop, f);
   const orders = await prisma.scheduledOrder.findMany({ where, orderBy: [{ date: "asc" }, { slotLabel: "asc" }], take: 5000 });
   const rows = orders.map((o) => orderRow(o, ctx.settings));
   return csv(`orders-${ctx.today}.csv`, toCsv(

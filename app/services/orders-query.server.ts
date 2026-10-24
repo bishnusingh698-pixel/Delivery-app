@@ -92,10 +92,23 @@ export function whereFor(shop: string, f: ReturnType<typeof parseFilters>): Pris
   return where;
 }
 
+/**
+ * `whereFor` plus date-per-item orders whose items fall in the date range: they are stored without a
+ * single date (their items have different dates), so a filter on the order's date alone misses them.
+ */
+export async function resolveWhere(shop: string, f: ReturnType<typeof parseFilters>): Promise<Prisma.ScheduledOrderWhereInput> {
+  const where = whereFor(shop, f);
+  if (!where.date) return where;
+  const ids = (await prisma.scheduledItem.findMany({ where: { shop, date: where.date as Prisma.StringFilter }, select: { orderId: true }, distinct: ["orderId"], take: 5000 })).map((i) => i.orderId);
+  if (!ids.length) return where;
+  const { date, ...rest } = where;
+  return { ...rest, AND: [{ OR: [{ date }, { date: null, orderId: { in: ids } }] }] };
+}
+
 export const PAGE_SIZE = 50;
 
 export async function listOrders(shop: string, f: ReturnType<typeof parseFilters>) {
-  const where = whereFor(shop, f);
+  const where = await resolveWhere(shop, f);
   const [rows, total] = await Promise.all([
     prisma.scheduledOrder.findMany({ where, orderBy: [{ date: "asc" }, { slotLabel: "asc" }, { orderName: "asc" }], skip: (f.page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
     prisma.scheduledOrder.count({ where }),
@@ -138,6 +151,23 @@ export async function dayCounts(shop: string, config: StorefrontConfig, from: st
   for (const g of grouped) {
     if (!g.date || !out[g.date]) continue;
     out[g.date].methods[g.method as MethodId] = { orders: g._count._all, items: g._sum.itemCount ?? 0 };
+  }
+  // Date per item with different dates: the order has no single date, it counts on each of its items' dates.
+  const items = await prisma.scheduledItem.findMany({ where: { shop, date: { gte: from, lte: to } }, select: { orderId: true, date: true, method: true, qty: true } });
+  if (items.length) {
+    const open = new Set(
+      (await prisma.scheduledOrder.findMany({ where: { shop, date: null, status: { not: "cancelled" }, orderId: { in: [...new Set(items.map((i) => i.orderId))] } }, select: { orderId: true } })).map((o) => o.orderId),
+    );
+    const seen = new Set<string>();
+    for (const it of items) {
+      if (!open.has(it.orderId) || !out[it.date]) continue;
+      const m = (out[it.date].methods[it.method as MethodId] ??= { orders: 0, items: 0 });
+      m.items += it.qty;
+      if (!seen.has(`${it.orderId}|${it.date}`)) {
+        seen.add(`${it.orderId}|${it.date}`);
+        m.orders++;
+      }
+    }
   }
   for (const m of config.methods) {
     if (!m.enabled) continue;
@@ -223,7 +253,7 @@ export function toCsv(header: string[], rows: (string | number | null)[][]): str
     const s = v === null ? "" : String(v);
     // Neutralise spreadsheet formulas.
     const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
-    return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+    return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
   };
   return "﻿" + [header, ...rows].map((r) => r.map(cell).join(",")).join("\r\n") + "\r\n";
 }

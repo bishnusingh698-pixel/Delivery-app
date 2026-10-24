@@ -14,6 +14,7 @@ import { loadSettings } from "../models/settings.server";
 import { addWarning, clearWarning, flagsOf, planOf, requireShop, shopToday } from "../models/shop.server";
 import { buildAvailability, maxWindow } from "./counts.server";
 import { assertNoUserErrors, gql, type AdminGraphql } from "./graphql.server";
+import { withLock } from "./lock.server";
 import { monthlyUsage } from "./usage.server";
 
 export const MF_NAMESPACE = "pickday";
@@ -137,8 +138,15 @@ export async function storefrontConfigFor(shop: string) {
   return { row, settings, config, today, version };
 }
 
-/** Build and write all metafields for one shop. */
-export async function publishShop(shop: string, admin?: AdminGraphql, opts: { functions?: boolean } = {}): Promise<PublishResult> {
+/**
+ * Build and write all metafields for one shop. One publish per store at a time: each one reads the
+ * database when it starts, so a slow older publish can never overwrite a newer one.
+ */
+export function publishShop(shop: string, admin?: AdminGraphql, opts: { functions?: boolean } = {}): Promise<PublishResult> {
+  return withLock(`publish:${shop}`, () => publishNow(shop, admin, opts));
+}
+
+async function publishNow(shop: string, admin: AdminGraphql | undefined, opts: { functions?: boolean }): Promise<PublishResult> {
   const client = admin ?? (await unauthenticated.admin(shop)).admin;
   const { row, settings, config, today } = await storefrontConfigFor(shop);
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
@@ -253,11 +261,12 @@ const pending = new Map<string, NodeJS.Timeout>();
 
 /**
  * Publish soon (coalesces bursts of webhooks into one write).
+ * A publish already waiting covers this change too and is never pushed back, so counts reach the
+ * storefront and checkout within a few seconds even while orders keep coming in.
  * Safe to call often; errors are logged and the hourly job retries.
  */
 export function schedulePublish(shop: string, delayMs = 3000) {
-  const t = pending.get(shop);
-  if (t) clearTimeout(t);
+  if (pending.has(shop)) return;
   pending.set(
     shop,
     setTimeout(() => {

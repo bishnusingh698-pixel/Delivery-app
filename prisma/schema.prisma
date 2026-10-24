@@ -117,6 +117,10 @@ model ScheduledItem {
   slotId    String?
   method    String
   locationId String?
+  /// Delivery zone of the order (zones with their own limit are counted under their own key).
+  zoneId    String?
+  /// Product tags at order time (product rules can target tags; order webhooks don't carry them).
+  tags      String[] @default([])
 
   @@unique([shop, orderId, lineId])
   @@index([shop, date])

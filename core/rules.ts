@@ -85,6 +85,13 @@ export function methodsFor(
   return ids;
 }
 
+/** Does any product rule target product tags? (Tags must then be known for every cart or order line.) */
+export function rulesUseTags(rules: Pick<ProductRules, "exclude" | "extraLead" | "restrictions" | "limits" | "methodOnly">): boolean {
+  return [rules.exclude, ...rules.extraLead.map((r) => r.target), ...rules.restrictions.map((r) => r.target), ...rules.limits.map((r) => r.target), ...rules.methodOnly.map((r) => r.target)].some(
+    (t) => t.tags.length > 0,
+  );
+}
+
 /** Extra lead days from product rules (longest wins). */
 export function extraLeadDays(lines: CartLine[], rules: ProductRules): number {
   let max = 0;

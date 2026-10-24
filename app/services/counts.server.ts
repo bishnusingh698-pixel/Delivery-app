@@ -83,8 +83,8 @@ async function recount(shop: string, settings: Settings, unique: string[]) {
     if (!o.date || !unique.includes(o.date) || itemOrders.has(o.orderId)) continue;
     const items = ((o.items as unknown as StoredItem[]) ?? []).filter((i) => i.needsDate !== false);
     const qty = items.reduce((n, i) => n + i.qty, 0);
-    // Fully refunded (every dated item at quantity 0): the order no longer takes a spot.
-    if (items.length && !qty) continue;
+    // No dated item left (refunded or removed: zero-quantity lines aren't stored): the order no longer takes a spot.
+    if (!qty) continue;
     const key = capacityKey(settings, o.method, o.locationId, o.zoneId);
     bump(key, o.date, "", qty);
     if (o.slotId) bump(key, o.date, o.slotId, qty);
@@ -100,11 +100,11 @@ async function recount(shop: string, settings: Settings, unique: string[]) {
   for (const group of byOrderDate.values()) {
     const first = group[0];
     const qty = group.reduce((n, i) => n + i.qty, 0);
-    const key = capacityKey(settings, first.method, first.locationId, null);
+    const key = capacityKey(settings, first.method, first.locationId, first.zoneId);
     bump(key, first.date, "", qty);
     if (first.slotId) bump(key, first.date, first.slotId, qty);
     bumpProduct(
-      group.map((g) => ({ lineId: g.lineId, productId: g.productId, variantId: g.variantId, title: g.title, qty: g.qty })),
+      group.map((g) => ({ lineId: g.lineId, productId: g.productId, variantId: g.variantId, title: g.title, qty: g.qty, tags: g.tags })),
       first.date,
       first.locationId,
     );

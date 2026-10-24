@@ -5,7 +5,7 @@ import { addDays, addMonths, daysInMonth, firstOfMonth, fromMinutes, toMinutes, 
 import { buildCalendar, checkSelection, cutoffFor, engineTimeZone, firstAvailableDate, resolveRules, type EngineInput } from "../../core/engine";
 import { weekOrder } from "../../core/i18n/week";
 import { normalizePostcode } from "../../core/postcode";
-import { areaConfig, areaCovered, datedLines, findZone, locationsFor, methodsFor } from "../../core/rules";
+import { areaConfig, areaCovered, datedLines, findZone, locationsFor, methodsFor, rulesUseTags } from "../../core/rules";
 import { ATTR_KEY, READABLE_KEYS, decodeItemSelection, decodeSelection, encodeSelection } from "../../core/selection";
 import { nowInZone, zoneDiffersFromDevice, zoneDisplayName } from "../../core/tz";
 import { attributeDate, formatShopperDate } from "../../core/dateformat";
@@ -162,10 +162,7 @@ export class Pickday {
   }
 
   rulesUseTags(): boolean {
-    const pr = this.cfg.productRules;
-    return [pr.exclude, ...pr.extraLead.map((r) => r.target), ...pr.restrictions.map((r) => r.target), ...pr.limits.map((r) => r.target), ...pr.methodOnly.map((r) => r.target)].some(
-      (t) => t.tags.length > 0,
-    );
+    return rulesUseTags(this.cfg.productRules);
   }
 
   now(method = this.st.method, loc = this.st.locationId): LocalNow {

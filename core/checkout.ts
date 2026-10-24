@@ -9,7 +9,7 @@ import { checkSelection, type EngineInput } from "./engine";
 import { format } from "./i18n/format";
 import { matchLocale } from "./i18n/locales";
 import { addDays } from "./civil";
-import { areaCovered, datedLines, findZone, methodsFor } from "./rules";
+import { areaConfig, areaCovered, datedLines, findZone, methodsFor } from "./rules";
 import { ATTR_KEY, decodeItemSelection, decodeSelection } from "./selection";
 import type { Availability, CartLine, MethodId, Selection, StorefrontConfig } from "./types";
 
@@ -161,14 +161,22 @@ export function validate(input: ValidationInput, messages: Messages): Validation
   // Delivery address checks: the postcode/region typed at checkout must still be covered,
   // and its zone (not the one picked in the cart) decides the schedule.
   let zoneId = sel.m === "delivery" ? sel.z : null;
-  if (sel.m === "delivery" && !cfg.trimmed && address?.zip) {
-    const where = { country, postcode: address.zip, region: address.provinceCode ?? null, areaId: sel.a };
-    if (areaCovered(cfg, where) === false) return err("area.notCovered", { postcode: address.zip });
+  if (sel.m === "delivery" && !cfg.trimmed && (address?.zip || address?.provinceCode)) {
+    const where = { country, postcode: address.zip ?? null, region: address.provinceCode ?? null, areaId: sel.a };
+    // Judge only what the checkout address says: its postcode in postcode mode, its province in region
+    // mode (countries without postcodes, or addresses without a province, can't be checked that way).
+    const mode = areaConfig(cfg, country)?.mode;
+    const checkable = mode === "postcode" ? !!address.zip : mode === "region" ? !!address.provinceCode : true;
+    if (checkable && areaCovered(cfg, where) === false) return err("area.notCovered", { postcode: address.zip || address.provinceCode || "" });
     zoneId = findZone(cfg, where)?.id ?? zoneId;
   }
   // Zones were left out of a trimmed config, so a zone's own days and slots can't be checked:
-  // let the order through rather than judge it by the wrong rules (D-11).
-  if (sel.m === "delivery" && cfg.trimmed && sel.z) return [];
+  // let the order through rather than judge it by the wrong rules (D-11). A required date is still required.
+  if (sel.m === "delivery" && cfg.trimmed && sel.z) {
+    if (!method.dateRequired) return [];
+    if (cfg.dateMode === "item") return dated.some((l) => !itemSel.get(l.key)?.d) ? err("validation.missingItemDate") : [];
+    return sel.d ? [] : err("validation.missingDate");
+  }
 
   const shopNow = { date: input.shop?.localTime?.date ?? "", minutes: minutesFromAliases(input.shop?.localTime) };
   if (!shopNow.date) return [];
