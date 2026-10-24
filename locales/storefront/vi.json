@@ -100,5 +100,18 @@
   "snippet.time": "Giờ",
   "snippet.location": "Địa điểm nhận hàng",
   "notes.label": "Ghi chú hoặc hướng dẫn (không bắt buộc)",
-  "notes.placeholder": "Ví dụ: để ở cửa sau"
+  "notes.placeholder": "Ví dụ: để ở cửa sau",
+  "change.button": "Đổi ngày giao hàng",
+  "change.buttonPickup": "Đổi ngày nhận hàng",
+  "change.heading": "Chọn ngày mới",
+  "change.current": "Ngày hiện tại: {date}",
+  "change.date": "Ngày mới",
+  "change.slot": "Giờ",
+  "change.save": "Lưu ngày mới",
+  "change.close": "Đóng",
+  "change.loading": "Đang tải các ngày còn trống…",
+  "change.none": "Hiện không còn ngày nào khác. Vui lòng liên hệ cửa hàng.",
+  "change.saved": "Đã lưu ngày mới",
+  "change.taken": "Ngày hoặc giờ đó vừa kín chỗ. Vui lòng chọn lựa chọn khác.",
+  "change.error": "Hiện không thể đổi ngày này. Vui lòng liên hệ cửa hàng."
 }

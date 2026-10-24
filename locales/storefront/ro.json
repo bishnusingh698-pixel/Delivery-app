@@ -100,5 +100,18 @@
   "snippet.time": "Ora",
   "snippet.location": "Punct de ridicare",
   "notes.label": "Note sau instrucțiuni (opțional)",
-  "notes.placeholder": "De exemplu: lasă coletul la ușa din spate"
+  "notes.placeholder": "De exemplu: lasă coletul la ușa din spate",
+  "change.button": "Schimbă data livrării",
+  "change.buttonPickup": "Schimbă data ridicării",
+  "change.heading": "Alege o dată nouă",
+  "change.current": "Data actuală: {date}",
+  "change.date": "Data nouă",
+  "change.slot": "Ora",
+  "change.save": "Salvează data nouă",
+  "change.close": "Închide",
+  "change.loading": "Se încarcă datele disponibile…",
+  "change.none": "Momentan nu sunt alte date disponibile. Te rugăm să contactezi magazinul.",
+  "change.saved": "Data nouă a fost salvată",
+  "change.taken": "Data sau ora respectivă tocmai s-a ocupat. Te rugăm să alegi alta.",
+  "change.error": "Această dată nu poate fi schimbată acum. Te rugăm să contactezi magazinul."
 }

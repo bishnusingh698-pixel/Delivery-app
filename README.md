@@ -2,7 +2,7 @@
 
 *Let customers pick the day. Delivery, pickup and shipping dates with time slots, holidays and daily limits, for every Shopify plan.*
 
-Pickday is a public Shopify app. Shoppers choose a delivery date, pickup date or shipping date (and optionally a time slot and delivery instructions) in the cart, cart drawer or on the product page. Checkout then shows only the matching shipping option and stops the order if the date is missing or no longer valid. Merchants see their orders by day, print day sheets, route sheets and production lists, and follow them in their own calendar app. Pickday sends no emails.
+Pickday is a public Shopify app. Shoppers choose a delivery date, pickup date or shipping date (and optionally a time slot and delivery instructions) in the cart, cart drawer or on the product page. Checkout then shows only the matching shipping option and stops the order if the date is missing or no longer valid. Merchants see their orders by day, print day sheets, route sheets and production lists, follow them in their own calendar app, and get a free daily summary email through Shopify Flow. Customers can change their own date from their order page. Pickday itself sends no emails.
 
 It works on **every Shopify plan** (no Shopify Plus features: a theme app extension, cart attributes and Shopify Functions, which public apps may use on all plans) and runs for **$0 a month**: one free Render web service, a free Neon Postgres database and free cron-job.org pings. No email service is needed. The storefront and checkout never call the server (settings live inside each store as app-owned metafields), so shoppers are never affected when the free server sleeps.
 
@@ -28,9 +28,11 @@ It works on **every Shopify plan** (no Shopify Plus features: a theme app extens
 - **Worldwide**: country selector that loads the usual working days (Friday–Saturday, Thursday–Friday and Saturday-only weekends included), first day of the week and date format; date format setting (store language, written month, MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD); 28 storefront languages with right-to-left Arabic and Hebrew; the admin in 8 languages; every cut-off and "today" in the store's time zone (or a pickup location's own).
 - **Appearance**: colours (text on the accent colour stays readable automatically), corners, calendar or dropdown, compact layout, icons, position above or below the checkout button, cart drawer on/off, optional notes box (delivery instructions or gift message), every text per language, and a live preview that runs the real storefront widget with the unsaved settings.
 - **Orders**: list and calendar with filters, CSV export, day and route sheets, production list, bulk date changes, date changes from the Shopify order page, a next-14-days chart and "Close a day" on Home.
+- **Daily summary email**, free: Pickday fires a "Daily schedule" Shopify Flow trigger at the hour you choose, and Flow's free **Send internal email** action mails tomorrow's (or today's) orders to you and your staff. No email service or API key.
+- **Customers change their own date** from their order in Shopify's customer accounts, until a deadline you set (for example 24 hours before), only to dates the cart would offer, with the same limits.
 - **Product rules**, **delivery fees**, **checkout matching**, **notifications** (date snippets for Shopify's order emails, calendar feed, Shopify Flow) and **import/export**.
 
-Plans: **Free** (every method, time slots, holidays, closed days, notes, 1 pickup location, 50 scheduled orders a month), **Starter $7.99** (daily and per-slot limits, checkout matching, 3 locations, 500 orders), **Pro $14.99** (everything, unlimited). Development stores get Pro free.
+Plans: **Free** (every method, time slots, holidays, closed days, notes, daily summary, 1 pickup location, 50 scheduled orders a month), **Starter $7.99** (daily and per-slot limits, checkout matching, customer date changes, 3 locations, 500 orders), **Pro $14.99** (everything, unlimited). Development stores get Pro free.
 
 ---
 
@@ -93,10 +95,10 @@ Open `shopify.app.toml` and replace `https://pickday.onrender.com` with your Ren
 
 ```bash
 npx shopify app config link        # choose the app from step 1; keep the existing settings
-npm run deploy                     # uploads the theme extension, both Functions, the thank-you and admin extensions, Flow triggers
+npm run deploy                     # uploads the theme extension, both Functions, the thank-you, customer account and admin extensions, Flow triggers
 ```
 
-`npm run deploy` asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks) and the access scopes.
+`npm run deploy` first writes your Render URL (from `shopify.app.toml`) into the customer account extension, then asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks) and the access scopes.
 
 ### 5. Scheduled jobs and keep-awake (cron-job.org, free)
 
@@ -108,13 +110,14 @@ Sign up at [cron-job.org](https://cron-job.org) and create 3 jobs (**Create cron
 | Pickday hourly | `https://<your-service>.onrender.com/jobs/hourly` | Every hour at minute 2 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
 | Pickday daily | `https://<your-service>.onrender.com/jobs/daily` | Every day at 03:10 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
 
-Click **Test run** on each: keep-awake answers `ok`, the others `started` (status 202). A 403 means the secret doesn't match. The hourly job rolls each store's dates and public holidays forward; the daily job prunes old data, re-checks the app embed and syncs the store's time zone.
+Click **Test run** on each: keep-awake answers `ok`, the others `started` (status 202). A 403 means the secret doesn't match. The hourly job rolls each store's dates and public holidays forward and fires the "Daily schedule" Flow trigger at each store's chosen hour; the daily job prunes old data, re-checks the app embed and syncs the store's time zone.
 
 ### 6. Partner Dashboard settings
 
 1. **API access** → **Protected customer data access** → **Request access**. Select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason "Printed delivery day sheets and route sheets. Addresses, phone numbers and delivery instructions are read live when the merchant prints and never stored; only the order number and the customer's first name are stored." Answer the data protection questions with `PRIVACY.md`. Order webhooks need this approval to reach a live store.
-2. **App setup** → **Embedded app**: on (already set by `shopify.app.toml`).
-3. **Distribution** → **Shopify App Store** (public). Charges are created by the app itself with Shopify's Billing API (Starter and Pro, 14-day trials), so leave Shopify's "Managed pricing" off and describe the three plans in the listing's pricing section.
+2. **API access** → **Allow network access in checkout and account UI extensions** → **Allow network access**. The "Change date" button on the customer's order page (extension `pickday-customer-change`) calls your Render URL; without this approval Shopify doesn't let it load.
+3. **App setup** → **Embedded app**: on (already set by `shopify.app.toml`).
+4. **Distribution** → **Shopify App Store** (public). Charges are created by the app itself with Shopify's Billing API (Starter and Pro, 14-day trials), so leave Shopify's "Managed pricing" off and describe the three plans in the listing's pricing section.
 
 ### 7. Test on a development store
 

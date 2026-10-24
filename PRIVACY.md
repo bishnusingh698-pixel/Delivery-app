@@ -8,7 +8,8 @@ Pickday ("the app") helps Shopify merchants let their customers choose a deliver
 
 - Pickday stores **the order number, the customer's first name, the items and the chosen date, time slot, method and delivery area** for each scheduled order. Nothing else about customers.
 - **Addresses and phone numbers are never stored.** They're read from Shopify only at the moment a merchant prints a day sheet or route sheet, and discarded right after.
-- **Pickday sends no emails at all**, neither to customers nor to merchants. Shopify keeps sending its own order emails.
+- **Pickday sends no emails at all**, neither to customers nor to merchants. Shopify keeps sending its own order emails. If a merchant sets up the optional daily summary, Shopify Flow (in the merchant's own store) sends it to the merchant's staff; it contains order totals, not customer details.
+- **Customers can change their own date** (if the merchant allows it) from their order page in Shopify's customer accounts. Pickday checks the order belongs to the signed-in customer by asking Shopify at that moment; it doesn't store the customer's ID or email.
 - Data is deleted automatically: everything for a store 48 hours after it uninstalls (when Shopify sends the deletion request), and old orders 400 days after their date.
 - No tracking, no analytics, no advertising, no selling of data. The storefront widget sets no cookies.
 

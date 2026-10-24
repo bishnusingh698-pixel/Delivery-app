@@ -100,5 +100,18 @@
   "snippet.time": "시간",
   "snippet.location": "픽업 장소",
   "notes.label": "메모 또는 요청 사항(선택)",
-  "notes.placeholder": "예: 뒷문 앞에 놓아 주세요"
+  "notes.placeholder": "예: 뒷문 앞에 놓아 주세요",
+  "change.button": "배송 날짜 변경",
+  "change.buttonPickup": "픽업 날짜 변경",
+  "change.heading": "새 날짜 선택",
+  "change.current": "현재 날짜: {date}",
+  "change.date": "새 날짜",
+  "change.slot": "시간",
+  "change.save": "새 날짜 저장",
+  "change.close": "닫기",
+  "change.loading": "선택 가능한 날짜를 불러오는 중…",
+  "change.none": "지금은 선택할 수 있는 다른 날짜가 없습니다. 스토어에 문의해 주세요.",
+  "change.saved": "새 날짜가 저장되었습니다",
+  "change.taken": "해당 날짜 또는 시간이 방금 마감되었습니다. 다른 것을 선택해 주세요.",
+  "change.error": "지금은 이 날짜를 변경할 수 없습니다. 스토어에 문의해 주세요."
 }

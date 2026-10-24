@@ -100,5 +100,18 @@
   "snippet.time": "Waktu",
   "snippet.location": "Lokasi pengambilan",
   "notes.label": "Catatan atau instruksi (opsional)",
-  "notes.placeholder": "Contoh: taruh di pintu belakang"
+  "notes.placeholder": "Contoh: taruh di pintu belakang",
+  "change.button": "Ubah tanggal pengiriman",
+  "change.buttonPickup": "Ubah tanggal pengambilan",
+  "change.heading": "Pilih tanggal baru",
+  "change.current": "Tanggal saat ini: {date}",
+  "change.date": "Tanggal baru",
+  "change.slot": "Waktu",
+  "change.save": "Simpan tanggal baru",
+  "change.close": "Tutup",
+  "change.loading": "Memuat tanggal yang tersedia…",
+  "change.none": "Saat ini tidak ada tanggal lain yang tersedia. Silakan hubungi toko.",
+  "change.saved": "Tanggal baru disimpan",
+  "change.taken": "Tanggal atau waktu itu baru saja penuh. Silakan pilih yang lain.",
+  "change.error": "Tanggal ini tidak dapat diubah sekarang. Silakan hubungi toko."
 }

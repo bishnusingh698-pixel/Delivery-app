@@ -38,7 +38,8 @@ const locales = [];
 for (const f of readdirSync(localesDir)) {
   if (!f.endsWith(".json") || f.startsWith("_")) continue;
   const locale = f.replace(/\.json$/, "");
-  const msgs = JSON.parse(readFileSync(join(localesDir, f), "utf8"));
+  // "change.*" texts are only for the customer account extension, not the storefront.
+  const msgs = Object.fromEntries(Object.entries(JSON.parse(readFileSync(join(localesDir, f), "utf8"))).filter(([k]) => !k.startsWith("change.")));
   writeFileSync(join(out, `pickday-i18n-${locale}.js`), `(window.PickdayI18n=window.PickdayI18n||{})[${JSON.stringify(locale)}]=${JSON.stringify(msgs)};\n`);
   locales.push(locale);
 }
@@ -70,4 +71,14 @@ for (const locale of locales) {
   tyMessages[locale] = Object.fromEntries(Object.entries(msgs).filter(([k]) => k.startsWith("thankyou.") || k.startsWith("calendar.event")));
 }
 writeFileSync(join(root, "extensions/pickday-thank-you/src/messages.generated.json"), JSON.stringify(tyMessages) + "\n");
+// Customer account "change date" extension: its texts, and the app URL it calls (from shopify.app.toml,
+// so `npm run deploy` always ships the URL set in README step 4).
+const ccMessages = {};
+for (const locale of locales) {
+  const msgs = JSON.parse(readFileSync(join(localesDir, `${locale}.json`), "utf8"));
+  ccMessages[locale] = Object.fromEntries(Object.entries(msgs).filter(([k]) => k.startsWith("change.")));
+}
+writeFileSync(join(root, "extensions/pickday-customer-change/src/messages.generated.json"), JSON.stringify(ccMessages) + "\n");
+const appUrl = (readFileSync(join(root, "shopify.app.toml"), "utf8").match(/^application_url\s*=\s*"([^"]+)"/m)?.[1] ?? "").replace(/\/$/, "");
+writeFileSync(join(root, "extensions/pickday-customer-change/src/config.generated.json"), JSON.stringify({ appUrl }) + "\n");
 console.log(`[build-widget] Function messages: ${(JSON.stringify(fnMessages).length / 1024).toFixed(1)} KB`);

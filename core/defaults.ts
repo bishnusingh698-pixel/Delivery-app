@@ -108,6 +108,7 @@ export function defaultSettings(country: string | null = null): Settings {
     },
     tagging: { enabled: true, prefix: "" },
     productionPrepOffsetDays: 0,
+    customerChanges: { enabled: false, hoursBefore: 24, maxChanges: 2 },
   };
 }
 

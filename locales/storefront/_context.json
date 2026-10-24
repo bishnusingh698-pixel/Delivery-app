@@ -406,5 +406,52 @@
   "notes.placeholder": {
     "where": "Example text inside the empty notes box.",
     "max": 60
+  },
+  "change.button": {
+    "where": "Order status page (customer accounts): action menu button for delivery/shipping orders.",
+    "max": 30
+  },
+  "change.buttonPickup": {
+    "where": "Order status page: action menu button for pickup orders.",
+    "max": 30
+  },
+  "change.heading": {
+    "where": "Order status page: title of the change-date dialog.",
+    "max": 40
+  },
+  "change.current": {
+    "where": "Change-date dialog: the order's current date, e.g. 'Saturday 25 October, 10:00–12:00'."
+  },
+  "change.date": {
+    "where": "Change-date dialog: label of the date dropdown.",
+    "max": 30
+  },
+  "change.slot": {
+    "where": "Change-date dialog: label of the time slot dropdown.",
+    "max": 30
+  },
+  "change.save": {
+    "where": "Change-date dialog: primary button.",
+    "max": 30
+  },
+  "change.close": {
+    "where": "Change-date dialog: close button.",
+    "max": 20
+  },
+  "change.loading": {
+    "where": "Change-date dialog: while dates load."
+  },
+  "change.none": {
+    "where": "Change-date dialog: no other date can be chosen."
+  },
+  "change.saved": {
+    "where": "Toast after saving the new date.",
+    "max": 40
+  },
+  "change.taken": {
+    "where": "Change-date dialog: the chosen date/time filled up meanwhile."
+  },
+  "change.error": {
+    "where": "Change-date dialog: generic failure (too late, already shipped, etc.)."
   }
 }

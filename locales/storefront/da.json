@@ -100,5 +100,18 @@
   "snippet.time": "Tidspunkt",
   "snippet.location": "Afhentningssted",
   "notes.label": "Noter eller instruktioner (valgfrit)",
-  "notes.placeholder": "For eksempel: stil den ved bagdøren"
+  "notes.placeholder": "For eksempel: stil den ved bagdøren",
+  "change.button": "Skift leveringsdato",
+  "change.buttonPickup": "Skift afhentningsdato",
+  "change.heading": "Vælg en ny dato",
+  "change.current": "Nuværende dato: {date}",
+  "change.date": "Ny dato",
+  "change.slot": "Tidspunkt",
+  "change.save": "Gem ny dato",
+  "change.close": "Luk",
+  "change.loading": "Henter ledige datoer…",
+  "change.none": "Der er ingen andre ledige datoer lige nu. Kontakt venligst butikken.",
+  "change.saved": "Ny dato gemt",
+  "change.taken": "Den dato eller det tidspunkt er netop blevet fuldt. Vælg venligst en anden.",
+  "change.error": "Datoen kan ikke ændres lige nu. Kontakt venligst butikken."
 }

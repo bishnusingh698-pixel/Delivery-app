@@ -100,5 +100,18 @@
   "snippet.time": "Saat",
   "snippet.location": "Teslim alma noktası",
   "notes.label": "Notlar veya talimatlar (isteğe bağlı)",
-  "notes.placeholder": "Örneğin: arka kapıya bırakın"
+  "notes.placeholder": "Örneğin: arka kapıya bırakın",
+  "change.button": "Teslimat tarihini değiştir",
+  "change.buttonPickup": "Teslim alma tarihini değiştir",
+  "change.heading": "Yeni bir tarih seçin",
+  "change.current": "Mevcut tarih: {date}",
+  "change.date": "Yeni tarih",
+  "change.slot": "Saat",
+  "change.save": "Yeni tarihi kaydet",
+  "change.close": "Kapat",
+  "change.loading": "Uygun tarihler yükleniyor…",
+  "change.none": "Şu anda başka uygun tarih yok. Lütfen mağazayla iletişime geçin.",
+  "change.saved": "Yeni tarih kaydedildi",
+  "change.taken": "Bu tarih veya saat az önce doldu. Lütfen başka birini seçin.",
+  "change.error": "Bu tarih şu anda değiştirilemiyor. Lütfen mağazayla iletişime geçin."
 }

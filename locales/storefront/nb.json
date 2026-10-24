@@ -100,5 +100,18 @@
   "snippet.time": "Tidspunkt",
   "snippet.location": "Hentested",
   "notes.label": "Merknader eller instruksjoner (valgfritt)",
-  "notes.placeholder": "For eksempel: sett den ved bakdøren"
+  "notes.placeholder": "For eksempel: sett den ved bakdøren",
+  "change.button": "Endre leveringsdato",
+  "change.buttonPickup": "Endre hentedato",
+  "change.heading": "Velg en ny dato",
+  "change.current": "Nåværende dato: {date}",
+  "change.date": "Ny dato",
+  "change.slot": "Tidspunkt",
+  "change.save": "Lagre ny dato",
+  "change.close": "Lukk",
+  "change.loading": "Laster inn ledige datoer…",
+  "change.none": "Det finnes ingen andre ledige datoer akkurat nå. Ta kontakt med butikken.",
+  "change.saved": "Ny dato lagret",
+  "change.taken": "Den datoen eller det tidspunktet ble akkurat fullt. Velg et annet.",
+  "change.error": "Datoen kan ikke endres akkurat nå. Ta kontakt med butikken."
 }

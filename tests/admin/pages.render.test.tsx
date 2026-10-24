@@ -82,9 +82,20 @@ describe("admin pages render", () => {
   it("Settings", async () => {
     const html = await render("/app/settings", await import("../../app/routes/app.settings._index"), {
       meta, countries: ["US", "DE", "SA"], shopifyCountry: "US",
-      initial: { country: "US", dateFormat: "auto", weekStart: 0, holidays: settings.holidays, methods: settings.methods, locations: settings.locations, methodOrder: settings.methodOrder, defaultMethod: null, dateMode: "order", tagging: settings.tagging },
+      initial: { country: "US", dateFormat: "auto", weekStart: 0, holidays: settings.holidays, methods: settings.methods, locations: settings.locations, methodOrder: settings.methodOrder, defaultMethod: null, dateMode: "order", tagging: settings.tagging, customerChanges: { ...settings.customerChanges, enabled: true } },
     });
     expect(html).toContain("Store and region");
+    expect(html).toContain("Let customers change their date");
+    expect(html).toContain("Changes per order");
+    noRawKeys(html);
+  });
+
+  it("Notifications: daily summary setup", async () => {
+    const notifications = { ...settings.notifications, dailySummary: { enabled: true, hour: 7, day: "tomorrow" as const } };
+    const html = await render("/app/notifications", await import("../../app/routes/app.notifications"), { meta, initial: { notifications }, feedUrl: null });
+    expect(html).toContain("Daily summary email (free with Shopify Flow)");
+    expect(html).toContain("{{ordersPage}}");
+    expect(html).toContain("{{orders | round}}");
     noRawKeys(html);
   });
 

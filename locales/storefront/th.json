@@ -100,5 +100,18 @@
   "snippet.time": "เวลา",
   "snippet.location": "สถานที่รับสินค้า",
   "notes.label": "หมายเหตุหรือคำแนะนำ (ไม่บังคับ)",
-  "notes.placeholder": "เช่น วางไว้ที่ประตูหลัง"
+  "notes.placeholder": "เช่น วางไว้ที่ประตูหลัง",
+  "change.button": "เปลี่ยนวันจัดส่ง",
+  "change.buttonPickup": "เปลี่ยนวันรับสินค้า",
+  "change.heading": "เลือกวันใหม่",
+  "change.current": "วันที่ปัจจุบัน: {date}",
+  "change.date": "วันใหม่",
+  "change.slot": "เวลา",
+  "change.save": "บันทึกวันใหม่",
+  "change.close": "ปิด",
+  "change.loading": "กำลังโหลดวันที่ว่าง…",
+  "change.none": "ขณะนี้ไม่มีวันอื่นที่ว่าง โปรดติดต่อร้านค้า",
+  "change.saved": "บันทึกวันใหม่แล้ว",
+  "change.taken": "วันหรือเวลานั้นเพิ่งเต็ม โปรดเลือกใหม่",
+  "change.error": "ขณะนี้ไม่สามารถเปลี่ยนวันนี้ได้ โปรดติดต่อร้านค้า"
 }

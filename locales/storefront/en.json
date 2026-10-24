@@ -100,5 +100,18 @@
   "snippet.time": "Time",
   "snippet.location": "Pickup location",
   "notes.label": "Notes or instructions (optional)",
-  "notes.placeholder": "For example: leave it at the back door"
+  "notes.placeholder": "For example: leave it at the back door",
+  "change.button": "Change delivery date",
+  "change.buttonPickup": "Change pickup date",
+  "change.heading": "Choose a new date",
+  "change.current": "Current date: {date}",
+  "change.date": "New date",
+  "change.slot": "Time",
+  "change.save": "Save new date",
+  "change.close": "Close",
+  "change.loading": "Loading available dates…",
+  "change.none": "No other dates are available right now. Please contact the store.",
+  "change.saved": "New date saved",
+  "change.taken": "That date or time just filled up. Please choose another.",
+  "change.error": "This date can't be changed right now. Please contact the store."
 }

@@ -100,5 +100,18 @@
   "snippet.time": "Hora",
   "snippet.location": "Punto de retiro",
   "notes.label": "Notas o instrucciones (opcional)",
-  "notes.placeholder": "Por ejemplo: déjalo en la puerta trasera"
+  "notes.placeholder": "Por ejemplo: déjalo en la puerta trasera",
+  "change.button": "Cambiar fecha de entrega",
+  "change.buttonPickup": "Cambiar fecha de recogida",
+  "change.heading": "Elige una nueva fecha",
+  "change.current": "Fecha actual: {date}",
+  "change.date": "Nueva fecha",
+  "change.slot": "Hora",
+  "change.save": "Guardar nueva fecha",
+  "change.close": "Cerrar",
+  "change.loading": "Cargando fechas disponibles…",
+  "change.none": "Ahora mismo no hay otras fechas disponibles. Ponte en contacto con la tienda.",
+  "change.saved": "Nueva fecha guardada",
+  "change.taken": "Esa fecha u hora acaba de completarse. Elige otra.",
+  "change.error": "Esta fecha no se puede cambiar ahora. Ponte en contacto con la tienda."
 }

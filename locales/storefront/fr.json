@@ -100,5 +100,18 @@
   "snippet.time": "Heure",
   "snippet.location": "Point de retrait",
   "notes.label": "Notes ou instructions (facultatif)",
-  "notes.placeholder": "Par exemple : déposer à la porte de derrière"
+  "notes.placeholder": "Par exemple : déposer à la porte de derrière",
+  "change.button": "Modifier la date de livraison",
+  "change.buttonPickup": "Modifier la date de retrait",
+  "change.heading": "Choisissez une nouvelle date",
+  "change.current": "Date actuelle : {date}",
+  "change.date": "Nouvelle date",
+  "change.slot": "Heure",
+  "change.save": "Enregistrer la nouvelle date",
+  "change.close": "Fermer",
+  "change.loading": "Chargement des dates disponibles…",
+  "change.none": "Aucune autre date n'est disponible pour le moment. Veuillez contacter la boutique.",
+  "change.saved": "Nouvelle date enregistrée",
+  "change.taken": "Cette date ou ce créneau est désormais complet. Veuillez en choisir un autre.",
+  "change.error": "Cette date ne peut pas être modifiée pour le moment. Veuillez contacter la boutique."
 }

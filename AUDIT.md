@@ -98,6 +98,8 @@ App Store reviewer view
 | **Generous Free plan**: every method, time slots, holidays and closures, notes, 1 location, 50 orders/month. Starter: daily and slot limits, checkout matching, 3 locations, 500 orders. Pro: everything. | New stores get a correct picker; paid plans sell capacity and advanced rules. | ✅ |
 | Remove: storefront "Powered by" link; Methods, Schedule, Slots & capacity, Locations and Settings-hub pages (merged) | Less to learn, reviewer-safe. | ✅ |
 | Remove: the merchant daily summary email (Brevo), its settings, `DigestLog` table, `BREVO_API_KEY`/`EMAIL_FROM` and 18 admin texts | Owner request: no email service, zero cost. It only ever emailed the merchant's staff, never customers; Home, Orders and the calendar feed cover the same need. Customers still get Shopify's own order emails (with the date via the snippets). Only `SUPPORT_EMAIL` (a displayed address) remains. | ✅ |
+| **Daily summary email, free, through Shopify Flow** ("Daily schedule" trigger + Flow's Send internal email; setup steps and copyable text on Notifications) | Replaces the removed Brevo email at zero cost and with no API key; asked for again by the owner. On every plan. | ✅ |
+| **Customers change their own date** from their order in customer accounts (order action, deadline and change limit set by the merchant) | Found missing in every competitor listing reviewed (Zapiet, Stellar, Bird, Pickeasy, Flare); cuts "can I move my delivery?" emails. Starter and Pro. | ✅ |
 
 ## 4. Verification notes
 

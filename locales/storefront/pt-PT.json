@@ -100,5 +100,18 @@
   "snippet.time": "Hora",
   "snippet.location": "Local de levantamento",
   "notes.label": "Notas ou instruções (opcional)",
-  "notes.placeholder": "Por exemplo: deixar na porta das traseiras"
+  "notes.placeholder": "Por exemplo: deixar na porta das traseiras",
+  "change.button": "Alterar data de entrega",
+  "change.buttonPickup": "Alterar data de levantamento",
+  "change.heading": "Escolha uma nova data",
+  "change.current": "Data atual: {date}",
+  "change.date": "Nova data",
+  "change.slot": "Hora",
+  "change.save": "Guardar nova data",
+  "change.close": "Fechar",
+  "change.loading": "A carregar as datas disponíveis…",
+  "change.none": "De momento não há outras datas disponíveis. Contacte a loja.",
+  "change.saved": "Nova data guardada",
+  "change.taken": "Essa data ou hora acabou de esgotar. Escolha outra.",
+  "change.error": "Esta data não pode ser alterada agora. Contacte a loja."
 }

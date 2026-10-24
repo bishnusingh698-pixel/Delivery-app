@@ -100,5 +100,18 @@
   "snippet.time": "Horário",
   "snippet.location": "Local de retirada",
   "notes.label": "Observações ou instruções (opcional)",
-  "notes.placeholder": "Por exemplo: deixar na porta dos fundos"
+  "notes.placeholder": "Por exemplo: deixar na porta dos fundos",
+  "change.button": "Alterar data de entrega",
+  "change.buttonPickup": "Alterar data de retirada",
+  "change.heading": "Escolha uma nova data",
+  "change.current": "Data atual: {date}",
+  "change.date": "Nova data",
+  "change.slot": "Horário",
+  "change.save": "Salvar nova data",
+  "change.close": "Fechar",
+  "change.loading": "Carregando datas disponíveis…",
+  "change.none": "No momento não há outras datas disponíveis. Entre em contato com a loja.",
+  "change.saved": "Nova data salva",
+  "change.taken": "Essa data ou horário acabou de lotar. Escolha outro.",
+  "change.error": "Esta data não pode ser alterada agora. Entre em contato com a loja."
 }

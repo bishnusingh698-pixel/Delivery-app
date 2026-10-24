@@ -100,5 +100,18 @@
   "snippet.time": "Tijd",
   "snippet.location": "Ophaallocatie",
   "notes.label": "Opmerkingen of instructies (optioneel)",
-  "notes.placeholder": "Bijvoorbeeld: bij de achterdeur zetten"
+  "notes.placeholder": "Bijvoorbeeld: bij de achterdeur zetten",
+  "change.button": "Bezorgdatum wijzigen",
+  "change.buttonPickup": "Afhaaldatum wijzigen",
+  "change.heading": "Kies een nieuwe datum",
+  "change.current": "Huidige datum: {date}",
+  "change.date": "Nieuwe datum",
+  "change.slot": "Tijd",
+  "change.save": "Nieuwe datum opslaan",
+  "change.close": "Sluiten",
+  "change.loading": "Beschikbare datums laden…",
+  "change.none": "Er zijn nu geen andere datums beschikbaar. Neem contact op met de winkel.",
+  "change.saved": "Nieuwe datum opgeslagen",
+  "change.taken": "Die datum of tijd is net volgeboekt. Kies een andere.",
+  "change.error": "Deze datum kan nu niet worden gewijzigd. Neem contact op met de winkel."
 }

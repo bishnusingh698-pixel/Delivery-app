@@ -100,5 +100,18 @@
   "snippet.time": "שעה",
   "snippet.location": "נקודת איסוף",
   "notes.label": "הערות או הוראות (לא חובה)",
-  "notes.placeholder": "לדוגמה: להשאיר ליד הדלת האחורית"
+  "notes.placeholder": "לדוגמה: להשאיר ליד הדלת האחורית",
+  "change.button": "שינוי תאריך המשלוח",
+  "change.buttonPickup": "שינוי תאריך האיסוף",
+  "change.heading": "בחרו תאריך חדש",
+  "change.current": "התאריך הנוכחי: {date}",
+  "change.date": "תאריך חדש",
+  "change.slot": "שעה",
+  "change.save": "שמירת התאריך החדש",
+  "change.close": "סגירה",
+  "change.loading": "טוען תאריכים פנויים…",
+  "change.none": "אין כרגע תאריכים פנויים אחרים. נא לפנות לחנות.",
+  "change.saved": "התאריך החדש נשמר",
+  "change.taken": "התאריך או השעה האלה התמלאו זה עתה. נא לבחור אחרים.",
+  "change.error": "אי אפשר לשנות את התאריך הזה כרגע. נא לפנות לחנות."
 }

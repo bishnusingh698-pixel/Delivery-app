@@ -100,5 +100,18 @@
   "snippet.time": "时间",
   "snippet.location": "自提点",
   "notes.label": "备注或说明（选填）",
-  "notes.placeholder": "例如：放在后门"
+  "notes.placeholder": "例如：放在后门",
+  "change.button": "更改配送日期",
+  "change.buttonPickup": "更改自提日期",
+  "change.heading": "选择新日期",
+  "change.current": "当前日期：{date}",
+  "change.date": "新日期",
+  "change.slot": "时间",
+  "change.save": "保存新日期",
+  "change.close": "关闭",
+  "change.loading": "正在加载可选日期…",
+  "change.none": "目前没有其他可选日期。请联系商店。",
+  "change.saved": "新日期已保存",
+  "change.taken": "该日期或时间刚刚约满，请另选。",
+  "change.error": "目前无法更改此日期。请联系商店。"
 }

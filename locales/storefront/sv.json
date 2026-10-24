@@ -100,5 +100,18 @@
   "snippet.time": "Tid",
   "snippet.location": "Upphämtningsställe",
   "notes.label": "Anteckningar eller instruktioner (valfritt)",
-  "notes.placeholder": "Till exempel: ställ den vid bakdörren"
+  "notes.placeholder": "Till exempel: ställ den vid bakdörren",
+  "change.button": "Ändra leveransdatum",
+  "change.buttonPickup": "Ändra upphämtningsdatum",
+  "change.heading": "Välj ett nytt datum",
+  "change.current": "Nuvarande datum: {date}",
+  "change.date": "Nytt datum",
+  "change.slot": "Tid",
+  "change.save": "Spara nytt datum",
+  "change.close": "Stäng",
+  "change.loading": "Hämtar lediga datum…",
+  "change.none": "Det finns inga andra lediga datum just nu. Kontakta butiken.",
+  "change.saved": "Nytt datum sparat",
+  "change.taken": "Det datumet eller den tiden blev precis fullbokad. Välj en annan.",
+  "change.error": "Datumet kan inte ändras just nu. Kontakta butiken."
 }

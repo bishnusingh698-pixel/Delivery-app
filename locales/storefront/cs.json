@@ -100,5 +100,18 @@
   "snippet.time": "Čas",
   "snippet.location": "Místo vyzvednutí",
   "notes.label": "Poznámky nebo pokyny (nepovinné)",
-  "notes.placeholder": "Například: nechte to u zadních dveří"
+  "notes.placeholder": "Například: nechte to u zadních dveří",
+  "change.button": "Změnit datum doručení",
+  "change.buttonPickup": "Změnit datum vyzvednutí",
+  "change.heading": "Vyberte nové datum",
+  "change.current": "Aktuální datum: {date}",
+  "change.date": "Nové datum",
+  "change.slot": "Čas",
+  "change.save": "Uložit nové datum",
+  "change.close": "Zavřít",
+  "change.loading": "Načítání dostupných termínů…",
+  "change.none": "Momentálně nejsou k dispozici žádné jiné termíny. Kontaktujte prosím obchod.",
+  "change.saved": "Nové datum bylo uloženo",
+  "change.taken": "Tento termín nebo čas se právě zaplnil. Vyberte prosím jiný.",
+  "change.error": "Toto datum teď nelze změnit. Kontaktujte prosím obchod."
 }

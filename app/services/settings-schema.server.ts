@@ -246,6 +246,7 @@ export const settingsSchema = z
     }),
     tagging: z.object({ enabled: z.boolean(), prefix: z.string().max(20) }),
     productionPrepOffsetDays: z.number().int().min(0).max(30),
+    customerChanges: z.object({ enabled: z.boolean(), hoursBefore: z.number().int().min(0).max(336), maxChanges: z.number().int().min(1).max(10) }),
   })
   .superRefine((s, ctx) => {
     if (!Object.values(s.methods).some((m) => m.enabled)) {

@@ -3,6 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData, useRevalidator, useSearchParams } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { isValidDate } from "../../core/civil";
+import { CUSTOMER_ACTOR } from "../../core/customer-change";
 import { METHOD_IDS, type MethodId } from "../../core/types";
 import { Button, Checkbox, EmptyState, Modal, Page, Section, Select, Stack, closeModal, openModal } from "../components/polaris";
 import { useFormatDate, useMethodLabel } from "../components/shared";
@@ -110,7 +111,7 @@ export default function OrderDetail() {
           <Stack gap="small-200">
             {[...o.history].reverse().map((h, n) => (
               <s-text key={n}>
-                {new Date(h.at).toLocaleString()} · {h.by ?? t("order.staff")}: {h.from?.date ? fmt(h.from.date) : "—"} → {fmt(h.to.date)}{h.to.slot ? ` ${h.to.slot}` : ""}{h.forced ? ` (${t("order.override")})` : ""}
+                {new Date(h.at).toLocaleString()} · {h.by === CUSTOMER_ACTOR ? t("customerChanges.byCustomer") : h.by ?? t("order.staff")}: {h.from?.date ? fmt(h.from.date) : "—"} → {fmt(h.to.date)}{h.to.slot ? ` ${h.to.slot}` : ""}{h.forced ? ` (${t("order.override")})` : ""}
               </s-text>
             ))}
           </Stack>

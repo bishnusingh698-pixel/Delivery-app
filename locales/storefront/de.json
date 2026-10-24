@@ -100,5 +100,18 @@
   "snippet.time": "Uhrzeit",
   "snippet.location": "Abholort",
   "notes.label": "Hinweise oder Anweisungen (optional)",
-  "notes.placeholder": "Zum Beispiel: an der Hintertür abstellen"
+  "notes.placeholder": "Zum Beispiel: an der Hintertür abstellen",
+  "change.button": "Lieferdatum ändern",
+  "change.buttonPickup": "Abholdatum ändern",
+  "change.heading": "Neues Datum wählen",
+  "change.current": "Aktuelles Datum: {date}",
+  "change.date": "Neues Datum",
+  "change.slot": "Uhrzeit",
+  "change.save": "Neues Datum speichern",
+  "change.close": "Schließen",
+  "change.loading": "Verfügbare Termine werden geladen…",
+  "change.none": "Gerade sind keine anderen Termine frei. Bitte kontaktiere den Shop.",
+  "change.saved": "Neues Datum gespeichert",
+  "change.taken": "Dieser Termin ist gerade ausgebucht. Bitte wähle einen anderen.",
+  "change.error": "Dieses Datum kann gerade nicht geändert werden. Bitte kontaktiere den Shop."
 }

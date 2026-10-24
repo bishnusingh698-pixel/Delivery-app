@@ -1,6 +1,6 @@
 /**
  * Settings: store & region (country, date format, week start), what shoppers choose
- * (method order, default, one date per order or per item), order tags, and links to
+ * (method order, default, one date per order or per item), customer date changes, order tags, and links to
  * everything else (product rules, fees, checkout, notifications, import/export, plan).
  */
 import { useState } from "react";
@@ -11,14 +11,14 @@ import { DATE_FORMATS, formatDate } from "../../core/dateformat";
 import { hasFeature } from "../../core/publish";
 import { regionDefaults } from "../../core/regions";
 import type { DateFormat, MethodId, Settings } from "../../core/types";
-import { Button, Checkbox, ChoiceList, Page, Section, Select, Switch, TextField } from "../components/polaris";
+import { Button, Checkbox, ChoiceList, Locked, NumberField, Page, Section, Select, Switch, TextField } from "../components/polaris";
 import { SettingsChrome, fieldId, useSettingsForm } from "../components/settings-form";
 import { CountrySelect, countryName, useMethodLabel, useWeekdays } from "../components/shared";
 import { useI18n, useT } from "../i18n/react";
 import { holidayCountries } from "../services/holidays.server";
 import { adminContext, patchSettingsAction, shopMeta } from "../services/settings.server";
 
-type Edited = Pick<Settings, "country" | "dateFormat" | "weekStart" | "holidays" | "methods" | "locations" | "methodOrder" | "defaultMethod" | "dateMode" | "tagging">;
+type Edited = Pick<Settings, "country" | "dateFormat" | "weekStart" | "holidays" | "methods" | "locations" | "methodOrder" | "defaultMethod" | "dateMode" | "tagging" | "customerChanges">;
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
@@ -41,6 +41,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       defaultMethod: s.defaultMethod,
       dateMode: s.dateMode,
       tagging: s.tagging,
+      customerChanges: s.customerChanges,
     } as Edited,
   };
 };
@@ -196,6 +197,41 @@ export default function SettingsPage() {
             ]}
             onChange={(v) => update((x) => (x.dateMode = v as "order" | "item"))}
           />
+        </s-stack>
+      </Section>
+
+      <Section heading={t("customerChanges.heading")} id={fieldId("customerChanges")}>
+        {!hasFeature(d.meta.plan, "customerChanges") ? <Locked plan="Starter" label={t("customerChanges.locked")} upgradeLabel={t("common.upgrade")} /> : null}
+        <s-stack gap="base">
+          <s-text color="subdued">{t("customerChanges.help")}</s-text>
+          <Switch
+            label={t("customerChanges.enabled")}
+            checked={draft.customerChanges.enabled}
+            disabled={!hasFeature(d.meta.plan, "customerChanges")}
+            onChange={(v) => update((x) => (x.customerChanges.enabled = v))}
+          />
+          {draft.customerChanges.enabled ? (
+            <s-stack direction="inline" gap="base">
+              <NumberField
+                label={t("customerChanges.hoursBefore")}
+                details={t("customerChanges.hoursBeforeHelp")}
+                value={draft.customerChanges.hoursBefore}
+                min={0}
+                max={336}
+                suffix={t("customerChanges.hours")}
+                onChange={(v) => update((x) => (x.customerChanges.hoursBefore = Math.min(336, Math.max(0, Math.round(v ?? 0)))))}
+              />
+              <NumberField
+                label={t("customerChanges.maxChanges")}
+                details={t("customerChanges.maxChangesHelp")}
+                value={draft.customerChanges.maxChanges}
+                min={1}
+                max={10}
+                onChange={(v) => update((x) => (x.customerChanges.maxChanges = Math.min(10, Math.max(1, Math.round(v ?? 1)))))}
+              />
+            </s-stack>
+          ) : null}
+          <s-text color="subdued">{t("customerChanges.where")}</s-text>
         </s-stack>
       </Section>
 

@@ -100,5 +100,18 @@
   "snippet.time": "Orario",
   "snippet.location": "Punto di ritiro",
   "notes.label": "Note o istruzioni (facoltativo)",
-  "notes.placeholder": "Ad esempio: lasciare alla porta sul retro"
+  "notes.placeholder": "Ad esempio: lasciare alla porta sul retro",
+  "change.button": "Cambia data di consegna",
+  "change.buttonPickup": "Cambia data di ritiro",
+  "change.heading": "Scegli una nuova data",
+  "change.current": "Data attuale: {date}",
+  "change.date": "Nuova data",
+  "change.slot": "Orario",
+  "change.save": "Salva la nuova data",
+  "change.close": "Chiudi",
+  "change.loading": "Caricamento delle date disponibili…",
+  "change.none": "Al momento non ci sono altre date disponibili. Contatta il negozio.",
+  "change.saved": "Nuova data salvata",
+  "change.taken": "Quella data o quell'orario si è appena esaurito. Scegline un altro.",
+  "change.error": "Questa data non può essere cambiata ora. Contatta il negozio."
 }

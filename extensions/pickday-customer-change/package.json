@@ -1,0 +1,11 @@
+{
+  "name": "pickday-customer-change",
+  "private": true,
+  "version": "1.0.0",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "preact": "^10.27.2",
+    "@preact/signals": "^2.3.2",
+    "@shopify/ui-extensions": "2026.10.x"
+  }
+}

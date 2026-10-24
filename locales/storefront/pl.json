@@ -100,5 +100,18 @@
   "snippet.time": "Godzina",
   "snippet.location": "Miejsce odbioru",
   "notes.label": "Uwagi lub instrukcje (opcjonalnie)",
-  "notes.placeholder": "Na przykład: zostawić przy tylnych drzwiach"
+  "notes.placeholder": "Na przykład: zostawić przy tylnych drzwiach",
+  "change.button": "Zmień datę dostawy",
+  "change.buttonPickup": "Zmień datę odbioru",
+  "change.heading": "Wybierz nową datę",
+  "change.current": "Obecna data: {date}",
+  "change.date": "Nowa data",
+  "change.slot": "Godzina",
+  "change.save": "Zapisz nową datę",
+  "change.close": "Zamknij",
+  "change.loading": "Wczytywanie dostępnych terminów…",
+  "change.none": "Obecnie nie ma innych dostępnych terminów. Skontaktuj się ze sklepem.",
+  "change.saved": "Nowa data została zapisana",
+  "change.taken": "Ten termin lub godzina właśnie się zapełniły. Wybierz inny.",
+  "change.error": "Tej daty nie można teraz zmienić. Skontaktuj się ze sklepem."
 }

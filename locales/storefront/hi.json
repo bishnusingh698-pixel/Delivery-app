@@ -100,5 +100,18 @@
   "snippet.time": "समय",
   "snippet.location": "पिकअप की जगह",
   "notes.label": "नोट्स या निर्देश (वैकल्पिक)",
-  "notes.placeholder": "उदाहरण: पीछे के दरवाज़े पर छोड़ दें"
+  "notes.placeholder": "उदाहरण: पीछे के दरवाज़े पर छोड़ दें",
+  "change.button": "डिलीवरी की तारीख बदलें",
+  "change.buttonPickup": "पिकअप की तारीख बदलें",
+  "change.heading": "नई तारीख चुनें",
+  "change.current": "मौजूदा तारीख: {date}",
+  "change.date": "नई तारीख",
+  "change.slot": "समय",
+  "change.save": "नई तारीख सेव करें",
+  "change.close": "बंद करें",
+  "change.loading": "उपलब्ध तारीखें लोड हो रही हैं…",
+  "change.none": "अभी कोई और तारीख उपलब्ध नहीं है। कृपया स्टोर से संपर्क करें।",
+  "change.saved": "नई तारीख सेव हो गई",
+  "change.taken": "यह तारीख या समय अभी-अभी भर गया। कृपया कोई और चुनें।",
+  "change.error": "यह तारीख अभी बदली नहीं जा सकती। कृपया स्टोर से संपर्क करें।"
 }

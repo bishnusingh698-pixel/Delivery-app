@@ -100,5 +100,18 @@
   "snippet.time": "Aika",
   "snippet.location": "Noutopaikka",
   "notes.label": "Huomautukset tai ohjeet (valinnainen)",
-  "notes.placeholder": "Esimerkiksi: jätä takaovelle"
+  "notes.placeholder": "Esimerkiksi: jätä takaovelle",
+  "change.button": "Vaihda toimituspäivä",
+  "change.buttonPickup": "Vaihda noutopäivä",
+  "change.heading": "Valitse uusi päivä",
+  "change.current": "Nykyinen päivä: {date}",
+  "change.date": "Uusi päivä",
+  "change.slot": "Aika",
+  "change.save": "Tallenna uusi päivä",
+  "change.close": "Sulje",
+  "change.loading": "Ladataan vapaita päiviä…",
+  "change.none": "Muita vapaita päiviä ei ole juuri nyt. Ota yhteyttä kauppaan.",
+  "change.saved": "Uusi päivä tallennettu",
+  "change.taken": "Päivä tai aika täyttyi juuri. Valitse toinen.",
+  "change.error": "Päivää ei voi vaihtaa juuri nyt. Ota yhteyttä kauppaan."
 }

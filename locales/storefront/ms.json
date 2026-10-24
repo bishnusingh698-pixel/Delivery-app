@@ -100,5 +100,18 @@
   "snippet.time": "Masa",
   "snippet.location": "Lokasi pengambilan",
   "notes.label": "Nota atau arahan (pilihan)",
-  "notes.placeholder": "Contoh: tinggalkan di pintu belakang"
+  "notes.placeholder": "Contoh: tinggalkan di pintu belakang",
+  "change.button": "Tukar tarikh penghantaran",
+  "change.buttonPickup": "Tukar tarikh pengambilan",
+  "change.heading": "Pilih tarikh baharu",
+  "change.current": "Tarikh semasa: {date}",
+  "change.date": "Tarikh baharu",
+  "change.slot": "Masa",
+  "change.save": "Simpan tarikh baharu",
+  "change.close": "Tutup",
+  "change.loading": "Memuatkan tarikh yang tersedia…",
+  "change.none": "Tiada tarikh lain yang tersedia buat masa ini. Sila hubungi kedai.",
+  "change.saved": "Tarikh baharu disimpan",
+  "change.taken": "Tarikh atau masa itu baru sahaja penuh. Sila pilih yang lain.",
+  "change.error": "Tarikh ini tidak boleh ditukar sekarang. Sila hubungi kedai."
 }

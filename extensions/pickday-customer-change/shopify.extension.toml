@@ -1,0 +1,22 @@
+api_version = "2026-10"
+
+# Customers change their own delivery/pickup date from the order status page in
+# customer accounts (all plans). Needs "Allow network access" approved for this
+# extension in the Partner Dashboard (README step 6). The merchant turns it on in
+# Pickday > Settings > Customer date changes.
+[[extensions]]
+name = "t:name"
+handle = "pickday-customer-change"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/MenuItem.tsx"
+target = "customer-account.order.action.menu-item.render"
+
+[[extensions.targeting]]
+module = "./src/ChangeDate.tsx"
+target = "customer-account.order.action.render"
+
+[extensions.capabilities]
+network_access = true
+api_access = false

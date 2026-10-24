@@ -100,5 +100,18 @@
   "snippet.time": "時間",
   "snippet.location": "取貨地點",
   "notes.label": "備註或說明（選填）",
-  "notes.placeholder": "例如：放在後門"
+  "notes.placeholder": "例如：放在後門",
+  "change.button": "變更配送日期",
+  "change.buttonPickup": "變更自取日期",
+  "change.heading": "選擇新日期",
+  "change.current": "目前日期：{date}",
+  "change.date": "新日期",
+  "change.slot": "時間",
+  "change.save": "儲存新日期",
+  "change.close": "關閉",
+  "change.loading": "正在載入可選日期…",
+  "change.none": "目前沒有其他可選日期。請聯絡商店。",
+  "change.saved": "已儲存新日期",
+  "change.taken": "該日期或時段剛剛額滿，請另選。",
+  "change.error": "目前無法變更此日期。請聯絡商店。"
 }

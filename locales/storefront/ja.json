@@ -100,5 +100,18 @@
   "snippet.time": "時間帯",
   "snippet.location": "受取場所",
   "notes.label": "メモ・ご要望（任意）",
-  "notes.placeholder": "例：裏口に置いてください"
+  "notes.placeholder": "例：裏口に置いてください",
+  "change.button": "配達日を変更",
+  "change.buttonPickup": "受け取り日を変更",
+  "change.heading": "新しい日付を選択",
+  "change.current": "現在の日付: {date}",
+  "change.date": "新しい日付",
+  "change.slot": "時間",
+  "change.save": "新しい日付を保存",
+  "change.close": "閉じる",
+  "change.loading": "選べる日付を読み込んでいます…",
+  "change.none": "現在、ほかに選べる日付はありません。ストアにお問い合わせください。",
+  "change.saved": "新しい日付を保存しました",
+  "change.taken": "その日付または時間はたった今満員になりました。別のものを選んでください。",
+  "change.error": "この日付は現在変更できません。ストアにお問い合わせください。"
 }

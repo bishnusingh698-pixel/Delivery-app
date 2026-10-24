@@ -23,7 +23,7 @@ export interface PublishMeta {
 
 /** Features each plan unlocks (also used by the admin for lock badges). */
 const BASICS = ["allMethods", "slots", "closures", "holidays", "notes", "dailySummary"];
-const STARTER = [...BASICS, "capacity", "checkoutMatching"];
+const STARTER = [...BASICS, "capacity", "checkoutMatching", "customerChanges"];
 
 /**
  * Every plan gets a correct picker: all methods, time slots, holidays, closures and notes.

@@ -843,3 +843,8 @@ ICU plurals: Japanese has only the `other` category, so the strings keep `=0` wh
 ## Admin: nl
 
 Register: "je". Key terms: Lokale bezorging / Ophalen in winkel / Verzending, tijdvak (time slot), bestelgrens / deadline (cutoff), abonnement (plan). Review: the Shopify Dutch labels for Packing slips and Local pickup, and whether "Verwerkt" matches Shopify's word for fulfilled.
+
+## Round 2 additions to check
+
+- **Admin `summary.step1`–`summary.step4`, `summary.tip` (all 7 languages):** these name Shopify Flow's own buttons ("Create workflow", "Select a trigger", "Send internal email", "Turn on workflow") as I expect Flow shows them in that language. Compare with Flow in a store set to that language and adjust the button names to match exactly. The trigger name "Daily schedule" and the field "Orders" stay in English, because Flow shows app trigger names as the app defines them.
+- **Storefront `change.*` (27 languages):** texts for the customer account "Change delivery date" button and dialog. They are short, and use the same tone as the rest of each language's storefront texts (German "du", French "vous"). `change.taken` was rewritten in German and French to agree with the noun.

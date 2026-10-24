@@ -317,6 +317,16 @@ export interface Settings {
   notifications: NotificationSettings;
   tagging: TaggingSettings;
   productionPrepOffsetDays: number;
+  customerChanges: CustomerChangeSettings;
+}
+
+/** Customers change their own date from the order status page (customer accounts). */
+export interface CustomerChangeSettings {
+  enabled: boolean;
+  /** Allowed until this many hours before the current date (its time slot's start, or midnight). */
+  hoursBefore: number;
+  /** Most changes a customer can make to one order. */
+  maxChanges: number;
 }
 
 export type PlanId = "free" | "starter" | "pro";
