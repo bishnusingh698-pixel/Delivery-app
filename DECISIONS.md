@@ -99,7 +99,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 **D-41 Known limit: date per item and capacity.** In date-per-item mode each line is checked on its own at checkout, so two lines on the same nearly-full day can together go over the limit by one order. Zone limits and tag-based product limits also aren't applied per item, and surcharges are not added in date-per-item mode. The daily counts stay correct (the day shows as full afterwards); a fix is on the roadmap.
 
 
-**D-42 No date required while the app embed is off.** The app checks daily (and whenever Home or the Widget page opens) whether the Pickday app embed is on in the live theme. While it is found off, the published checkout config says so and the validation Function no longer blocks for a missing date, because shoppers have no way to pick one. Home shows a critical alert. An unknown state (never checked) keeps the normal rule.
+**D-42 No date required until the app embed is found on.** The app checks whether the Pickday app embed is on in the live theme: right away when the live theme changes (themes/publish and themes/update webhooks), whenever Home or the Appearance page opens, and daily. Until it is found on (never checked yet, check failed, found off), the published checkout config says so and the validation Function blocks nothing, because shoppers have no way to pick or fix a date. Home shows a critical alert while it is off.
 
 **D-43 Checkout checks the pickup location and leaves fees out of the minimum.** A pickup choice must name a location that exists, is switched on and serves the delivery country. Pickday's own fee lines don't count toward a method's minimum order, in the widget and at checkout.
 

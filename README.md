@@ -98,7 +98,7 @@ npx shopify app config link        # choose the app from step 1; keep the existi
 npm run deploy                     # uploads the theme extension, both Functions, the thank-you, customer account and admin extensions, Flow triggers
 ```
 
-`npm run deploy` first writes your Render URL (from `shopify.app.toml`) into the customer account extension, then asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks) and the access scopes.
+`npm run deploy` first writes your Render URL (from `shopify.app.toml`) into the customer account extension, then asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, theme changes, billing and the three mandatory privacy webhooks) and the access scopes.
 
 ### 5. Scheduled jobs and keep-awake (cron-job.org, free)
 

@@ -146,8 +146,7 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   // The Function only knows the shop's local time; pickup locations in other zones get an offset (republished hourly, so DST is followed).
   const tzShift = locationTimeShifts(config);
   if (Object.keys(tzShift).length) fnConfig.tzShift = tzShift;
-  // With the app embed off there is no date picker, so the Function must not require a date.
-  if (flagsOf(row).embedDetected === false) (fnConfig as { embedOff?: boolean }).embedOff = true;
+  if (embedOffFor(flagsOf(row))) (fnConfig as { embedOff?: boolean }).embedOff = true;
   // Capacity counts go to the Function too when they fit (otherwise it skips the "full" check, D-11).
   fnConfig.avail = JSON.stringify(fnConfig).length + JSON.stringify(availability).length < 24000 ? availability : null;
   const vars = ruleVariables(config);
@@ -209,6 +208,14 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   else await clearWarning(shop, "configLarge");
   await prisma.shop.update({ where: { shop }, data: { publishedAt: new Date(), publishedFor: today, countsDirty: false } });
   return { config, bytes };
+}
+
+/**
+ * Until the app embed is found on in the live theme there is no date picker, so the checkout Function
+ * must not block: also right after install, after a reinstall and while the check fails (D-42).
+ */
+export function embedOffFor(flags: { embedDetected?: boolean }): boolean {
+  return flags.embedDetected !== true;
 }
 
 /** What the thank-you block needs: where the .ics endpoint lives and how to word the date. */

@@ -29,3 +29,12 @@ describe("theme app embed detection", () => {
   it("ignores a disabled embed", () => expect(embedEnabledIn(data(true))).toBe(false));
   it("survives bad JSON", () => expect(embedEnabledIn("{nope")).toBe(false));
 });
+
+describe("checkout leniency while the app embed is off", () => {
+  it("treats an embed that isn't known to be on as off (new install, reinstall, failed check)", async () => {
+    const { embedOffFor } = await import("../app/services/publish.server");
+    expect(embedOffFor({})).toBe(true);
+    expect(embedOffFor({ embedDetected: false })).toBe(true);
+    expect(embedOffFor({ embedDetected: true })).toBe(false);
+  });
+});

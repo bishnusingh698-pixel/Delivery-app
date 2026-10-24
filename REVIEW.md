@@ -1,0 +1,54 @@
+# Pickday QA review (October 2026)
+
+Independent review of the round-2 changes (bug fixes, new features, admin redesign) and of the code they touch.
+Line numbers refer to the code **before** the fix. Severity: **critical** (stuck shoppers, wrong dates, blocked checkout),
+**major** (wrong data, overbooking, broken feature), **minor** (edge cases, UX, performance).
+
+Baseline before fixing: `npm run typecheck` ✅, `npm run lint` ✅ (0 errors, 20 warnings, all React-hook style warnings, none a bug),
+`npm test` ✅ (345 passed, including the database tests on Postgres 16), `npm run build` ✅, browser tests ✅ (38 widget checks + admin preview),
+`prisma migrate deploy` on an empty database ✅ and `prisma migrate diff` (migrations vs schema) shows no drift.
+Every bug below was found by reading the code and tracing the flows; none was caught by the existing tests.
+
+## Bugs
+
+| # | Severity | File:line | Bug | Root cause | Status |
+|---|---|---|---|---|---|
+| R1 | critical | `app/services/publish.server.ts:150`, `core/checkout.ts:133-137` | Checkout is blocked for **every** shopper ("Choose a delivery date") while the app embed is not confirmed on: right after install or reinstall (until the first embed check, and forever if that check fails), and after the merchant switches to a theme without the embed (until the next daily job, up to 24 h). The shopper sees no date picker, so they cannot fix it. A stale `_pickday` attribute (no date, or an old date) also kept blocking while the embed was found off. | The Function only relaxed its rules when the embed was positively found off (`embedDetected === false`); an unknown state enforced the date. Only the "no attribute at all" path was relaxed. Theme switches were only noticed by the daily job. | fixed |
+| R2 | critical | `widget/src/widget.ts:456` `persist()`, `:305` `revalidate()` | Delivery-fee lines drift from the chosen date: if the shopper removes the fee line (or the theme changes its quantity), nothing adds it back, and checkout is blocked with "the delivery fee doesn't match your date" while the cart shows nothing wrong. The shopper is stuck. | `persist()` returned early when the attributes were unchanged, skipping `syncFees()`; `revalidate()` only saved when the date changed. | fixed |
+| R3 | major | `app/services/publish.server.ts:251` `schedulePublish()` | On a busy day the capacity counts the storefront and the checkout Function see stop updating: every order webhook pushed the 3-second publish timer back, so with orders arriving faster than every 3 s nothing was published until a pause, and full days/slots kept being offered (overbooking). Two publishes for one store could also run at once and the slower, older one could overwrite a fresh settings save (old settings live for up to 6 h). | Pure debounce without a maximum wait; no per-store serialisation of publishes. | open |
+| R4 | major | `app/services/order-parse.ts:296`, `app/services/counts.server.ts:69` | Daily product limits that target **product tags** never fill (unlimited sales of a limited product), and products excluded from dates by tag are counted toward item capacity. | Order webhooks carry no product tags; the recorded lines had no tags, so tag rules never matched on the server (the widget and Function do see tags). | open |
+| R5 | major | `app/services/counts.server.ts:103`, `prisma/schema.prisma` `ScheduledItem` | Date-per-item mode: orders for a delivery zone with its own limit are counted under the method's key, so zone limits never fill. | `ScheduledItem` had no `zoneId`; the recount used `null`. | open |
+| R6 | major | `app/services/counts.server.ts:84-87` | A fully refunded order (all dated items removed or refunded) still takes an order spot for its day. | Zero-quantity lines are dropped in `parseOrder`, so the "every item at quantity 0" check (`items.length && !qty`) could never be true. | open |
+| R7 | major | `app/services/orders-query.server.ts:77` `whereFor()`, `:128` `dayCounts()`, `app/services/feed.server.ts:74` | Date-per-item orders whose items have different dates are missing from the Orders list (default "Upcoming", Today, Tomorrow, any range), the calendar, Home's counts and chart, the day/route sheets, CSV export and the calendar feed. | Those orders are stored with `date = null` (the dates live in `ScheduledItem`), and every query filtered on `ScheduledOrder.date` only. | open |
+| R8 | major | `core/checkout.ts:170` | When the Function config had to be trimmed (large postcode lists) and the shopper's cart uses a delivery zone, a required date was not required: checkout went through with no date. | The "trimmed + zone" early return ran before the missing-date check. | open |
+| R9 | minor | `widget/src/widget.ts:566` `blockingMessage()` | Date per item: a line with a date but no time slot passed the cart's checkout gate; Shopify's checkout then blocked with a generic "choose a date" message. | The item-mode gate only checked that each line had a date. | fixed |
+| R10 | minor | `core/checkout.ts:163` | Region-based delivery areas (countries without postcodes) were never re-checked at checkout: the shopper could choose a covered region in the cart and type an uncovered one at checkout. | The address check only ran when the checkout address had a ZIP. | open |
+| R11 | minor | `app/routes/api.customer.order.$id.tsx:46` | Every order status page view in customer accounts built the whole storefront config (settings, monthly usage count, 400 days of public holidays) only to read a time zone. Slow and wasteful on the free Render instance. | Heavy helper used for a one-field lookup. | open |
+| R12 | minor | `app/services/feed.server.ts:68` | The calendar feed (Pro) kept working after a downgrade to a plan without it. | No plan check when serving the feed. | open |
+| R13 | minor | `app/routes/app.pickup.tsx:109` | Importing a Shopify location whose pickup instructions are longer than 600 characters made the Pickup page impossible to save ("too long"). | Imported text was cut at 1000 characters; the schema allows 600. | open |
+| R14 | minor | `extensions/pickday-admin/src/ScheduleAction.tsx:84` | "Change delivery date" on a pickup order without a location (or after switching the method to pickup) showed the first location as selected but saved the order with no location. | `location` state stayed `null` while the select displayed its first option. | open |
+| R15 | minor | `app/routes/app.orders._index.tsx:318` | The Orders calendar ignored the store's "first day of the week" setting (Settings → Store & region). | `weekOrder(locale)` called without the store's week start. | open |
+| R16 | minor | `app/routes/app._index.tsx:361` | "Close a day" on Home gave no feedback: the modal closed at once, and if the save failed the merchant believed the day was closed. Closing a day that was already closed added a duplicate closure. | No result handling; no duplicate check. | open |
+| R17 | minor | `app/routes/app.orders._index.tsx:72` | Bulk reschedule showed raw keys such as `reason.Order not found` when an order failed with an error. | Exception messages were used as translation keys. | open |
+| R18 | minor | `widget/src/widget.ts:476` `persistItems()` | Date per item: every save re-read the whole cart, even when nothing changed (an extra request per keystroke in the notes box). | Unconditional `loadCart()`. | fixed |
+| R19 | minor | `app/services/orders-query.server.ts:226` | CSV cells containing a carriage return were not quoted, which breaks the row in Excel. | Quote test only looked for `"`, `,` and `\n`. | open |
+| R20 | minor | `core/calendar.ts:160` `fold()` | `.ics` lines were folded every 74 UTF-16 characters: names in Japanese, Arabic etc. exceeded the 75-octet limit and emoji could be split in half (some calendar apps then reject the event). | Folding counted characters, not UTF-8 bytes. | open |
+| R21 | minor | `app/services/jobs.server.ts:41` | Pickup locations in another time zone: after a daylight-saving change the checkout Function used the old offset for up to 6 hours (the code comment says "refreshed hourly"). | The hourly job only republished stale stores. | open |
+| R22 | minor | `app/services/reschedule.server.ts:62` | Setting a date from the admin for an order Pickday never recorded ignored product tags in product rules. | Line items were fetched without tags. | open |
+
+## Checked and not bugs
+
+- Date engine: cutoff boundary, lead time in hours and working days, same-day express, booking window, `zonedToUtc` in DST gaps and overlaps, month/year ends, leap days, yearly ranges over New Year (existing tests plus new ones).
+- Validation Function: hour-level "now" from `shop.localTime` (benefit of the doubt inside the hour), presentment currency for minimum order, fee lines excluded from the minimum.
+- Webhooks: duplicate deliveries skipped, retries after a failure, per-store lock so create/updated can't race, stale payloads ignored, GDPR topics, uninstall/reinstall within 48 h, shop/redact after a reinstall.
+- Every database query is scoped by shop; admin API routes use session tokens; the customer-account API checks the order belongs to the signed-in customer; jobs use a constant-time secret check; feeds use a 48-character random token.
+- Only theme app extensions, cart attributes, cart validation and delivery customization Functions, thank-you/order-status and customer-account UI extensions: nothing Plus-only.
+- Migrations apply cleanly to an empty Postgres database and match `schema.prisma`.
+- No `console.log` debug output, secrets or test store values in frontend code; the storefront widget CSS is scoped to `.pickday`/`.pd-*`.
+- Function config size for a realistic store (3 methods, 8 slots, 3 locations, holidays, 30 days of counts) is about 16 KB, well under the limits.
+
+## Known limitation kept
+
+DECISIONS D-09: two shoppers can still book the very last spot within the same few seconds. Counts now reach the storefront and the
+checkout Function at most ~3 seconds after each order even on busy days (R3), but a hard reservation needs the server during checkout,
+which is not possible for free on Render (the instance sleeps) and would make checkout depend on the app server.

@@ -67,7 +67,6 @@ export class Pickday {
   st: State;
   saving: number | undefined;
   inflight: Promise<void> | null = null;
-  lastSaved = "";
   ready = false;
   hidden = true;
 
@@ -340,7 +339,7 @@ export class Pickday {
         changed = true;
       }
     }
-    if (changed || this.cart?.attributes?.[ATTR_KEY] === undefined) this.schedulePersist();
+    if (changed || this.cart?.attributes?.[ATTR_KEY] === undefined || !this.feesInSync()) this.schedulePersist();
     return changed;
   }
 
@@ -451,22 +450,31 @@ export class Pickday {
         attrs[READABLE_KEYS.area] = area ? area.names[this.cfg.primaryLocale] || Object.values(area.names)[0] || sel.a : ac?.regionNames?.[sel.a] ?? this.st.postcode ?? sel.a;
       }
     }
-    const sig = JSON.stringify(attrs);
     const current = this.cart?.attributes ?? {};
     const same = Object.entries(attrs).every(([k, v]) => (current[k] ?? "") === v);
-    if (sig === this.lastSaved && same) return;
-    this.lastSaved = sig;
     if (!same) {
       log(this.cfg, "save", attrs);
       this.cart = await this.api.updateAttributes(attrs);
     }
     if (this.cfg.dateMode === "item") await this.persistItems(clear);
+    // Also when the attributes didn't change: the shopper or the theme may have removed a fee line
+    // (or changed its quantity), and checkout rejects a cart whose fees don't match the date.
     await this.syncFees(clear ? [] : this.currentFees());
+  }
+
+  /** Do the cart's fee lines match the chosen date and slot (one line per fee, quantity 1)? */
+  feesInSync(): boolean {
+    const fees = this.surchargeVariants();
+    if (!fees.size || !this.cart) return true;
+    const wanted = new Set(this.currentFees().map((f) => f.variantId!));
+    const have = this.cart.items.filter((i) => fees.has(String(i.variant_id)));
+    return have.length === wanted.size && have.every((i) => i.quantity === 1 && wanted.has(String(i.variant_id)));
   }
 
   async persistItems(clear: boolean) {
     if (!this.cart) return;
     const ptx = await this.primaryTexts();
+    let touched = false;
     for (const item of [...this.cart.items]) {
       const line = this.dated.find((l) => l.key === item.key);
       const it = line && !clear ? this.st.items[item.key] : null;
@@ -485,6 +493,7 @@ export class Pickday {
       }
       // Changing properties changes the line key: carry the selection over.
       const before: Set<string> = new Set(this.cart.items.map((i) => i.key));
+      touched = true;
       this.cart = await this.api.changeLine(item.key, { quantity: item.quantity, properties: props });
       const newKey = this.cart.items.find((i) => !before.has(i.key))?.key;
       if (newKey && it) {
@@ -492,7 +501,7 @@ export class Pickday {
         delete this.st.items[item.key];
       }
     }
-    await this.loadCart();
+    if (touched) await this.loadCart();
   }
 
   itemSlot(line: CartLine, it: Item) {
@@ -563,7 +572,14 @@ export class Pickday {
     if (this.areaGate().needed) msg = this.tx.t("required");
     else if (this.needsLocation() && !this.st.locationId) msg = this.tx.t("requiredLocation");
     else if (this.cfg.dateMode === "item") {
-      if (this.dated.some((l) => !this.st.items[l.key]?.d)) msg = this.tx.t("requiredItems");
+      // Each line needs a date, and a time slot when its day has slots (as checkout checks).
+      const missing = this.dated.some((l) => {
+        const it = this.st.items[l.key];
+        if (!it?.d) return true;
+        const r = checkSelection(this.input({ lines: [l] }), it.d, it.s);
+        return !r.ok && (r.reason === "slotRequired" || r.reason === "slotUnavailable");
+      });
+      if (missing) msg = this.tx.t("requiredItems");
     } else if (!this.st.date) msg = this.tx.t("required");
     else {
       const r = checkSelection(this.input(), this.st.date, this.st.slotId);

@@ -36,6 +36,10 @@ api_version = "2026-10"
   uri = "/webhooks/shop/update"
 
   [[webhooks.subscriptions]]
+  topics = [ "themes/publish", "themes/update" ]
+  uri = "/webhooks/themes"
+
+  [[webhooks.subscriptions]]
   topics = [ "app_subscriptions/update" ]
   uri = "/webhooks/billing"
 

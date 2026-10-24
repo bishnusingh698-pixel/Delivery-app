@@ -151,6 +151,17 @@ describe("validation Function", () => {
     expect(validate(input, messages)).toEqual([]);
   });
 
+  it("never blocks while the app embed is off, also for a choice left in the cart from before", () => {
+    // No date in the saved choice, and an old date that is no longer possible: the shopper can't fix either.
+    for (const attr of [sel({ d: null }), sel({ d: "2026-10-01" })]) {
+      const input = vInput(cfg, { attr });
+      expect(validate(input, messages)).toHaveLength(1);
+      (input.validation!.metafield!.jsonValue as any).embedOff = true;
+      expect(validate(input, messages)).toEqual([]);
+    }
+  });
+
+
   it("rejects an unknown or switched-off pickup location", () => {
     const c = (enabled: boolean) =>
       config((s) => {

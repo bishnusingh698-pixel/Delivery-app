@@ -16,7 +16,7 @@ import type { Availability, CartLine, MethodId, Selection, StorefrontConfig } fr
 export type Messages = Record<string, Record<string, string>>;
 
 /** tzShift: minutes to add to the shop's local time to get each pickup location's own local time (set at publish, refreshed hourly). */
-/** embedOff: the app embed was found switched off in the live theme, so shoppers can't pick a date (never block for a missing one). */
+/** embedOff: the app embed is not known to be on in the live theme, so shoppers can't pick or fix a date: never block. */
 export type FunctionConfig = StorefrontConfig & { trimmed?: boolean; avail?: Availability | null; tzShift?: Record<string, number>; embedOff?: boolean };
 
 /* ------------------------------------------------------- validation */
@@ -116,6 +116,8 @@ export function validate(input: ValidationInput, messages: Messages): Validation
   if (step === "CART_INTERACTION") return [];
   const cfg = input.validation?.metafield?.jsonValue as FunctionConfig | null | undefined;
   if (!cfg || !Array.isArray(cfg.methods)) return [];
+  // Without the date picker on the storefront the shopper has no way to choose or fix a date.
+  if (cfg.embedOff) return [];
   const lang = input.localization?.language?.isoCode;
   const t = (key: string, values: Record<string, string | number | null> = {}) =>
     format(textFor(messages, cfg.texts, lang, key), values, { plural: () => "other", number: (n) => String(n) });
@@ -131,7 +133,6 @@ export function validate(input: ValidationInput, messages: Messages): Validation
 
   const sel = decodeSelection(input.cart.attribute?.value);
   if (!sel) {
-    if (cfg.embedOff) return [];
     const required = methods.some((id) => cfg.methods.find((m) => m.id === id)?.dateRequired);
     return required ? err(cfg.dateMode === "item" ? "validation.missingItemDate" : "validation.missingDate") : [];
   }

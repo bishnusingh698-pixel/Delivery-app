@@ -3,6 +3,7 @@
  * main theme's settings (read_themes). Used by Home's checklist and alerts.
  */
 import { flagsOf, requireShop, setFlags } from "../models/shop.server";
+import { unauthenticated } from "../shopify.server";
 import { schedulePublish } from "./publish.server";
 import { gql, type AdminGraphql } from "./graphql.server";
 
@@ -40,6 +41,26 @@ export async function checkEmbed(shop: string, admin: AdminGraphql): Promise<boo
     console.error("[embed]", shop, (e as Error).message);
     return null;
   }
+}
+
+const pendingChecks = new Map<string, NodeJS.Timeout>();
+
+/**
+ * Check the app embed again shortly (theme webhooks): a burst of theme saves becomes one check,
+ * and the delay lets Shopify finish writing settings_data.json.
+ */
+export function scheduleEmbedCheck(shop: string, delayMs = 10_000) {
+  if (pendingChecks.has(shop)) return;
+  pendingChecks.set(
+    shop,
+    setTimeout(() => {
+      pendingChecks.delete(shop);
+      unauthenticated
+        .admin(shop)
+        .then(({ admin }) => checkEmbed(shop, admin))
+        .catch((e) => console.error("[embed] scheduled check", shop, (e as Error).message));
+    }, delayMs),
+  );
 }
 
 /** Theme editor deep link with the app embed preselected. */
