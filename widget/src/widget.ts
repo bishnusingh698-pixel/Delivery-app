@@ -8,8 +8,10 @@ import { normalizePostcode } from "../../core/postcode";
 import { areaConfig, areaCovered, datedLines, findZone, locationsFor, methodsFor } from "../../core/rules";
 import { ATTR_KEY, READABLE_KEYS, decodeItemSelection, decodeSelection, encodeSelection } from "../../core/selection";
 import { nowInZone, zoneDiffersFromDevice, zoneDisplayName } from "../../core/tz";
+import { attributeDate, formatShopperDate } from "../../core/dateformat";
+import { onAccent } from "../../core/color";
 import type { Availability, CartLine, DayStatus, LocalNow, MethodId, Selection, StorefrontConfig, Surcharge } from "../../core/types";
-import { addVariant, changeLine, getCart, notifyTheme, productTags, updateAttributes, type Cart } from "./cart";
+import { shopifyCart, type Cart, type CartApi } from "./cart";
 import { h, nextId, swap } from "./dom";
 import { makeTexts, type Texts } from "./i18n";
 
@@ -22,13 +24,13 @@ export interface BootData {
   rate: number;
   template: string;
   pseudo?: boolean;
-  poweredByUrl: string;
-  brand: string;
   assetBase: string;
   /** Collections of items in the cart at page render (Liquid). */
   itemCollections?: Record<string, string[]>;
   /** Tags of items in the cart at page render (Liquid). */
   itemTags?: Record<string, string[]>;
+  /** Admin preview only: a fixed "now" (simulate a time) instead of the clock. */
+  nowAt?: LocalNow | null;
 }
 
 type Item = { d: string | null; s: string | null };
@@ -48,6 +50,7 @@ interface State {
   notice: string | null;
   error: string | null;
   focusReason: string | null;
+  notes: string;
 }
 
 const log = (cfg: StorefrontConfig | null, ...args: unknown[]) => {
@@ -68,7 +71,12 @@ export class Pickday {
   ready = false;
   hidden = true;
 
-  constructor(public boot: BootData) {
+  private timer: number | undefined;
+
+  constructor(
+    public boot: BootData,
+    public api: CartApi = shopifyCart,
+  ) {
     this.cfg = boot.config!;
     this.avail = boot.availability;
     this.tx = makeTexts(boot.locale, this.cfg.texts, boot.pseudo);
@@ -93,7 +101,24 @@ export class Pickday {
       notice: null,
       error: null,
       focusReason: null,
+      notes: "",
     };
+  }
+
+  /** Settings published by an older Pickday version may lack newer fields. */
+  get dateFormat() {
+    return this.cfg.dateFormat ?? "auto";
+  }
+
+  /** Is the notes box offered for this method? */
+  notesOn(method = this.st.method): boolean {
+    const n = this.cfg.notes;
+    return !!n?.enabled && !!method && (n.methods === "all" || n.methods.includes(method));
+  }
+
+  /** Pickup with no pickup location set up means pickup at the store itself: no location to choose. */
+  needsLocation(): boolean {
+    return this.st.method === "pickup" && locationsFor(this.cfg, this.country).length > 0;
   }
 
   /* ------------------------------------------------------------ data */
@@ -115,7 +140,7 @@ export class Pickday {
   }
 
   async loadCart() {
-    const cart = await getCart();
+    const cart = await this.api.getCart();
     this.cart = cart;
     const fees = this.surchargeVariants();
     const lines: CartLine[] = [];
@@ -130,7 +155,7 @@ export class Pickday {
         title: it.product_title,
         giftCard: it.gift_card,
         requiresShipping: it.requires_shipping,
-        tags: needTags ? this.boot.itemTags?.[String(it.product_id)] ?? (await productTags(it.handle)) : [],
+        tags: needTags ? this.boot.itemTags?.[String(it.product_id)] ?? (await this.api.productTags(it.handle)) : [],
         collections: this.boot.itemCollections?.[String(it.product_id)],
       });
     }
@@ -145,6 +170,7 @@ export class Pickday {
   }
 
   now(method = this.st.method, loc = this.st.locationId): LocalNow {
+    if (this.boot.nowAt) return this.boot.nowAt;
     return nowInZone(engineTimeZone(this.cfg, method ?? "shipping", loc));
   }
 
@@ -207,11 +233,18 @@ export class Pickday {
     this.ready = true;
     await this.revalidate();
     this.render();
-    window.setInterval(() => this.tick(), 60_000);
+    this.timer = window.setInterval(() => this.tick(), 60_000);
+  }
+
+  /** Stop the minute timer (admin preview re-creates the widget on every change). */
+  stop() {
+    window.clearInterval(this.timer);
+    window.clearTimeout(this.saving);
   }
 
   /** Read the saved selection from the cart. */
   restore() {
+    this.st.notes = this.cart?.attributes?.[READABLE_KEYS.notes] ?? "";
     const sel = decodeSelection(this.cart?.attributes?.[ATTR_KEY]);
     const methods = this.methods;
     if (sel && methods.includes(sel.m)) {
@@ -274,7 +307,8 @@ export class Pickday {
     const methods = this.methods;
     if (!this.dated.length || !methods.length) {
       // Nothing needs a date (e.g. gift-card-only cart) or no method offered here: clear and hide.
-      if (this.cart?.attributes?.[ATTR_KEY]) await this.persist(true);
+      // An empty cart keeps a date picked on a product page until the product is added.
+      if (this.cart?.items.length && this.cart.attributes?.[ATTR_KEY]) await this.persist(true);
       return false;
     }
     if (this.st.method && !methods.includes(this.st.method)) {
@@ -351,7 +385,7 @@ export class Pickday {
   label(date: string, slot: [string, string] | null, tx = this.tx, relative = true): string {
     const today = this.now().date;
     const m = this.cfg.methods.find((x) => x.id === this.st.method);
-    let d = tx.date(date);
+    let d = formatShopperDate(date, this.dateFormat, tx.locale, () => tx.date(date));
     if (relative && m?.schedule.todayTomorrowLabels && tx === this.tx) {
       if (date === today) d = tx.t("calendar.today");
       else if (date === addDays(today, 1)) d = tx.t("calendar.tomorrow");
@@ -401,11 +435,13 @@ export class Pickday {
       [READABLE_KEYS.location]: "",
       [READABLE_KEYS.area]: "",
     };
+    // Only touch the notes attribute when the box is offered (never wipe a theme's own field of the same name).
+    if (this.cfg.notes?.enabled) attrs[READABLE_KEYS.notes] = !clear && this.notesOn() ? this.st.notes.trim().slice(0, this.cfg.notes.maxLength) : "";
     if (sel) {
       const ptx = await this.primaryTexts();
       attrs[ATTR_KEY] = encodeSelection(sel);
       attrs[READABLE_KEYS.method] = this.methodName(sel.m, this.cfg.primaryLocale, ptx);
-      if (sel.d) attrs[READABLE_KEYS.date] = `${ptx.date(sel.d, "long")} (${sel.d})`;
+      if (sel.d) attrs[READABLE_KEYS.date] = attributeDate(sel.d, this.dateFormat, ptx.locale);
       if (sel.t) attrs[READABLE_KEYS.slot] = ptx.range(sel.t.slice(0, 5), sel.t.slice(6, 11));
       const loc = this.cfg.locations.find((l) => l.id === sel.l);
       if (loc) attrs[READABLE_KEYS.location] = loc.name;
@@ -422,7 +458,7 @@ export class Pickday {
     this.lastSaved = sig;
     if (!same) {
       log(this.cfg, "save", attrs);
-      this.cart = await updateAttributes(attrs);
+      this.cart = await this.api.updateAttributes(attrs);
     }
     if (this.cfg.dateMode === "item") await this.persistItems(clear);
     await this.syncFees(clear ? [] : this.currentFees());
@@ -438,7 +474,7 @@ export class Pickday {
       const slot = it?.d && it.s ? this.itemSlot(line!, it) : null;
       const want: Record<string, string> = {
         [ATTR_KEY]: it?.d ? JSON.stringify({ d: it.d, s: it.s, t: slot ? `${slot.start}-${slot.end}` : null, lbl: this.label(it.d, slot ? [slot.start, slot.end] : null, this.tx, false) }) : "",
-        [READABLE_KEYS.date]: it?.d ? `${ptx.date(it.d, "long")} (${it.d})` : "",
+        [READABLE_KEYS.date]: it?.d ? attributeDate(it.d, this.dateFormat, ptx.locale) : "",
         [READABLE_KEYS.slot]: slot ? ptx.range(slot.start, slot.end) : "",
       };
       const changed = Object.entries(want).some(([k, v]) => (props[k] ?? "") !== v);
@@ -449,7 +485,7 @@ export class Pickday {
       }
       // Changing properties changes the line key: carry the selection over.
       const before: Set<string> = new Set(this.cart.items.map((i) => i.key));
-      this.cart = await changeLine(item.key, { quantity: item.quantity, properties: props });
+      this.cart = await this.api.changeLine(item.key, { quantity: item.quantity, properties: props });
       const newKey = this.cart.items.find((i) => !before.has(i.key))?.key;
       if (newKey && it) {
         this.st.items[newKey] = it;
@@ -474,24 +510,24 @@ export class Pickday {
       const vid = String(it.variant_id);
       if (!fees.has(vid)) continue;
       if (!wanted.has(vid) || it.quantity !== 1) {
-        await changeLine(it.key, { quantity: wanted.has(vid) ? 1 : 0 });
+        await this.api.changeLine(it.key, { quantity: wanted.has(vid) ? 1 : 0 });
         changed = true;
       }
       wanted.delete(vid);
     }
     for (const vid of wanted) {
       const names = want.filter((f) => f.variantId === vid).map((f) => f.label).filter(Boolean);
-      await addVariant(vid, 1, names.length ? { Fee: names.join(", ") } : undefined);
+      await this.api.addVariant(vid, 1, names.length ? { Fee: names.join(", ") } : undefined);
       changed = true;
     }
     if (changed) {
       log(this.cfg, "surcharge synced", [...wanted]);
-      if (location.pathname.endsWith("/cart")) {
+      if (this.api === shopifyCart && location.pathname.endsWith("/cart")) {
         location.reload();
         return;
       }
-      notifyTheme();
-      this.cart = await getCart();
+      this.api.notifyTheme();
+      this.cart = await this.api.getCart();
     }
   }
 
@@ -501,7 +537,7 @@ export class Pickday {
     if (this.primary) return this.primary;
     const pl = this.cfg.primaryLocale || "en";
     const loc = makeTexts(pl, {}, false);
-    if (!window.PickdayI18n?.[loc.textLocale]) {
+    if (!window.PickdayI18n?.[loc.textLocale] && this.boot.assetBase) {
       await new Promise<void>((resolve) => {
         const s = document.createElement("script");
         s.src = `${this.boot.assetBase}pickday-i18n-${loc.textLocale}.js`;
@@ -515,13 +551,17 @@ export class Pickday {
 
   /* ---------------------------------------------- checkout gating */
 
-  /** Is the shopper allowed to continue to checkout? Shows the inline message if not. */
-  canCheckout(): boolean {
-    if (!this.ready || !this.dated.length || !this.methods.length || !this.st.method) return true;
+  /** Why the shopper can't continue to checkout yet (null = they can). Pure: renders nothing. */
+  blockingMessage(): string | null {
+    if (!this.ready || !this.dated.length || !this.methods.length || !this.st.method) return null;
+    // A minimum order the cart doesn't reach blocks at checkout too: say so instead of asking for a date.
+    const min = this.minOrderBlocked(this.st.method);
+    if (min) return min;
     const m = this.cfg.methods.find((x) => x.id === this.st.method);
-    if (!m?.dateRequired) return true;
+    if (!m?.dateRequired) return null;
     let msg: string | null = null;
     if (this.areaGate().needed) msg = this.tx.t("required");
+    else if (this.needsLocation() && !this.st.locationId) msg = this.tx.t("requiredLocation");
     else if (this.cfg.dateMode === "item") {
       if (this.dated.some((l) => !this.st.items[l.key]?.d)) msg = this.tx.t("requiredItems");
     } else if (!this.st.date) msg = this.tx.t("required");
@@ -529,6 +569,17 @@ export class Pickday {
       const r = checkSelection(this.input(), this.st.date, this.st.slotId);
       if (!r.ok) msg = r.reason === "slotRequired" || r.reason === "slotUnavailable" ? this.tx.t("requiredSlot") : this.tx.t("required");
     }
+    return msg;
+  }
+
+  /** Is a picker on screen where the shopper can see it? */
+  visibleMount(): HTMLElement | null {
+    return [...this.mounts].find((m) => m.isConnected && !m.hidden && m.offsetParent !== null) ?? null;
+  }
+
+  /** Is the shopper allowed to continue to checkout? Shows the inline message if not. */
+  canCheckout(): boolean {
+    const msg = this.blockingMessage();
     if (!msg) return true;
     this.st.error = msg;
     this.render();
@@ -564,6 +615,7 @@ export class Pickday {
     el.setAttribute("lang", this.boot.locale);
     el.dataset.theme = this.cfg.widget.theme;
     el.style.setProperty("--pd-accent", this.cfg.widget.accent);
+    el.style.setProperty("--pd-on-accent", onAccent(this.cfg.widget.accent));
     el.style.setProperty("--pd-radius", `${this.cfg.widget.radius}px`);
     el.classList.toggle("pd-compact", this.cfg.widget.compact);
     if (!show) {
@@ -587,21 +639,43 @@ export class Pickday {
     if (st.method === "pickup") parts.push(this.locationSelector());
     const gate = this.areaGate();
     if (st.method === "delivery") parts.push(this.areaCheck(gate.covered));
-    const canPickDates = st.method && !gate.needed && !minBlock && (st.method !== "pickup" || st.locationId);
+    const canPickDates = st.method && !gate.needed && !minBlock && (!this.needsLocation() || st.locationId);
     if (canPickDates) {
       if (this.cfg.dateMode === "item") parts.push(this.itemPickers());
       else if (!st.editing && st.date) parts.push(this.summary());
       else parts.push(this.datePicker());
     }
+    if (canPickDates && this.notesOn()) parts.push(this.notesBox());
     if (zoneDiffersFromDevice(engineTimeZone(this.cfg, st.method ?? "shipping", st.locationId))) {
       parts.push(h("p", { class: "pd-tz" }, t("tzNote", { zone: zoneDisplayName(engineTimeZone(this.cfg, st.method ?? "shipping", st.locationId), this.boot.locale) })));
     }
     if (st.error) parts.push(h("p", { class: "pd-error", role: "alert", tabindex: "-1", "data-pd-err": "", "data-fk": "err" }, st.error));
-    if (this.cfg.plan === "free") {
-      parts.push(h("p", { class: "pd-powered" }, h("a", { href: this.boot.poweredByUrl, target: "_blank", rel: "noopener" }, t("poweredBy", { brand: this.boot.brand }))));
-    }
     if (this.cfg.widget.customCss && this.cfg.plan === "pro") parts.push(h("style", null, this.cfg.widget.customCss));
     return h("div", { class: "pd-root", role: "group", "aria-label": t("heading") }, parts);
+  }
+
+  /** Optional delivery instructions / gift message, saved as an order attribute. */
+  notesBox(): Node {
+    const id = nextId("notes");
+    const max = this.cfg.notes?.maxLength ?? 250;
+    return h(
+      "div",
+      { class: "pd-field" },
+      h("label", { for: id, class: "pd-label" }, this.tx.t("notes.label")),
+      h("textarea", {
+        id,
+        class: "pd-input pd-notes",
+        rows: "2",
+        maxlength: String(max),
+        placeholder: this.tx.t("notes.placeholder"),
+        "data-fk": "notes",
+        // No re-render while typing (keeps the caret); the cart is updated shortly after.
+        oninput: (e: Event) => {
+          this.st.notes = (e.target as HTMLTextAreaElement).value.slice(0, max);
+          this.schedulePersist();
+        },
+      }, this.st.notes),
+    );
   }
 
   vacationNote(): Node | null {
@@ -945,7 +1019,7 @@ export class Pickday {
 
   calendar(byDate: Map<string, DayStatus>, today: string, last: string): Node {
     const month = this.st.month!;
-    const order = weekOrder(this.boot.locale);
+    const order = weekOrder(this.boot.locale, this.cfg.weekStart);
     const y = Number(month.slice(0, 4));
     const mo = Number(month.slice(5, 7));
     const n = daysInMonth(y, mo);
@@ -1034,7 +1108,7 @@ export class Pickday {
 
   calendarKey(e: KeyboardEvent, date: string, month: string, today: string, last: string) {
     const rtl = this.tx.rtl;
-    const order = weekOrder(this.boot.locale);
+    const order = weekOrder(this.boot.locale, this.cfg.weekStart);
     let next: string | null = null;
     switch (e.key) {
       case "ArrowRight":
@@ -1183,6 +1257,22 @@ export class Pickday {
 
   /* ------------------------------------------------ product page */
 
+  /**
+   * One date per order: a date picked on a product page becomes the cart's choice right away
+   * (a cart attribute, also before the product is added), never a line property that could
+   * later disagree with the date picked in the cart.
+   */
+  chooseFromProduct(method: MethodId, locationId: string | null, date: string | null) {
+    this.st.method = method;
+    this.st.locationId = method === "pickup" ? locationId : null;
+    this.st.date = date;
+    this.st.slotId = null;
+    this.st.editing = !date;
+    this.st.error = null;
+    this.render();
+    this.schedulePersist();
+  }
+
   /** Earliest-date message / countdown for a product page. */
   productMessage(product: CartLine): string | null {
     const methods = methodsFor(this.cfg, this.country, [product]);
@@ -1204,10 +1294,15 @@ export class Pickday {
         const mins = toMinutes(cut) - now.minutes;
         const duration = mins >= 60 ? this.tx.t("duration.hm", { hours: Math.floor(mins / 60), minutes: mins % 60 }) : this.tx.t("duration.m", { minutes: mins });
         const when = earliest === now.date ? "today" : earliest === addDays(now.date, 1) ? "tomorrow" : "other";
-        return this.tx.t(`product.countdown.${kind}`, { duration, when, date: this.tx.date(earliest) });
+        return this.tx.t(`product.countdown.${kind}`, { duration, when, date: formatShopperDate(earliest, this.dateFormat, this.tx.locale, () => this.tx.date(earliest)) });
       }
     }
-    const label = earliest === now.date && m.schedule.todayTomorrowLabels ? this.tx.t("calendar.today") : earliest === addDays(now.date, 1) && m.schedule.todayTomorrowLabels ? this.tx.t("calendar.tomorrow") : this.tx.date(earliest);
+    const label =
+      earliest === now.date && m.schedule.todayTomorrowLabels
+        ? this.tx.t("calendar.today")
+        : earliest === addDays(now.date, 1) && m.schedule.todayTomorrowLabels
+          ? this.tx.t("calendar.tomorrow")
+          : formatShopperDate(earliest, this.dateFormat, this.tx.locale, () => this.tx.date(earliest));
     return this.tx.t(`product.earliest.${kind}`, { date: label });
   }
 }

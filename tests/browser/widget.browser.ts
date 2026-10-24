@@ -21,7 +21,9 @@ const assets = join(root, "extensions/pickday-theme/assets");
 const shots = join(root, "tests/browser/screenshots");
 mkdirSync(shots, { recursive: true });
 
-function config(plan: "free" | "pro" = "pro") {
+type Settings = ReturnType<typeof defaultSettings>;
+
+function config(plan: "free" | "pro" = "pro", mut?: (s: Settings) => void) {
   const s = defaultSettings("US");
   s.methods.delivery.enabled = true;
   s.methods.delivery.slotsEnabled = true;
@@ -37,6 +39,7 @@ function config(plan: "free" | "pro" = "pro") {
   ];
   s.methodOrder = ["delivery", "pickup", "shipping"];
   s.defaultMethod = "delivery";
+  mut?.(s);
   const tz = "America/New_York";
   return toStorefrontConfig(s, { version: 1, timeZone: tz, primaryLocale: "en", plan, overLimit: false, currency: "USD", debugUntil: null, today: nowInZone(tz).date });
 }
@@ -50,13 +53,19 @@ const cartState = {
   currency: "USD",
 };
 
-async function open(page: Page, locale: string, pseudo = false) {
+const cartPage = `<main><form action="/cart" method="post"><div data-pickday-mount="block"></div><button type="submit" name="checkout">Check out</button></form></main>`;
+
+async function open(page: Page, locale: string, pseudo = false, opts: { cfg?: ReturnType<typeof config>; body?: string; path?: string; wait?: boolean } = {}) {
   cartState.attributes = {};
-  const boot = { config: config(), availability: null, locale, country: "US", currency: "USD", rate: 1, template: "cart", pseudo, poweredByUrl: "https://example.com", brand: "Pickday", assetBase: "/assets/" };
-  const html = `<!doctype html><html lang="${locale}"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/pickday.css">
+  const doc = (body: string, template: string) => {
+    const boot = { config: opts.cfg ?? config(), availability: null, locale, country: "US", currency: "USD", rate: 1, template, pseudo, assetBase: "/assets/" };
+    return `<!doctype html><html lang="${locale}"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/pickday.css">
     <style>body{font-family:system-ui,sans-serif;margin:0;padding:0 16px}main{max-width:100%}</style></head>
-    <body><main><form action="/cart" method="post"><div data-pickday-mount="block"></div><button type="submit" name="checkout">Check out</button></form></main>
+    <body>${body}
     <script id="pickday-data" type="application/json">${JSON.stringify(boot)}</script><script src="/assets/pickday.js"></script></body></html>`;
+  };
+  const html = doc(cartPage, "cart");
+  const other = doc(opts.body ?? "", "index");
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/assets/")) {
@@ -74,11 +83,12 @@ async function open(page: Page, locale: string, pseudo = false) {
       return route.fulfill({ json: cartState });
     }
     if (url.pathname === "/cart") return route.fulfill({ body: html, contentType: "text/html; charset=utf-8" });
+    if (url.pathname === "/") return route.fulfill({ body: other, contentType: "text/html; charset=utf-8" });
     if (url.pathname === "/checkout") return route.fulfill({ body: "checkout", contentType: "text/html; charset=utf-8" });
     return route.fulfill({ status: 404, body: "" });
   });
-  await page.goto("https://shop.test/cart");
-  await page.waitForSelector(".pd-root", { timeout: 5000 });
+  await page.goto(`https://shop.test${opts.path ?? "/cart"}`);
+  if (opts.wait !== false) await page.waitForSelector(".pd-root", { timeout: 5000 });
 }
 
 const results: { name: string; ok: boolean; detail?: string }[] = [];
@@ -95,7 +105,9 @@ function assert(cond: unknown, msg: string) {
 }
 
 async function main() {
-  const exe = process.env.PLAYWRIGHT_CHROMIUM ?? (existsSync("/opt/pw-browsers/chromium-1194/chrome-linux/chrome") ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
+  // PLAYWRIGHT_CHROMIUM, or any Chromium preinstalled under /opt/pw-browsers, or Playwright's own download.
+  const pre = ["/opt/pw-browsers/chromium", ...(existsSync("/opt/pw-browsers") ? readdirSync("/opt/pw-browsers").filter((d) => /^chromium-\d+$/.test(d)).flatMap((d) => [join("/opt/pw-browsers", d, "chrome-linux/chrome"), join("/opt/pw-browsers", d, "chrome-linux64/chrome")]) : [])].find((f) => existsSync(f));
+  const exe = process.env.PLAYWRIGHT_CHROMIUM ?? pre;
   const browser = await chromium.launch({ executablePath: exe });
   const ctx = await browser.newContext({ viewport: { width: 320, height: 900 }, timezoneId: "America/New_York" });
   const page = await ctx.newPage();
@@ -127,6 +139,65 @@ async function main() {
     await page.keyboard.press("ArrowRight");
     const after = await page.evaluate(() => (document.activeElement as HTMLElement)?.dataset.date);
     assert(after && before && after > before, `focus did not move (${before} -> ${after})`);
+  });
+
+  await check("pickup without pickup locations: dates can be picked and checkout continues (B2)", async () => {
+    const cfg = config("pro", (s) => {
+      s.methods.delivery.enabled = false;
+      s.locations = [];
+      s.defaultMethod = "pickup";
+    });
+    await open(page, "en", false, { cfg });
+    assert(await page.locator(".pd-day.is-available").count(), "no date picker for pickup without locations");
+    await page.click(".pd-day.is-available >> nth=0");
+    await page.waitForTimeout(600);
+    assert(JSON.parse(cartState.attributes._pickday ?? "{}").m === "pickup", "pickup choice not saved");
+    // The (fake) cart form submits: the widget did not stop it.
+    await Promise.all([page.waitForEvent("framenavigated"), page.click("button[name=checkout]")]);
+    assert(!(await page.isVisible("[data-pd-err]")), "checkout was blocked");
+  });
+
+  await check("notes box saves the shopper's instructions", async () => {
+    const cfg = config("pro", (s) => (s.notes = { enabled: true, methods: "all", maxLength: 100 }));
+    await open(page, "en", false, { cfg });
+    await page.fill("textarea.pd-notes", "Ring twice");
+    await page.waitForTimeout(700);
+    assert(cartState.attributes["Delivery instructions"] === "Ring twice", `notes not saved: ${JSON.stringify(cartState.attributes)}`);
+  });
+
+  await check("light accent colour keeps the selected day readable (B24)", async () => {
+    const cfg = config("pro", (s) => (s.widget.accent = "#ffd700"));
+    await open(page, "en", false, { cfg });
+    await page.click(".pd-day.is-available >> nth=0");
+    const color = await page.$eval(".pd-day.is-selected", (el) => getComputedStyle(el).color);
+    assert(color === "rgb(17, 17, 17)", `text on yellow is ${color}`);
+  });
+
+  await check("minimum order: the message says why, not 'choose a date' (B21)", async () => {
+    const cfg = config("pro", (s) => (s.methods.delivery.minOrder = "100.00"));
+    await open(page, "en", false, { cfg });
+    await page.click("button[name=checkout]");
+    const msg = await page.innerText("[data-pd-err]");
+    assert(/100/.test(msg), `message was: ${msg}`);
+  });
+
+  await check("unknown cart drawer: checkout goes to the cart page instead of doing nothing (B7)", async () => {
+    const cfg = config("pro", (s) => (s.widget.drawer = false));
+    const body = `<header>Shop</header><div class="side-basket"><button type="submit" name="checkout" form="x">Check out</button></div><form id="x" action="/cart" method="post"></form>`;
+    await open(page, "en", false, { cfg, body, path: "/", wait: false });
+    await page.waitForFunction(() => !!(window as any).Pickday?.ready);
+    await Promise.all([page.waitForURL("**/cart"), page.click("button[name=checkout]")]);
+    await page.waitForSelector(".pd-root", { timeout: 5000 });
+  });
+
+  await check("unknown cart drawer: the picker appears next to the clicked checkout button", async () => {
+    const body = `<header>Shop</header><div class="side-basket"><button type="submit" name="checkout" form="x">Check out</button></div><form id="x" action="/cart" method="post"></form>`;
+    await open(page, "en", false, { body, path: "/", wait: false });
+    await page.waitForFunction(() => !!(window as any).Pickday?.ready);
+    await page.click("button[name=checkout]");
+    await page.waitForSelector(".side-basket .pickday .pd-root", { timeout: 5000 });
+    assert(await page.isVisible(".side-basket [data-pd-err]"), "no message next to the button");
+    assert(new URL(page.url()).pathname === "/", "left the page");
   });
 
   const overflow = async () =>

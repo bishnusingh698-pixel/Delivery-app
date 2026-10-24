@@ -3,7 +3,7 @@ import { addDays } from "./civil";
 import { hasFeature } from "./publish";
 import type { PlanId, Settings } from "./types";
 
-export type ChecklistId = "embed" | "methods" | "schedule" | "checkout" | "snippet" | "testOrder";
+export type ChecklistId = "embed" | "checkout" | "snippet" | "testOrder";
 
 export interface HomeFlags {
   embedDetected?: boolean;
@@ -13,17 +13,16 @@ export interface HomeFlags {
   holidayYearOffered?: number;
 }
 
-export function checklist(s: Settings, flags: HomeFlags, settingsVersion: number, checkoutAllowed: boolean): { id: ChecklistId; done: boolean }[] {
+/** What's left after the setup wizard (which covers methods, days and holidays). */
+export function checklist(s: Settings, flags: HomeFlags, checkoutAllowed: boolean): { id: ChecklistId; done: boolean }[] {
   const items: { id: ChecklistId; done: boolean }[] = [
     { id: "embed", done: !!flags.embedDetected },
-    // Methods and schedule count as reviewed once the merchant saved settings after the welcome step.
-    { id: "methods", done: Object.values(s.methods).some((m) => m.enabled) && settingsVersion > 2 },
-    { id: "schedule", done: settingsVersion > 2 },
-    { id: "checkout", done: !checkoutAllowed || s.checkoutMatching.enabled },
-    { id: "snippet", done: s.notifications.emailSnippetConfirmed },
     { id: "testOrder", done: !!flags.firstOrderAt || !!flags.checkoutTested },
+    { id: "checkout", done: s.checkoutMatching.enabled },
+    { id: "snippet", done: s.notifications.emailSnippetConfirmed },
   ];
-  return items;
+  // Checkout matching is a paid feature: only listed when the plan has it.
+  return items.filter((i) => i.id !== "checkout" || checkoutAllowed);
 }
 
 export type AlertId = "busy" | "vacation" | "embedOff" | "usage" | "holidays" | "checkoutMismatch" | "configLarge" | "functionsMissing" | "planOff";
@@ -56,10 +55,9 @@ export function alerts(input: {
   if (v.enabled && (!v.end || v.end >= today)) out.push({ id: "vacation", tone: "info", params: { start: v.start ?? today, end: v.end ?? "" } });
   if (input.busyDays.length) out.push({ id: "busy", tone: "warning", params: { count: input.busyDays.length, first: input.busyDays[0].date } });
   if (input.usagePct !== null && input.usagePct >= 80) out.push({ id: "usage", tone: input.usagePct >= 100 ? "critical" : "warning", params: { pct: input.usagePct } });
-  const next = Number(today.slice(0, 4)) + 1;
-  const hasHolidays = s.closures.some((c) => c.kind === "holiday");
-  const hasNextYear = s.closures.some((c) => c.kind === "holiday" && (c.yearly || c.start.startsWith(String(next))));
-  if (today.slice(5) >= "10-01" && hasHolidays && !hasNextYear && input.flags.holidayYearOffered !== next) out.push({ id: "holidays", tone: "info", params: { year: next } });
+  // Public holidays renew by themselves (holiday sets); only suggest them when none are on.
+  const year = Number(today.slice(0, 4));
+  if (!s.holidays.length && s.country && input.flags.holidayYearOffered !== year) out.push({ id: "holidays", tone: "info", params: { country: s.country } });
   return out;
 }
 

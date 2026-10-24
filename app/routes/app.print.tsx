@@ -29,7 +29,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   if (kind === "route" && !hasFeature(ctx.plan, "routeSheet")) return new Response("Upgrade", { status: 402 });
   // Day and route sheets use the Orders page filters, or explicit order ids (selection).
-  const f = parseFilters(url, ctx.today);
+  const f = parseFilters(url, ctx.today, ctx.settings.weekStart);
   const ids = url.searchParams.get("ids")?.split(",").filter(Boolean).slice(0, 500);
   const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : whereFor(ctx.shop, f);
   const orders = await prisma.scheduledOrder.findMany({ where, orderBy: [{ date: "asc" }, { slotLabel: "asc" }, { orderName: "asc" }], take: 500 });

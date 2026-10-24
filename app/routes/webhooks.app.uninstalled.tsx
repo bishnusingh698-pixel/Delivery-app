@@ -1,6 +1,8 @@
 import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import type { ShopFlags } from "../models/shop.server";
+import { forgetInstallation } from "../services/publish.server";
 
 /**
  * app/uninstalled: mark the shop inactive and delete its sessions.
@@ -11,9 +13,26 @@ import db from "../db.server";
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { shop } = await authenticate.webhook(request);
   await db.session.deleteMany({ where: { shop } });
+  const row = await db.shop.findUnique({ where: { shop }, select: { flags: true } });
+  // The app embed and the Functions are removed with the app: forget what we knew about them.
+  const flags = { ...((row?.flags as ShopFlags | null) ?? {}) };
+  delete flags.embedDetected;
+  delete flags.embedCheckedAt;
   await db.shop.updateMany({
     where: { shop },
-    data: { active: false, uninstalledAt: new Date(), plan: "free", subscriptionId: null, validationId: null, deliveryCustomizationId: null },
+    data: {
+      active: false,
+      uninstalledAt: new Date(),
+      plan: "free",
+      subscriptionId: null,
+      validationId: null,
+      deliveryCustomizationId: null,
+      flags,
+      warnings: [],
+      publishedAt: null,
+      publishedFor: null,
+    },
   });
+  forgetInstallation(shop);
   return new Response();
 };

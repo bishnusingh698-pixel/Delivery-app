@@ -1,6 +1,7 @@
 /**
  * Scheduled work, triggered by cron-job.org (POST with X-Pickday-Secret).
- * Hourly: roll each store's availability window forward / republish if stale, send digests.
+ * Hourly: roll each store's availability window and public holidays forward (republish if stale),
+ * and fire the "Daily schedule" Flow trigger at each store's chosen hour.
  * Daily: prune old data, re-check the theme app embed.
  * Each store is handled on its own; one failure never stops the rest.
  */
@@ -8,11 +9,12 @@ import prisma from "../db.server";
 import { addDays } from "../../core/civil";
 import { shopToday } from "../models/shop.server";
 import { unauthenticated } from "../shopify.server";
-import { sendDigestIfDue } from "./digest.server";
 import { checkEmbed } from "./embed.server";
 import { publishShop, schedulePublish } from "./publish.server";
 import { collectionIdsIn, resolveCollectionProducts } from "./collections.server";
 import { loadSettings, storeSettings } from "../models/settings.server";
+import { syncShopInfo } from "./install.server";
+import { sendDailySummaryIfDue } from "./daily-summary.server";
 
 const running = new Map<string, Promise<unknown>>();
 
@@ -29,9 +31,9 @@ export function runInBackground(name: string, fn: () => Promise<unknown>): boole
 }
 
 export async function hourly() {
-  const shops = await prisma.shop.findMany({ where: { active: true }, select: { shop: true, timeZone: true, publishedFor: true, countsDirty: true, publishedAt: true } });
+  const shops = await prisma.shop.findMany({ where: { active: true } });
   let published = 0;
-  let digests = 0;
+  let summaries = 0;
   let errors = 0;
   for (const s of shops) {
     try {
@@ -41,13 +43,18 @@ export async function hourly() {
         await publishShop(s.shop, undefined, { functions: false });
         published++;
       }
-      if (await sendDigestIfDue(s.shop)) digests++;
     } catch (e) {
       errors++;
       console.error("[jobs] hourly", s.shop, (e as Error).message);
     }
+    try {
+      if (await sendDailySummaryIfDue(s, async () => (await unauthenticated.admin(s.shop)).admin)) summaries++;
+    } catch (e) {
+      errors++;
+      console.error("[jobs] daily summary", s.shop, (e as Error).message);
+    }
   }
-  return { shops: shops.length, published, digests, errors };
+  return { shops: shops.length, published, summaries, errors };
 }
 
 export async function daily() {
@@ -56,7 +63,6 @@ export async function daily() {
   const pruned = {
     webhooks: (await prisma.webhookLog.deleteMany({ where: { createdAt: { lt: days(7) } } })).count,
     activity: (await prisma.activityLog.deleteMany({ where: { at: { lt: days(180) } } })).count,
-    digests: (await prisma.digestLog.deleteMany({ where: { sentAt: { lt: days(60) } } })).count,
     shareCodes: (await prisma.shareCode.deleteMany({ where: { expiresAt: { lt: new Date() } } })).count,
     counts: 0,
     orders: 0,
@@ -70,8 +76,13 @@ export async function daily() {
     const old = addDays(shopToday(s), -400);
     pruned.orders += (await prisma.scheduledItem.deleteMany({ where: { shop: s.shop, date: { lt: old } } })).count;
     pruned.orders += (await prisma.scheduledOrder.deleteMany({ where: { shop: s.shop, date: { lt: old } } })).count;
+    // Orders saved without a date (date not required) by when they were placed.
+    pruned.orders += (await prisma.scheduledOrder.deleteMany({ where: { shop: s.shop, date: null, createdAt: { lt: days(400) } } })).count;
     try {
       const { admin } = await unauthenticated.admin(s.shop);
+      // Time zone, currency and languages can change in Shopify settings (shop/update covers most of it).
+      const synced = await syncShopInfo(s.shop, admin);
+      if (synced.timeZone !== s.timeZone) schedulePublish(s.shop);
       await checkEmbed(s.shop, admin);
       await refreshCollections(s.shop, admin);
     } catch (e) {
@@ -87,7 +98,6 @@ export async function daily() {
       prisma.capacityCount.deleteMany({ where: { shop: g.shop } }),
       prisma.productCount.deleteMany({ where: { shop: g.shop } }),
       prisma.activityLog.deleteMany({ where: { shop: g.shop } }),
-      prisma.digestLog.deleteMany({ where: { shop: g.shop } }),
       prisma.shareCode.deleteMany({ where: { shop: g.shop } }),
       prisma.webhookLog.deleteMany({ where: { shop: g.shop } }),
       prisma.settings.deleteMany({ where: { shop: g.shop } }),

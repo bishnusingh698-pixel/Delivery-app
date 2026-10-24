@@ -7,7 +7,6 @@ import { matchLocale } from "../../core/i18n/locales";
 import { hasFeature } from "../../core/publish";
 import {
   checkOverride,
-  effectiveTexts,
   groupKeys,
   matchesSearch,
   overrideCount,
@@ -17,13 +16,14 @@ import {
   type OverrideCheck,
 } from "../../core/texts-ui";
 import type { MethodId, Settings, WidgetSettings } from "../../core/types";
-import { Button, Checkbox, ChoiceList, ColorField, Locked, NumberField, Page, Section, Select, Stack, TextField } from "../components/polaris";
+import { Button, Checkbox, ChoiceList, ColorField, Locked, MultiChoice, NumberField, Page, Section, Select, Stack, Switch, TextField } from "../components/polaris";
 import { SettingsChrome, fieldId, useSettingsForm, type Issue } from "../components/settings-form";
-import { WidgetPreview } from "../components/widget-preview";
+import { LiveWidget } from "../components/live-preview";
+import { useMethodLabel } from "../components/shared";
 import { useI18n, useT } from "../i18n/react";
 import { flagsOf, requireShop } from "../models/shop.server";
 import { checkEmbed, themeEditorLink } from "../services/embed.server";
-import { adminContext, patchSettingsAction, shopMeta } from "../services/settings.server";
+import { adminContext, patchSettingsAction, previewData, shopMeta } from "../services/settings.server";
 
 type Context = Record<string, { where?: string; max?: number }>;
 
@@ -66,13 +66,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const s = ctx.settings;
   return {
     meta,
+    ...previewData(ctx),
+    full: s,
     embed: { detected: flags.embedDetected ?? null, link: themeEditorLink(ctx.shop) },
     keys: Object.keys(en),
     defaults,
     builtIn,
     context,
     methods: s.methodOrder.filter((id) => s.methods[id].enabled),
-    initial: { widget: s.widget, texts: s.texts } as Pick<Settings, "widget" | "texts">,
+    initial: { widget: s.widget, texts: s.texts, notes: s.notes } as Pick<Settings, "widget" | "texts" | "notes">,
   };
 };
 
@@ -80,12 +82,13 @@ export const action = async ({ request }: ActionFunctionArgs) => patchSettingsAc
 
 const PREFIXES = new Set([
   "general", "method", "location", "area", "date", "calendar", "reason", "slot", "fee", "summary",
-  "product", "duration", "item", "validation", "checkout", "thankyou", "snippet",
+  "product", "duration", "item", "validation", "checkout", "thankyou", "snippet", "notes",
 ]);
 
-export default function WidgetPage() {
-  const { meta, embed, keys, defaults, builtIn, context, methods, initial } = useLoaderData<typeof loader>();
+export default function AppearancePage() {
+  const { meta, embed, keys, defaults, builtIn, context, methods, initial, full, preview, holidayItems } = useLoaderData<typeof loader>();
   const t = useT();
+  const methodLabel = useMethodLabel();
   const { locale: adminLocale } = useI18n();
   const [params] = useSearchParams();
   const embedFetcher = useFetcher();
@@ -153,7 +156,6 @@ export default function WidgetPage() {
   const editDefaults = defaultsFor(editLang);
   const editOverrides = draft.texts[editLang] ?? {};
   const changedCount = overrideCount(draft.texts, editLang, known);
-  const previewTexts = effectiveTexts(defaultsFor(previewLang), defaults.en ?? {}, draft.texts[previewLang]);
   const customCss = hasFeature(meta.plan, "customCss");
 
   const visibleGroups = groups
@@ -177,7 +179,7 @@ export default function WidgetPage() {
     );
 
   return (
-    <Page title={t("widget.title")} subtitle={t("widget.subtitle")}>
+    <Page title={t("appearance.title")} subtitle={t("appearance.subtitle")}>
       <SettingsChrome
         form={form}
         fieldLabels={{
@@ -281,7 +283,48 @@ export default function WidgetPage() {
         </Stack>
       </Section>
 
-      <Section heading={t("widget.preview.heading")}>
+      <Section heading={t("appearance.placement")}>
+        <Stack gap="base">
+          <ChoiceList
+            id={fieldId("widget.position")}
+            label={t("appearance.position")}
+            value={w.position}
+            options={[
+              { value: "before", label: t("appearance.positionBefore"), details: t("appearance.positionBeforeHelp") },
+              { value: "after", label: t("appearance.positionAfter"), details: t("appearance.positionAfterHelp") },
+            ]}
+            onChange={(v) => setW("position", v as WidgetSettings["position"])}
+          />
+          <Switch label={t("appearance.drawer")} details={t("appearance.drawerHelp")} checked={w.drawer} onChange={(v) => setW("drawer", v)} />
+        </Stack>
+      </Section>
+
+      <Section heading={t("appearance.notesHeading")}>
+        <Stack gap="base">
+          <Switch label={t("appearance.notesOn")} details={t("appearance.notesHelp")} checked={draft.notes.enabled} onChange={(v) => update((x) => (x.notes.enabled = v))} />
+          {draft.notes.enabled ? (
+            <>
+              <MultiChoice
+                label={t("appearance.notesMethods")}
+                details={t("appearance.notesMethodsHelp")}
+                values={draft.notes.methods === "all" ? [] : draft.notes.methods}
+                options={(["delivery", "pickup", "shipping"] as MethodId[]).map((id) => ({ value: id, label: methodLabel(id) }))}
+                onChange={(v) => update((x) => (x.notes.methods = v.length ? (v as MethodId[]) : "all"))}
+              />
+              <NumberField
+                label={t("appearance.notesMax")}
+                min={20}
+                max={500}
+                value={draft.notes.maxLength}
+                onChange={(v) => update((x) => (x.notes.maxLength = Math.max(20, Math.min(500, Math.round(v ?? 250)))))}
+              />
+              <s-text color="subdued">{t("appearance.notesRename")}</s-text>
+            </>
+          ) : null}
+        </Stack>
+      </Section>
+
+      <Section heading={t("widget.preview.heading")} aside>
         <Stack gap="base">
           <s-paragraph>
             <s-text color="subdued">{t("widget.preview.help")}</s-text>
@@ -292,16 +335,10 @@ export default function WidgetPage() {
             options={previewLangs.map((l) => ({ value: l, label: langName(l) }))}
             onChange={setPreviewLang}
           />
-          <WidgetPreview
-            widget={w}
-            texts={previewTexts}
-            lang={previewLang}
-            methods={methods}
-            method={previewMethod}
-            onMethod={setPreviewMethod}
-            today={meta.today}
-            label={t("widget.preview.heading")}
-          />
+          {methods.length > 1 ? (
+            <Select label={t("appearance.previewMethod")} value={previewMethod} options={methods.map((id) => ({ value: id, label: methodLabel(id) }))} onChange={(v) => setPreviewMethod(v as MethodId)} />
+          ) : null}
+          <LiveWidget settings={{ ...full, ...draft }} meta={preview} holidayItems={holidayItems} method={previewMethod} locale={previewLang} />
           {w.theme === "match" ? (
             <s-text color="subdued">{t("widget.preview.matchNote")}</s-text>
           ) : null}

@@ -68,11 +68,15 @@ export function countryAllowed(countries: "all" | string[], country: string | nu
  * Method-only product rules intersect (a cake that is pickup-only removes delivery).
  */
 export function methodsFor(
-  config: Pick<StorefrontConfig, "methods" | "productRules">,
+  config: Pick<StorefrontConfig, "methods" | "productRules"> & Partial<Pick<StorefrontConfig, "locations">>,
   country: string | null | undefined,
   lines: CartLine[],
 ): MethodId[] {
   let ids = config.methods.filter((m) => m.enabled && countryAllowed(m.countries, country)).map((m) => m.id);
+  // Pickup with locations is only offered where at least one location serves the shopper's country.
+  // Without any location, pickup is at the store itself and follows the method's own countries.
+  const locs = (config.locations ?? []).filter((l) => l.enabled);
+  if (locs.length && !locs.some((l) => countryAllowed(l.countries, country))) ids = ids.filter((id) => id !== "pickup");
   for (const rule of config.productRules.methodOnly) {
     if (lines.some((l) => lineMatches(l, rule.target, config.productRules))) {
       ids = ids.filter((id) => rule.methods.includes(id));

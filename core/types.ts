@@ -110,6 +110,41 @@ export interface SpecialDay {
   maxPerDay: number | null;
 }
 
+/**
+ * Public holidays of one country (and optional region), switched on with one click.
+ * Expanded into closures for the booking window on every publish, so they renew every year.
+ */
+export interface HolidaySet {
+  id: string;
+  country: string;
+  region: string | null;
+  methods: "all" | MethodId[];
+  locations: "all" | string[];
+  /** Holidays the store stays open on (holiday keys, stable across years). */
+  skip: string[];
+}
+
+/** A public holiday as listed by the server (dataset) for one set. */
+export interface HolidayItem {
+  /** Stable across years (the dataset's rule, e.g. "12-25" or "easter 1"). */
+  key: string;
+  date: string;
+  end: string;
+  name: string;
+  /** Based on a lunar / moon-sighting calendar: may shift by a day. */
+  mayShift: boolean;
+}
+
+/** How dates are written in the cart summary, on the order and on packing slips. */
+export type DateFormat = "auto" | "mdy" | "dmy" | "ymd" | "long";
+
+/** Optional notes box (delivery instructions, gift message). */
+export interface NotesSettings {
+  enabled: boolean;
+  methods: "all" | MethodId[];
+  maxLength: number;
+}
+
 export interface Vacation {
   enabled: boolean;
   start: string | null;
@@ -226,13 +261,26 @@ export interface WidgetSettings {
   drawerSelector: string;
   customCss: string;
   productPageMode: "message" | "picker";
+  /** Where the picker goes when the theme has no Pickday block: above or below the checkout button. */
+  position: "before" | "after";
+  /** Show the picker in the cart drawer too. */
+  drawer: boolean;
 }
 
 export interface NotificationSettings {
-  digest: { enabled: boolean; time: string; recipients: string[]; includeProduction: boolean };
   emailSnippetConfirmed: boolean;
   calendarFeed: { mode: "order" | "day"; includeDetails: boolean };
   flowEnabled: boolean;
+  /** Once a day, fire the "Daily schedule" Flow trigger (merchants send it as a staff email with Flow). */
+  dailySummary: DailySummarySettings;
+}
+
+export interface DailySummarySettings {
+  enabled: boolean;
+  /** Store-local hour (0–23) to send it at. */
+  hour: number;
+  /** Which day it describes. */
+  day: "today" | "tomorrow";
 }
 
 export interface TaggingSettings {
@@ -244,6 +292,11 @@ export interface Settings {
   schemaVersion: 1;
   businessType: string | null;
   country: string | null;
+  dateFormat: DateFormat;
+  /** First day of the week in calendars: null = the shopper's language decides. */
+  weekStart: 0 | 1 | 6 | null;
+  holidays: HolidaySet[];
+  notes: NotesSettings;
   dateMode: "order" | "item";
   methods: Record<MethodId, MethodSettings>;
   methodOrder: MethodId[];
@@ -264,6 +317,16 @@ export interface Settings {
   notifications: NotificationSettings;
   tagging: TaggingSettings;
   productionPrepOffsetDays: number;
+  customerChanges: CustomerChangeSettings;
+}
+
+/** Customers change their own date from the order status page (customer accounts). */
+export interface CustomerChangeSettings {
+  enabled: boolean;
+  /** Allowed until this many hours before the current date (its time slot's start, or midnight). */
+  hoursBefore: number;
+  /** Most changes a customer can make to one order. */
+  maxChanges: number;
 }
 
 export type PlanId = "free" | "starter" | "pro";
@@ -287,6 +350,9 @@ export interface StorefrontConfig {
   zones: Zone[];
   productRules: ProductRules;
   surcharges: Surcharge[];
+  dateFormat: DateFormat;
+  weekStart: Settings["weekStart"];
+  notes: NotesSettings;
   checkoutMatching: Pick<CheckoutMatching, "enabled" | "renameWithDate">;
   widget: WidgetSettings;
   texts: Settings["texts"];

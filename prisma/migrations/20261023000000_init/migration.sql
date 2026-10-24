@@ -147,15 +147,6 @@ CREATE TABLE "ActivityLog" (
 );
 
 -- CreateTable
-CREATE TABLE "DigestLog" (
-    "shop" TEXT NOT NULL,
-    "day" TEXT NOT NULL,
-    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "DigestLog_pkey" PRIMARY KEY ("shop","day")
-);
-
--- CreateTable
 CREATE TABLE "ShareCode" (
     "code" TEXT NOT NULL,
     "shop" TEXT NOT NULL,
@@ -202,11 +193,20 @@ CREATE UNIQUE INDEX "ScheduledItem_shop_orderId_lineId_key" ON "ScheduledItem"("
 CREATE INDEX "CapacityCount_shop_date_idx" ON "CapacityCount"("shop", "date");
 
 -- CreateIndex
+CREATE INDEX "ProductCount_shop_date_idx" ON "ProductCount"("shop", "date");
+
+-- CreateIndex
 CREATE INDEX "ActivityLog_shop_at_idx" ON "ActivityLog"("shop", "at");
 
 -- CreateIndex
 CREATE INDEX "ShareCode_expiresAt_idx" ON "ShareCode"("expiresAt");
 
 -- CreateIndex
+CREATE INDEX "ShareCode_shop_idx" ON "ShareCode"("shop");
+
+-- CreateIndex
 CREATE INDEX "WebhookLog_createdAt_idx" ON "WebhookLog"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "WebhookLog_shop_idx" ON "WebhookLog"("shop");
 

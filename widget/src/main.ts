@@ -9,6 +9,8 @@ import { matchLocale } from "../../core/i18n/locales";
 import { lineNeedsDate, locationsFor, methodsFor } from "../../core/rules";
 import { ATTR_KEY, READABLE_KEYS } from "../../core/selection";
 import { nowInZone } from "../../core/tz";
+import { attributeDate } from "../../core/dateformat";
+import { onAccent } from "../../core/color";
 import type { CartLine } from "../../core/types";
 import { onCartChange } from "./cart";
 import { h, nextId } from "./dom";
@@ -30,7 +32,13 @@ const DRAWER_GUESSES = [
   ".drawer--cart .drawer__footer",
   "#sidebar-cart .Drawer__Footer",
   ".mini-cart__actions",
+  "cart-drawer-component .cart-drawer__summary",
+  ".cart-drawer__summary",
+  "#cart-drawer .drawer__footer",
 ];
+
+/** Containers that look like a cart drawer or mini cart, for themes none of the guesses above know. */
+const DRAWER_LIKE = "cart-drawer, cart-drawer-component, cart-notification, [id*='drawer' i], [class*='drawer' i], [id*='mini-cart' i], [class*='mini-cart' i], aside, dialog, [role='dialog']";
 
 const CHECKOUT_SELECTOR = 'button[name="checkout"], input[name="checkout"], a[href$="/checkout"], a[href*="/checkout?"], [data-pickday-checkout]';
 const EXPRESS = "shopify-payment-button, .shopify-payment-button, .additional-checkout-buttons, [data-shopify='payment-button'], shopify-accelerated-checkout, shopify-accelerated-checkout-cart";
@@ -67,16 +75,21 @@ async function main() {
   const pd = new Pickday(boot);
   window.Pickday = pd;
 
-  setupProduct(pd);
-
-  const onCart = boot.template.startsWith("cart");
+  const onCart = boot.template.startsWith("cart") || /\/cart\/?$/.test(location.pathname);
   const mountAll = () => {
     for (const el of document.querySelectorAll<HTMLElement>("[data-pickday-mount]")) if (!pd.mounts.has(el)) pd.mount(el);
-    autoMountDrawer(pd);
+    if (pd.cfg.widget.drawer !== false) autoMountDrawer(pd);
     if (onCart && !document.querySelector("[data-pickday-mount]")) autoMountCart(pd);
   };
   mountAll();
-  await pd.start();
+  try {
+    await pd.start();
+  } catch (e) {
+    // The cart couldn't be read (blocked request, offline): fail open, never block checkout.
+    console.warn("[Pickday] cart not available", e);
+  }
+  // After the cart is read, so a date already chosen shows in the product page picker.
+  setupProduct(pd);
   mountAll();
 
   onCartChange(() => void pd.refresh().then(mountAll));
@@ -102,9 +115,25 @@ async function main() {
       const toCheckout = (btn as HTMLButtonElement | null)?.name === "checkout" || /\/checkout/.test(form.getAttribute("action") ?? "");
       if (!toCheckout) return;
     } else if (!btn) return;
-    if (!pd.canCheckout()) {
+    const blocked = pd.blockingMessage();
+    if (blocked) {
       e.preventDefault();
       e.stopImmediatePropagation();
+      // No picker on screen (a theme layout none of the guesses know): never trap the shopper.
+      // Put the picker right next to the button they clicked; if that's not possible (or the
+      // merchant turned the drawer picker off), send them to the cart page.
+      if (!pd.visibleMount()) {
+        const inDrawer = !!btn && !btn.closest("main");
+        if (btn?.parentElement && !btn.closest("[data-pickday-mount]") && (onCart || (inDrawer && pd.cfg.widget.drawer !== false))) {
+          const el = h("div", { "data-pickday-mount": inDrawer ? "drawer" : "cart", class: `pickday${inDrawer ? " pd-drawer" : ""}` });
+          placeNear(pd, btn, el);
+          pd.mount(el);
+        } else if (!onCart) {
+          location.href = cartUrl();
+          return;
+        }
+      }
+      pd.canCheckout();
       return;
     }
     // The choice is still being saved to the cart: wait for it, then continue to checkout.
@@ -121,6 +150,14 @@ async function main() {
   document.addEventListener("submit", gate, true);
 }
 
+const cartUrl = () => `${(window as any).Shopify?.routes?.root ?? "/"}cart`;
+
+/** Put the picker next to a checkout button: above it, or below it (Appearance → Position). */
+function placeNear(pd: Pickday, checkout: Element, el: HTMLElement) {
+  const parent = checkout.parentElement!;
+  parent.insertBefore(el, pd.cfg.widget.position === "after" ? checkout.nextSibling : checkout);
+}
+
 function autoMountDrawer(pd: Pickday) {
   const custom = pd.cfg.widget.drawerSelector?.trim();
   let host: Element | null = null;
@@ -129,19 +166,30 @@ function autoMountDrawer(pd: Pickday) {
   } catch {
     host = null; // invalid custom selector
   }
+  if (!host && !custom) host = genericDrawer();
   if (!host || host.querySelector("[data-pickday-mount]")) return;
   const el = h("div", { "data-pickday-mount": "drawer", class: "pickday pd-drawer" });
   const checkout = host.querySelector(CHECKOUT_SELECTOR);
-  if (checkout && checkout.parentElement && host.contains(checkout.parentElement)) checkout.parentElement.insertBefore(el, checkout);
+  if (checkout && checkout.parentElement && host.contains(checkout.parentElement)) placeNear(pd, checkout, el);
   else host.prepend(el);
   pd.mount(el);
+}
+
+/** A checkout button inside something drawer-like (outside the page's main content). */
+function genericDrawer(): Element | null {
+  for (const btn of document.querySelectorAll<HTMLElement>('button[name="checkout"], input[name="checkout"], [data-pickday-checkout]')) {
+    if (btn.closest("main, [data-pickday-mount]")) continue;
+    const box = btn.closest(DRAWER_LIKE);
+    if (box && btn.parentElement) return btn.parentElement;
+  }
+  return null;
 }
 
 function autoMountCart(pd: Pickday) {
   const checkout = document.querySelector<HTMLElement>(`main ${CHECKOUT_SELECTOR}, form[action$="/cart"] ${CHECKOUT_SELECTOR}`);
   if (!checkout?.parentElement || checkout.closest("[data-pickday-mount]")) return;
   const el = h("div", { "data-pickday-mount": "cart", class: "pickday" });
-  checkout.parentElement.insertBefore(el, checkout);
+  placeNear(pd, checkout, el);
   pd.mount(el);
 }
 
@@ -168,6 +216,7 @@ function setupProduct(pd: Pickday) {
     el.classList.add("pickday", "pd-product");
     el.setAttribute("dir", pd.tx.rtl ? "rtl" : "ltr");
     el.style.setProperty("--pd-accent", pd.cfg.widget.accent);
+    el.style.setProperty("--pd-on-accent", onAccent(pd.cfg.widget.accent));
     el.style.setProperty("--pd-radius", `${pd.cfg.widget.radius}px`);
     const line: CartLine = {
       key: `product-${data.id}`,
@@ -233,7 +282,8 @@ function productPicker(pd: Pickday, el: HTMLElement, line: CartLine): Node {
     document.querySelector<HTMLFormElement>('form[action*="/cart/add"]');
   const id = nextId("pdate");
   const err = h("p", { class: "pd-error", role: "alert", hidden: true });
-  const current = form?.querySelector<HTMLInputElement>(`input[name="properties[${ATTR_KEY}]"]`)?.value;
+  const perItem = pd.cfg.dateMode === "item";
+  const current = perItem ? form?.querySelector<HTMLInputElement>(`input[name="properties[${ATTR_KEY}]"]`)?.value : pd.st.method === method ? pd.st.date : null;
   const select = h(
     "select",
     {
@@ -241,7 +291,8 @@ function productPicker(pd: Pickday, el: HTMLElement, line: CartLine): Node {
       class: "pd-select",
       onchange: async () => {
         err.hidden = true;
-        await setHidden(pd, form, select.value);
+        if (perItem) await setHidden(pd, form, select.value);
+        else pd.chooseFromProduct(method, locationId, select.value || null);
       },
     },
     h("option", { value: "" }, pd.tx.t("date.choose")),
@@ -283,7 +334,7 @@ async function setHidden(pd: Pickday, form: HTMLFormElement | null, date: string
     input.value = value;
   };
   set(ATTR_KEY, date ? JSON.stringify({ d: date, s: null, t: null, lbl: pd.label(date, null, pd.tx, false) }) : "");
-  set(READABLE_KEYS.date, date ? `${ptx.date(date, "long")} (${date})` : "");
+  set(READABLE_KEYS.date, date ? attributeDate(date, pd.dateFormat, ptx.locale) : "");
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => void main());

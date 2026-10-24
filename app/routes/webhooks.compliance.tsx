@@ -21,13 +21,21 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         where: { shop, orderId: { in: ids } },
         select: { orderName: true, customerFirst: true, method: true, date: true, slotLabel: true },
       });
-      await logActivity(shop, "privacy", `Customer data request: ${rows.length} scheduled order(s) hold first name + schedule (shown to the merchant on request)`, "Shopify");
+      // The merchant answers the customer; this entry lists exactly what Pickday holds for them.
+      const list = rows.map((r) => `${r.orderName}: ${r.customerFirst ?? "-"}, ${r.method}, ${r.date ?? "no date"}${r.slotLabel ? ` ${r.slotLabel}` : ""}`).join("; ");
+      await logActivity(
+        shop,
+        "privacy",
+        `Customer data request: Pickday holds ${rows.length} scheduled order(s) for this customer (first name and schedule only)${list ? `: ${list}` : ""}`,
+        "Shopify",
+        { orders: rows },
+      );
       break;
     }
     case "CUSTOMERS_REDACT": {
       const ids = ((p.orders_to_redact as number[]) ?? []).map(String);
       if (ids.length) {
-        await db.scheduledOrder.updateMany({ where: { shop, orderId: { in: ids } }, data: { customerFirst: null, history: [] } });
+        await db.scheduledOrder.updateMany({ where: { shop, orderId: { in: ids } }, data: { customerFirst: null, area: null, history: [] } });
       }
       break;
     }
@@ -44,7 +52,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         db.capacityCount.deleteMany({ where: { shop } }),
         db.productCount.deleteMany({ where: { shop } }),
         db.activityLog.deleteMany({ where: { shop } }),
-        db.digestLog.deleteMany({ where: { shop } }),
         db.shareCode.deleteMany({ where: { shop } }),
         db.webhookLog.deleteMany({ where: { shop } }),
         db.settings.deleteMany({ where: { shop } }),

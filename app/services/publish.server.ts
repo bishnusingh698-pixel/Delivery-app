@@ -7,7 +7,7 @@ import { unauthenticated } from "../shopify.server";
 import { addDays } from "../../core/civil";
 import { nowInZone } from "../../core/tz";
 import { toFunctionConfig, toStorefrontConfig } from "../../core/publish";
-import { holidayRegions } from "./holidays.server";
+import { holidayClosuresFor, holidayRegions } from "./holidays.server";
 import { targetIsEmpty } from "../../core/rules";
 import type { Settings, StorefrontConfig } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
@@ -23,6 +23,11 @@ export const FN_NAMESPACE = "$app:pickday";
 export const CONFIG_WARN_BYTES = 60_000;
 
 let installationIdCache = new Map<string, { installation: string; shop: string }>();
+
+/** A reinstall gets a new app installation id: call on install and uninstall. */
+export function forgetInstallation(shop: string) {
+  installationIdCache.delete(shop);
+}
 
 async function appInstallationId(shop: string, admin: AdminGraphql): Promise<{ installation: string; shop: string }> {
   const hit = installationIdCache.get(shop);
@@ -109,7 +114,11 @@ export async function storefrontConfigFor(shop: string) {
   const today = shopToday(row);
   const plan = planOf(row);
   const usage = await monthlyUsage(shop, row);
+  // Public holidays for the whole booking window, renewed on every (at least daily) publish.
+  const window = maxWindow({ methods: Object.values(settings.methods), locations: settings.locations });
+  const holidayClosures = holidayClosuresFor(settings.holidays, addDays(today, -1), addDays(today, window + 1), row.primaryLocale.split("-")[0] || "en");
   const config = toStorefrontConfig(settings, {
+    holidayClosures,
     version,
     timeZone: row.timeZone,
     primaryLocale: row.primaryLocale,
@@ -144,9 +153,9 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   const vars = ruleVariables(config);
 
   const owners = await appInstallationId(shop, client);
-  const ownerId = owners.installation;
   let ids = { validationId: row.validationId, deliveryCustomizationId: row.deliveryCustomizationId };
-  if (opts.functions !== false) {
+  // Also when an id is missing (first publish, reinstall, deleted by the merchant), so the hourly job heals it.
+  if (opts.functions !== false || !row.validationId || !row.deliveryCustomizationId) {
     try {
       ids = await ensureFunctions(shop, client, settings);
       await clearWarning(shop, "functionsMissing");
@@ -157,24 +166,43 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   }
 
   const json = (v: unknown) => JSON.stringify(v);
-  const metafields: Record<string, unknown>[] = [
-    { ownerId, namespace: MF_NAMESPACE, key: "config", type: "json", value: json(config) },
-    { ownerId, namespace: MF_NAMESPACE, key: "availability", type: "json", value: json(availability) },
-    // Read by the thank-you / order status block (checkout extensions can't read app-installation metafields).
-    { ownerId: owners.shop, namespace: FN_NAMESPACE, key: "checkout", type: "json", value: json(thankYouConfig(config)) },
-  ];
-  if (ids.validationId) {
-    metafields.push({ ownerId: ids.validationId, namespace: FN_NAMESPACE, key: "config", type: "json", value: json(fnConfig) });
-    metafields.push({ ownerId: ids.validationId, namespace: FN_NAMESPACE, key: "vars", type: "json", value: json(vars) });
-  }
-  if (ids.deliveryCustomizationId) {
-    metafields.push({ ownerId: ids.deliveryCustomizationId, namespace: FN_NAMESPACE, key: "config", type: "json", value: json(deliveryConfig(config, settings)) });
-  }
-  const res = await gql(client, `#graphql
+  const write = (list: Record<string, unknown>[]) =>
+    gql(client, `#graphql
     mutation PickdayPublish($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) { metafields { key } userErrors { field message code } }
-    }`, { metafields });
+    }`, { metafields: list });
+  const storefront = (o: { installation: string; shop: string }) => [
+    { ownerId: o.installation, namespace: MF_NAMESPACE, key: "config", type: "json", value: json(config) },
+    { ownerId: o.installation, namespace: MF_NAMESPACE, key: "availability", type: "json", value: json(availability) },
+    // Read by the thank-you / order status block (checkout extensions can't read app-installation metafields).
+    { ownerId: o.shop, namespace: FN_NAMESPACE, key: "checkout", type: "json", value: json(thankYouConfig(config)) },
+  ];
+  // 1. What the storefront reads. A failure here usually means a stale installation id after a reinstall: look it up again once.
+  let res = await write(storefront(owners));
+  if (res.metafieldsSet?.userErrors?.length) {
+    forgetInstallation(shop);
+    res = await write(storefront(await appInstallationId(shop, client)));
+  }
   assertNoUserErrors(res.metafieldsSet, "metafieldsSet");
+
+  // 2. What the checkout Functions read. If an owner is gone (deleted by the merchant, app reinstalled),
+  // forget it so the next full publish recreates it; the storefront keeps working meanwhile.
+  const fnFields: Record<string, unknown>[] = [];
+  if (ids.validationId) {
+    fnFields.push({ ownerId: ids.validationId, namespace: FN_NAMESPACE, key: "config", type: "json", value: json(fnConfig) });
+    fnFields.push({ ownerId: ids.validationId, namespace: FN_NAMESPACE, key: "vars", type: "json", value: json(vars) });
+  }
+  if (ids.deliveryCustomizationId) {
+    fnFields.push({ ownerId: ids.deliveryCustomizationId, namespace: FN_NAMESPACE, key: "config", type: "json", value: json(deliveryConfig(config, settings)) });
+  }
+  if (fnFields.length) {
+    const fnRes = await write(fnFields);
+    if (fnRes.metafieldsSet?.userErrors?.length) {
+      console.error(`[publish] ${shop} function config`, fnRes.metafieldsSet.userErrors);
+      await prisma.shop.update({ where: { shop }, data: { validationId: null, deliveryCustomizationId: null, countsDirty: true } });
+      await addWarning(shop, "functionsMissing");
+    }
+  }
 
   const bytes = { config: json(config).length, availability: json(availability).length, fn: json(fnConfig).length };
   if (bytes.config > CONFIG_WARN_BYTES || fnConfig.trimmed) await addWarning(shop, "configLarge", String(bytes.config));

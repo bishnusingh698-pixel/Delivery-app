@@ -2,6 +2,7 @@
  * Order recording against a real Postgres (skipped without DATABASE_URL).
  * CI runs these with a Postgres service; locally: `npx prisma migrate deploy` first.
  */
+import { PLAN_ORDER_LIMIT } from "../../core/publish";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../app/services/publish.server", () => ({ schedulePublish: vi.fn() }));
@@ -60,7 +61,7 @@ describe.skipIf(!hasDb)("recording orders", async () => {
   });
 
   it("still records orders over the free plan limit, flagged as limited", async () => {
-    await prisma.scheduledOrder.createMany({ data: Array.from({ length: 30 }, (_, i) => ({ shop: SHOP, orderId: `x${i}`, orderName: `#x${i}`, method: "shipping", date: "2026-09-01" })) });
+    await prisma.scheduledOrder.createMany({ data: Array.from({ length: PLAN_ORDER_LIMIT.free! }, (_, i) => ({ shop: SHOP, orderId: `x${i}`, orderName: `#x${i}`, method: "shipping", date: "2026-09-01" })) });
     await recordOrder(SHOP, order(2, "2026-10-21", "2026-10-16T10:00:00Z"), null, "ORDERS_CREATE");
     const row = await prisma.scheduledOrder.findFirst({ where: { shop: SHOP, orderId: "2" } });
     expect(row?.limited).toBe(true);

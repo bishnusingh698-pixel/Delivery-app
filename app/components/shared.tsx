@@ -209,3 +209,43 @@ const MINI_CSS = `
 export function newId(prefix = "") {
   return prefix + Math.random().toString(36).slice(2, 9);
 }
+
+/** One country from a long list: type to filter, scroll, click. Shows the current choice. */
+export function CountrySelect(p: { label: string; details?: string; value: string | null; countries: string[]; onChange: (code: string) => void; id?: string }) {
+  const t = useT();
+  const { locale } = useI18n();
+  const [q, setQ] = useState("");
+  const list = useMemo(
+    () => p.countries.map((c) => ({ code: c, name: countryName(c, locale) })).sort((a, b) => a.name.localeCompare(b.name, locale)),
+    [p.countries, locale],
+  );
+  const needle = q.trim().toLowerCase();
+  const shown = list.filter((c) => !needle || c.name.toLowerCase().includes(needle) || c.code.toLowerCase() === needle);
+  return (
+    <s-stack gap="small-300" id={p.id}>
+      <s-text type="strong">{p.label}</s-text>
+      {p.details ? <s-text color="subdued">{p.details}</s-text> : null}
+      <s-stack direction="inline" gap="small-200" alignItems="center">
+        <s-text>{t("countries.current")}</s-text>
+        <s-badge tone={p.value ? "info" : "warning"}>{p.value ? countryName(p.value, locale) : t("countries.none")}</s-badge>
+      </s-stack>
+      <TextField label={t("countries.search")} type="search" value={q} onChange={setQ} labelAccessibilityVisibility="exclusive" placeholder={t("countries.search")} />
+      <s-box borderWidth="base" borderRadius="base">
+        <div className="pd-country-list" role="listbox" aria-label={p.label} style={{ maxHeight: 220, overflowY: "auto" }}>
+          <style>{`.pd-country-list button{display:block;width:100%;text-align:start;font:inherit;padding:8px 12px;border:0;border-bottom:1px solid #f1f1f1;background:#fff;cursor:pointer;color:#303030}.pd-country-list button:hover{background:#f7f7f7}.pd-country-list button[aria-selected="true"]{background:#eaf4ff;font-weight:600}.pd-country-list button:focus-visible{outline:2px solid #005bd3;outline-offset:-2px}`}</style>
+          {shown.length ? (
+            shown.map((c) => (
+              <button type="button" role="option" key={c.code} aria-selected={c.code === p.value} onClick={() => p.onChange(c.code)}>
+                {c.name}
+              </button>
+            ))
+          ) : (
+            <s-box padding="base">
+              <s-text color="subdued">{t("countries.noMatch")}</s-text>
+            </s-box>
+          )}
+        </div>
+      </s-box>
+    </s-stack>
+  );
+}

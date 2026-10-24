@@ -10,6 +10,7 @@ import { recountFuture } from "./counts.server";
 import { publishShop } from "./publish.server";
 import { validateSettings, type SettingsIssue } from "./settings-schema.server";
 import type { AdminGraphql } from "./graphql.server";
+import { holidayItemsFor } from "./holidays.server";
 
 export interface AdminContext {
   shop: string;
@@ -46,6 +47,14 @@ export function shopMeta(ctx: AdminContext) {
   };
 }
 export type ShopMeta = ReturnType<typeof shopMeta>;
+
+/** What the live preview needs besides the settings: store basics and the holiday lists. */
+export function previewData(ctx: AdminContext) {
+  return {
+    preview: { plan: ctx.plan, timeZone: ctx.row.timeZone, primaryLocale: ctx.row.primaryLocale, currency: ctx.row.currency, country: ctx.settings.country ?? ctx.row.country },
+    holidayItems: holidayItemsFor(ctx.settings.holidays, ctx.today, ctx.row.primaryLocale.split("-")[0] || "en"),
+  };
+}
 
 export type SaveResult = { ok: true; version: number; settings: Settings; warnings?: string[] } | { ok: false; issues: SettingsIssue[] };
 

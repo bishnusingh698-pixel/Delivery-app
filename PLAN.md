@@ -26,7 +26,7 @@ This file is the map of the code. Decisions and deviations from the brief are in
               cron-job.org ──► GET /healthz (no DB)        ┌──────────────────────────────────┐
                           ──► POST /jobs/hourly|daily ───► │ Render free web service (Node)   │
                                                            │  React Router + Prisma           │──► Neon Postgres (free)
-                                                           │  publishes JSON to metafields    │──► Brevo (merchant digest)
+                                                           │  publishes JSON to metafields    │
                                                            └──────────────────────────────────┘
 ```
 
@@ -83,7 +83,6 @@ prisma/                       Schema + migrations (PostgreSQL / Neon).
 | `CapacityCount` | Materialised counts per shop + capacity key + date (+ slot): orders, items. Rebuilt from `ScheduledOrder` for the affected dates on every change. |
 | `ProductCount` | Product daily-limit counts per shop + rule + date (+ location). |
 | `ActivityLog` | Settings changes and manual date changes (90-day retention). |
-| `DigestLog` | One row per shop per day sent (unique) — guarantees one email per day. |
 | `ShareCode` | One-time settings share codes (24 h). |
 | `WebhookLog` | Webhook ids already processed (idempotency, 7-day retention). |
 
@@ -133,6 +132,10 @@ Settings live in one JSON document because they are always read, validated, publ
   "widget":    { "theme":"match","accent":"#1f6feb","radius":8,"input":"calendar","compact":false,"icons":true,
                  "spots":true,"pre":false,"drawerSel":"","css":"","brand":true },
   "texts":     { "de": { "heading": "Wann möchten Sie Ihre Bestellung?" } },   // merchant overrides only
+  "dateFormat": "auto",        // auto | long | mdy | dmy | ymd (order attribute + shopper summary)
+  "weekStart": 1,              // null = shopper's language
+  "notes":     { "enabled": true, "methods": "all", "maxLength": 250 },  // "Delivery instructions" attribute
+  // closures also contain the public holidays of the holiday sets for the booking window ("hol:<set>:<date>" ids)
   "debugUntil": null
 }
 ```
@@ -183,6 +186,7 @@ Per-item mode: line properties `Delivery date`, `Time slot` (readable) and `_pic
 | P2 | Date engine + tests; Methods & countries, Schedule (preview + simulate time), Slots & capacity, Closures & holidays; publishing. |
 | P3 | Storefront widget: embed + blocks, cart page, drawer, product page, translations, RTL, markets, re-validation, required enforcement. |
 | P4 | Validation + delivery Functions, order webhooks, tags, metafields, counts, thank-you block, admin block + actions. |
-| P5 | Orders (list, calendar, detail, change, bulk reschedule, CSV, day/route sheets), Production, Notifications (digest, snippets, ICS, Flow), jobs. |
+| P5 | Orders (list, calendar, detail, change, bulk reschedule, CSV, day/route sheets), Production, Notifications (snippets, ICS, Flow), jobs. |
 | P6 | Locations, delivery areas, product rules, date-per-item, surcharges. |
 | P7 | Billing + gating, import/export + share codes, activity log, help, onboarding, a11y/perf pass, translation review, listing draft. |
+| Round 2 | Audit and redesign (AUDIT.md): admin sections Home, Orders, Delivery (+ areas), Pickup (+ locations), Days off, Appearance, Settings, Help with an icon bar; setup wizard; holiday sets (`core/holidays.ts`, expanded on publish); regional defaults (`core/regions.ts`); date format (`core/dateformat.ts`); notes box; widget position/drawer; contrast (`core/color.ts`); admin live preview running `widget/src` with an in-memory cart (`app/components/live-preview.tsx`). |

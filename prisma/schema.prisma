@@ -60,6 +60,8 @@ model Shop {
   publishedAt     DateTime?
   publishedFor    String? // store-local date the availability window starts on
   countsDirty     Boolean   @default(false)
+  /// Store-local date the "Daily schedule" Flow trigger was last sent for (once a day).
+  dailySummaryFor String?
   validationId    String?
   deliveryCustomizationId String?
   surchargeProductId String?
@@ -139,6 +141,7 @@ model ProductCount {
   qty    Int    @default(0)
 
   @@id([shop, key, date])
+  @@index([shop, date])
 }
 
 model ActivityLog {
@@ -153,14 +156,6 @@ model ActivityLog {
   @@index([shop, at])
 }
 
-model DigestLog {
-  shop   String
-  day    String // store-local date the digest was sent for
-  sentAt DateTime @default(now())
-
-  @@id([shop, day])
-}
-
 model ShareCode {
   code      String   @id
   shop      String
@@ -170,6 +165,7 @@ model ShareCode {
   createdAt DateTime @default(now())
 
   @@index([expiresAt])
+  @@index([shop])
 }
 
 model WebhookLog {
@@ -179,4 +175,5 @@ model WebhookLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  @@index([shop])
 }

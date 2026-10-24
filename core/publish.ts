@@ -5,7 +5,7 @@
  */
 import { addDays } from "./civil";
 import { closureMatches } from "./engine";
-import type { PlanId, Settings, StorefrontConfig } from "./types";
+import type { Closure, PlanId, Settings, StorefrontConfig } from "./types";
 
 export interface PublishMeta {
   version: number;
@@ -17,21 +17,30 @@ export interface PublishMeta {
   debugUntil: string | null;
   /** Today in the store zone; past one-time closures before this are dropped. */
   today: string;
+  /** Public holidays of the holiday sets, already expanded for the booking window (core/holidays.ts). */
+  holidayClosures?: Closure[];
 }
 
 /** Features each plan unlocks (also used by the admin for lock badges). */
+const BASICS = ["allMethods", "slots", "closures", "holidays", "notes", "dailySummary"];
+const STARTER = [...BASICS, "capacity", "checkoutMatching", "customerChanges"];
+
+/**
+ * Every plan gets a correct picker: all methods, time slots, holidays, closures and notes.
+ * Starter sells limits (no overbooking) and checkout matching; Pro the advanced rules and tools.
+ */
 export const PLAN_FEATURES: Record<PlanId, Set<string>> = {
-  free: new Set([]),
-  starter: new Set(["allMethods", "slots", "capacity", "closures", "holidays", "checkoutMatching", "noBranding"]),
+  free: new Set(BASICS),
+  starter: new Set(STARTER),
   pro: new Set([
-    "allMethods", "slots", "capacity", "closures", "holidays", "checkoutMatching", "noBranding",
+    ...STARTER,
     "unlimitedLocations", "areas", "productRules", "dateMode", "surcharges", "production", "bulkReschedule",
-    "routeSheet", "calendarFeed", "flow", "digest", "customCss", "importExport",
+    "routeSheet", "calendarFeed", "flow", "customCss", "importExport",
   ]),
 };
 
-export const PLAN_ORDER_LIMIT: Record<PlanId, number | null> = { free: 30, starter: 300, pro: null };
-export const PLAN_LOCATION_LIMIT: Record<PlanId, number | null> = { free: 1, starter: 1, pro: null };
+export const PLAN_ORDER_LIMIT: Record<PlanId, number | null> = { free: 50, starter: 500, pro: null };
+export const PLAN_LOCATION_LIMIT: Record<PlanId, number | null> = { free: 1, starter: 3, pro: null };
 
 export function hasFeature(plan: PlanId, feature: string): boolean {
   return PLAN_FEATURES[plan].has(feature);
@@ -62,6 +71,8 @@ export function applyPlan(s: Settings, plan: PlanId): Settings {
     out.closures = [];
     out.specialDays = [];
   }
+  if (!f.has("holidays")) out.holidays = [];
+  if (!f.has("notes")) out.notes.enabled = false;
   if (!f.has("checkoutMatching")) out.checkoutMatching.enabled = false;
   if (!f.has("areas")) {
     out.areas = [];
@@ -100,13 +111,16 @@ export function toStorefrontConfig(settings: Settings, meta: PublishMeta): Store
     methods: s.methodOrder.map((id) => ({ id, ...s.methods[id] })),
     defaultMethod: s.defaultMethod,
     locations: s.locations,
-    closures: s.closures.filter(keepClosure),
+    closures: [...s.closures.filter(keepClosure), ...(s.holidays.length ? meta.holidayClosures ?? [] : [])],
     specialDays: s.specialDays.filter((d) => d.date >= addDays(meta.today, -1)),
     vacation: s.vacation,
     areas: s.areas,
     zones: s.zones,
     productRules: s.productRules,
     surcharges: s.surcharges.filter((f) => f.variantId),
+    dateFormat: s.dateFormat,
+    weekStart: s.weekStart,
+    notes: s.notes,
     checkoutMatching: { enabled: s.checkoutMatching.enabled, renameWithDate: s.checkoutMatching.renameWithDate },
     widget: s.widget,
     texts: s.texts,

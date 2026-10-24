@@ -347,7 +347,7 @@ export default function SurchargesPage() {
               />
             ) : (
               <s-banner tone="warning">
-                {t("surcharges.noSlots")} <s-link href="/app/settings/capacity">{t("surcharges.setUpSlots")}</s-link>
+                {t("surcharges.noSlots")} <s-link href="/app/delivery">{t("surcharges.setUpSlots")}</s-link>
               </s-banner>
             )
           ) : null}

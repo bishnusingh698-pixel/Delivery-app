@@ -1,7 +1,7 @@
 import type { Shop } from "@prisma/client";
 import { loadMessages, makeT, resolveAdminLang } from "../i18n";
 
-/** Server-side admin translator for the shop's admin language (print sheets, CSV headers, digest). */
+/** Server-side admin translator for the shop's admin language (print sheets, CSV headers, calendar feed). */
 export async function adminT(row: Pick<Shop, "adminLocale">) {
   const lang = resolveAdminLang(row.adminLocale);
   const t = makeT(await loadMessages(lang), lang);

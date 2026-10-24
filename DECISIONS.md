@@ -72,11 +72,11 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-29 Bulk moves reuse the single-order path.** Each order in a bulk move goes through the same checks as "Change date" (unless "Ignore limits" is ticked), so counts, tags, attributes, history and Flow triggers stay consistent. Customers are never emailed.
 
-**D-30 The daily summary.** Sent by the hourly job in the first run at or after the chosen time (store time zone), at most once per store per day (a log row is written before sending). Only Pro stores, only when Brevo is configured. It never goes to customers.
+**D-30 No email from Pickday.** Pickday sends no emails and has no email provider or API key (the earlier Brevo summary was removed in round 2). The daily summary is a Shopify Flow trigger instead (D-61); Shopify sends all customer emails, and the snippets add the date to them.
 
 **D-31 Calendar feed is a secret link.** Anyone with the URL can read it, so it holds only order number, first name, method and slot (items only if the merchant opts in) and can be regenerated. Window: 30 days back to 180 days ahead. Calendar apps cache it, so changes show up with a delay.
 
-**D-32 Data retention.** Daily job: webhook logs after 7 days, digest logs after 60 days, activity log after 180 days, capacity counts 3 days after the date, schedules 400 days after the date (so "last year" comparisons work), all data of stores uninstalled for 60 days (if Shopify's shop/redact never arrived).
+**D-32 Data retention.** Daily job: webhook logs after 7 days, activity log after 180 days, capacity counts 3 days after the date, schedules 400 days after the date (so "last year" comparisons work), all data of stores uninstalled for 60 days (if Shopify's shop/redact never arrived).
 
 **D-33 Email snippets, not template edits.** Pickday can't and won't change notification templates. It gives copy-paste Liquid that reads the order's "Delivery date" attribute and re-formats the ISO date, so the date follows the template's language where Shopify supports it.
 
@@ -94,7 +94,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-39 Checkout re-checks the delivery address.** For delivery, the postcode or region typed at checkout must still be covered (message "Sorry, we don't deliver to … yet"), and its zone decides the schedule. In "pick your area" mode the shopper's chosen area is trusted. When the config had to be trimmed (D-11) and the order uses a zone, the date check is skipped rather than judged by the wrong rules.
 
-**D-40 Importing settings from another store keeps your own notifications.** Digest recipients, the calendar feed and the Flow switch are never copied from another store. Imported fees get this store's own fee variants straight away.
+**D-40 Importing settings from another store keeps your own notifications.** The calendar feed and the Flow switch are never copied from another store. Imported fees get this store's own fee variants straight away.
 
 **D-41 Known limit: date per item and capacity.** In date-per-item mode each line is checked on its own at checkout, so two lines on the same nearly-full day can together go over the limit by one order. Zone limits and tag-based product limits also aren't applied per item, and surcharges are not added in date-per-item mode. The daily counts stay correct (the day shows as full afterwards); a fix is on the roadmap.
 
@@ -109,7 +109,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-46 A shop that reinstalled keeps its data.** `shop/redact` arrives 48 hours after an uninstall. If the shop has installed Pickday again by then, the request is logged and nothing is deleted.
 
-**D-47 Share codes are stored as a SHA-256 hash.** The code itself is shown once. Creating a code and its use are logged in the source store's activity log, the import in the importing store's. Digest email recipients are never part of an export. No extra attempt limit: entering a code needs a logged-in admin and a 10-character code has about 50 bits.
+**D-47 Share codes are stored as a SHA-256 hash.** The code itself is shown once. Creating a code and its use are logged in the source store's activity log, the import in the importing store's. No extra attempt limit: entering a code needs a logged-in admin and a 10-character code has about 50 bits.
 
 **D-48 Production server.** `server.mjs` replaces `react-router-serve` with the same Express setup plus two changes: request logs hide calendar feed tokens, and `/feeds` and `/ics` are limited to 30 requests per minute per IP (in memory, enough for one instance).
 
@@ -122,6 +122,32 @@ Short notes on choices made where the brief left room, or where Shopify works di
 - A zone with its own limit has a separate limit from the method's daily limit; a location's own schedule replaces the method's entirely.
 - Special open days win over vacation mode, and calendar-day lead time after the cutoff counts from the next working day (D-12).
 - Test orders count toward capacity, so a test order can be used to check the setup.
+
+## Round 2 (October 2026 redesign)
+
+**D-51 Public holidays are sets, not copied dates.** A holiday set is a country (and optional region) plus the holidays the merchant skips. It's expanded into closures for the booking window on every publish (at least daily, by the hourly job), so holidays renew every year with no action. Skips are stored by the dataset's rule ("12-25", "easter 1"), which stays the same every year. Moveable and lunar holidays keep the "may shift" note. Single dates the merchant adds by hand stay ordinary closures.
+
+**D-52 Every plan gets a correct picker.** A delivery-date app that lets customers book Christmas Day or offers only one method looks broken. Free now includes every method, time slots, holidays, closed days and the notes box (1 pickup location, 50 scheduled orders a month). Starter sells what prevents overbooking (daily and per-slot limits) plus checkout matching and 3 locations (500 orders). Pro keeps the advanced rules and tools.
+
+**D-53 No storefront branding.** The free plan's "Powered by Pickday" link is removed: merchants couldn't turn it off, and storefront promotion is a common App Store review objection.
+
+**D-54 Regional defaults are suggestions.** The country decides the first working days, first day of the week and the usual numeric date format (`core/regions.ts`); the wizard and the country selector apply them, and every value stays editable. Changing the country later never changes working days unless the merchant ticks that box. Date format defaults to "in the store's language" for new stores, because a written date ("Friday, 18 October") is clearer for shoppers; merchants who print `MM/DD/YYYY` pick it once.
+
+**D-55 The date format applies to what is written, not the calendar.** It changes the order's "Delivery date" attribute (still followed by the ISO date in brackets, which the email snippets parse; not repeated when the format is already ISO), the cart summary, dropdown and product page text. The calendar grid keeps the shopper's language.
+
+**D-56 Notes box.** Optional, per method, saved as the cart attribute "Delivery instructions" (fixed English key like the others, D-15) so it reaches the order, packing slips and Flow. Pickday doesn't store it; day and route sheets read it live from Shopify. It's never required: a required free-text field blocks checkout for no good reason.
+
+**D-57 The checkout button never traps a shopper.** When a date is required but no picker is visible (a theme layout the widget doesn't recognise), the widget puts the picker right next to the button the shopper clicked; if the merchant turned the drawer picker off, it sends them to the cart page. The validation Function remains the backstop for express buttons.
+
+**D-58 A date chosen on a product page is the cart's choice.** In one-date-per-order mode the product page picker writes the cart attribute straight away (also with an empty cart), never line properties, so an order can't carry two different dates. Date-per-item mode keeps line properties.
+
+**D-59 The admin preview is the storefront widget.** Delivery, Pickup, Appearance and the wizard run `widget/src` itself on the unsaved settings with an in-memory cart, so the preview can't drift from what shoppers see. It's rebuilt on every change (cheap), so a picked date in the preview resets when a setting changes.
+
+**D-60 Admin structure.** Seven task sections plus Help, reachable from an icon bar on every page and the Shopify sidebar: Home, Orders (with Production), Delivery (local delivery + shipping, with Delivery areas), Pickup (with locations), Days off, Appearance, Settings (store & region, what customers choose, order tags, and links to product rules, fees, checkout, notifications, import/export, plan). The old Methods, Schedule, Slots & capacity, Closures, Locations and Widget pages are merged into these and removed.
+
+**D-61 Daily summary through Shopify Flow, not an email service.** A "Daily schedule" Flow trigger fires once a day at the merchant's hour (store time) with today's or tomorrow's totals, a per-slot/location line and an Orders page link; the merchant adds Flow's free **Send internal email** action (the Notifications page gives the steps and a copyable subject and message). Why: zero cost, no API key or sub-processor, mail comes from the store's own sender address, and merchants can route it to Slack or anything else Flow supports. Flow is free on every non-Plus plan. Sent up to 3 hours late if the server was asleep; one atomic claim per store-local day stops duplicates. On every plan (it costs nothing to run). Only field types documented for app triggers are used (single line text, decimal number, URL), with letters-and-spaces keys.
+
+**D-62 Customers change their own date in customer accounts.** An order action (menu button + modal, `customer-account.order.action.*`, available on every plan) lets a signed-in customer pick another date and slot for an unfulfilled order, until `hoursBefore` the current slot start (or midnight) in the method's time zone, at most `maxChanges` times. Same engine, limits and rules as the cart (`checkSelection`), same write path as an admin change (attributes, tags, metafield, history, Flow "Schedule changed" on Pro). The server re-checks ownership live (order's customer id = session token `sub`) and answers "not found" otherwise; method and pickup location can't be changed by the customer (that changes shipping cost). Off by default; Starter and Pro. The extension needs network access approval and the app URL, which `npm run deploy` writes from `shopify.app.toml`. Not offered: date changes on the legacy order status page (no extension point there) and on orders with a date per item.
 
 ## Not yet decided / proposed
 

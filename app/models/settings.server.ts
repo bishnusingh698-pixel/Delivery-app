@@ -52,6 +52,7 @@ export function diffSummary(before: Settings, after: Settings): string[] {
     texts: "Texts & translations",
     notifications: "Notifications",
     tagging: "Order tags",
+    customerChanges: "Customer date changes",
   };
   const changed: string[] = [];
   for (const k of Object.keys(labels) as (keyof Settings)[]) {

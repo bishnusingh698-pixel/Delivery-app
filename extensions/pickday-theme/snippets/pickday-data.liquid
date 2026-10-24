@@ -9,8 +9,6 @@
   "rate": 1,
   "template": {{ template.name | append: '' | json }},
   "pseudo": {% if request.design_mode and block.settings.pseudo %}true{% else %}false{% endif %},
-  "poweredByUrl": "https://pickday.app/?utm_source=widget",
-  "brand": "Pickday",
   "assetBase": {{ 'pickday.js' | asset_url | split: 'pickday.js' | first | json }},
   "itemCollections": {
     {%- for item in cart.items limit: 100 -%}

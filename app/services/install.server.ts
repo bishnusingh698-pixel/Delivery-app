@@ -8,7 +8,7 @@ import prisma from "../db.server";
 import { defaultSettings } from "../../core/defaults";
 import { storeSettings } from "../models/settings.server";
 import { gql, type AdminGraphql } from "./graphql.server";
-import { publishShop } from "./publish.server";
+import { forgetInstallation, publishShop } from "./publish.server";
 
 export interface ShopInfo {
   name: string;
@@ -60,6 +60,7 @@ export async function onInstall(session: Session, admin: AdminGraphql) {
     if (!row.feedToken) {
       await prisma.shop.update({ where: { shop }, data: { feedToken: randomBytes(24).toString("hex") } });
     }
+    forgetInstallation(shop);
     await publishShop(shop, admin);
   } catch (e) {
     // Never block the merchant from opening the app; Home shows a warning and the hourly job retries.

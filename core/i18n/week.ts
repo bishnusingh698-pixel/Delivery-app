@@ -4,8 +4,8 @@
  * Returns 0 = Sunday, 1 = Monday, 6 = Saturday.
  */
 
-const SUNDAY = new Set(["US", "CA", "MX", "BR", "JP", "KR", "TW", "HK", "MO", "IL", "IN", "PH", "TH", "ZA", "SA", "PE", "CO", "VE", "GT", "HN", "NI", "PA", "DO", "PR", "SV", "ZW", "KE", "ET", "BT", "NP", "KH", "LA", "MM", "ID", "PK", "BD", "YE", "BS", "BZ", "JM", "TT", "AS", "GU", "UM", "VI", "WS", "MT", "AG", "DM", "BW", "MZ", "PY", "SG"]);
-const SATURDAY = new Set(["AE", "AF", "BH", "DJ", "DZ", "EG", "IQ", "IR", "JO", "KW", "LY", "OM", "QA", "SD", "SY"]);
+export const SUNDAY_START = new Set(["US", "CA", "MX", "BR", "JP", "KR", "TW", "HK", "MO", "IL", "IN", "PH", "TH", "ZA", "SA", "PE", "CO", "VE", "GT", "HN", "NI", "PA", "DO", "PR", "SV", "ZW", "KE", "ET", "BT", "NP", "KH", "LA", "MM", "ID", "PK", "BD", "YE", "BS", "BZ", "JM", "TT", "AS", "GU", "UM", "VI", "WS", "MT", "AG", "DM", "BW", "MZ", "PY", "SG"]);
+export const SATURDAY_START = new Set(["AE", "AF", "BH", "DJ", "DZ", "EG", "IQ", "IR", "JO", "KW", "LY", "OM", "QA", "SD", "SY"]);
 
 /** Likely region when a locale has none (only where week start differs from Monday). */
 const LANG_REGION: Record<string, string> = {
@@ -25,13 +25,13 @@ export function firstDayOfWeek(locale: string): number {
   }
   const [lang, regionRaw] = locale.replace("_", "-").split("-");
   const region = (regionRaw && regionRaw.length === 2 ? regionRaw : LANG_REGION[lang.toLowerCase()] ?? "").toUpperCase();
-  if (SUNDAY.has(region)) return 0;
-  if (SATURDAY.has(region)) return 6;
+  if (SUNDAY_START.has(region)) return 0;
+  if (SATURDAY_START.has(region)) return 6;
   return 1;
 }
 
-/** Weekday indexes (0–6) in display order for a locale. */
-export function weekOrder(locale: string): number[] {
-  const first = firstDayOfWeek(locale);
+/** Weekday indexes (0–6) in display order for a locale, or from a fixed first day (store setting). */
+export function weekOrder(locale: string, fixedFirst?: number | null): number[] {
+  const first = fixedFirst === 0 || fixedFirst === 1 || fixedFirst === 6 ? fixedFirst : firstDayOfWeek(locale);
   return Array.from({ length: 7 }, (_, i) => (first + i) % 7);
 }

@@ -5,10 +5,9 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { hasFeature } from "../../core/publish";
 import { SNIPPET_IDS, snippetFor, type SnippetId } from "../../core/snippets";
 import type { Settings } from "../../core/types";
-import { Button, Checkbox, ChoiceList, Locked, Page, Section, Stack, Switch, TextField, TimeSelect } from "../components/polaris";
+import { Button, Checkbox, ChoiceList, Locked, Page, Section, Select, Stack, Switch, TextField } from "../components/polaris";
 import { SettingsChrome, useSettingsForm } from "../components/settings-form";
-import { useT } from "../i18n/react";
-import { emailConfigured } from "../services/email.server";
+import { useI18n, useT } from "../i18n/react";
 import { regenerateFeedToken } from "../services/feed.server";
 import { adminContext, patchSettingsAction, saveSettings, shopMeta } from "../services/settings.server";
 
@@ -20,8 +19,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     meta: shopMeta(ctx),
     initial: { notifications: ctx.settings.notifications } as Pick<Settings, "notifications">,
     feedUrl: ctx.row.feedToken ? `${appUrl()}/feeds/${ctx.row.feedToken}.ics` : null,
-    emailReady: emailConfigured(),
-    locale: ctx.row.adminLocale,
   };
 };
 
@@ -43,25 +40,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function NotificationsPage() {
-  const { meta, initial, feedUrl, emailReady, locale } = useLoaderData<typeof loader>();
+  const { meta, initial, feedUrl } = useLoaderData<typeof loader>();
   const t = useT();
+  const { locale } = useI18n();
   const shopify = useAppBridge();
-  const form = useSettingsForm(initial, {
-    validate: (d) =>
-      d.notifications.digest.enabled && !d.notifications.digest.recipients.length
-        ? [{ path: "notifications.digest.recipients", message: t("notifications.recipientsRequired") }]
-        : [],
-  });
-  const { draft, update, errorFor } = form;
+  const form = useSettingsForm(initial);
+  const { draft, update } = form;
   const n = draft.notifications;
-  const pro = hasFeature(meta.plan, "digest");
   const feedAllowed = hasFeature(meta.plan, "calendarFeed");
   const flowAllowed = hasFeature(meta.plan, "flow");
   const feed = useFetcher<typeof action>();
   const confirm = useFetcher<typeof action>();
   const [url, setUrl] = useState(feedUrl);
   const [confirmed, setConfirmed] = useState(initial.notifications.emailSnippetConfirmed);
-  const [recipients, setRecipients] = useState(n.digest.recipients.join(", "));
 
   useEffect(() => {
     const d = feed.data as { intent?: string; feedUrl?: string } | undefined;
@@ -92,40 +83,15 @@ export default function NotificationsPage() {
 
   return (
     <Page title={t("notifications.title")} subtitle={t("notifications.subtitle")}>
-      <SettingsChrome form={form} fieldLabels={{ "notifications.digest.recipients": t("notifications.recipients") }} />
+      <SettingsChrome form={form} />
 
-      <Section heading={t("notifications.digestHeading")}>
-        {!pro ? <Locked plan="Pro" label={t("notifications.digestLocked")} upgradeLabel={t("common.upgrade")} /> : null}
-        <Stack gap="base">
-          <s-text color="subdued">{t("notifications.digestHelp")}</s-text>
-          {pro && !emailReady ? <s-banner tone="warning">{t("notifications.emailNotConfigured")}</s-banner> : null}
-          <Switch label={t("notifications.digestEnabled")} checked={n.digest.enabled} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.enabled = v))} />
-          <s-grid gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))" gap="base">
-            <TimeSelect
-              label={t("notifications.sendAt")}
-              details={t("notifications.sendAtHelp", { zone: meta.timeZone })}
-              value={n.digest.time}
-              locale={locale}
-              step={30}
-              disabled={!pro}
-              onChange={(v) => update((d) => (d.notifications.digest.time = v ?? "18:00"))}
-            />
-            <TextField
-              id="f-notifications-digest-recipients"
-              label={t("notifications.recipients")}
-              details={t("notifications.recipientsHelp")}
-              value={recipients}
-              disabled={!pro}
-              error={errorFor("notifications.digest.recipients")}
-              onChange={(v) => {
-                setRecipients(v);
-                update((d) => (d.notifications.digest.recipients = v.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean).slice(0, 3)));
-              }}
-            />
-          </s-grid>
-          <Checkbox label={t("notifications.includeProduction")} checked={n.digest.includeProduction} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.includeProduction = v))} />
-        </Stack>
-      </Section>
+      <DailySummarySection
+        value={n.dailySummary}
+        timeZone={meta.timeZone}
+        locale={locale}
+        onCopy={copy}
+        onChange={(fn) => update((d) => fn(d.notifications.dailySummary))}
+      />
 
       <Section heading={t("notifications.snippetsHeading")}>
         <Stack gap="base">
@@ -192,6 +158,90 @@ export default function NotificationsPage() {
         </Stack>
       </Section>
     </Page>
+  );
+}
+
+/** Free daily summary email: Pickday fires a Flow trigger, Flow's "Send internal email" sends it. */
+function DailySummarySection({
+  value,
+  timeZone,
+  locale,
+  onCopy,
+  onChange,
+}: {
+  value: Settings["notifications"]["dailySummary"];
+  timeZone: string;
+  locale: string;
+  onCopy: (s: string) => void;
+  onChange: (fn: (v: Settings["notifications"]["dailySummary"]) => void) => void;
+}) {
+  const t = useT();
+  const hourLabel = (h: number) => {
+    try {
+      return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2000, 0, 1, h)));
+    } catch {
+      return `${String(h).padStart(2, "0")}:00`;
+    }
+  };
+  // Flow turns each trigger field into a camelCase Liquid variable ("Orders page" → ordersPage).
+  const subject = t("summary.mailSubject", { day: "{{day}}" });
+  const message = [
+    t("summary.mailTotals", { orders: "{{orders | round}}", items: "{{items | round}}" }),
+    "{{summary}}",
+    "",
+    t("summary.mailOpen", { url: "{{ordersPage}}" }),
+  ].join("\n");
+  return (
+    <Section heading={t("summary.heading")}>
+      <Stack gap="base">
+        <s-text color="subdued">{t("summary.help")}</s-text>
+        <Switch label={t("summary.enabled")} checked={value.enabled} onChange={(v) => onChange((x) => (x.enabled = v))} />
+        {value.enabled ? (
+          <>
+            <Stack direction="inline" gap="base" wrap>
+              <Select
+                label={t("summary.hour")}
+                details={t("summary.hourHelp", { zone: timeZone })}
+                value={String(value.hour)}
+                options={Array.from({ length: 24 }, (_, h) => ({ value: String(h), label: hourLabel(h) }))}
+                onChange={(v) => onChange((x) => (x.hour = Number(v)))}
+              />
+              <Select
+                label={t("summary.day")}
+                value={value.day}
+                options={[
+                  { value: "tomorrow", label: t("summary.tomorrow") },
+                  { value: "today", label: t("summary.today") },
+                ]}
+                onChange={(v) => onChange((x) => (x.day = v as "today" | "tomorrow"))}
+              />
+            </Stack>
+            <s-box border="base" borderRadius="base" padding="base">
+              <Stack gap="small-200">
+                <s-heading>{t("summary.stepsHeading")}</s-heading>
+                <s-ordered-list>
+                  <s-list-item>{t("summary.step1")}</s-list-item>
+                  <s-list-item>{t("summary.step2")}</s-list-item>
+                  <s-list-item>{t("summary.step3")}</s-list-item>
+                  <s-list-item>{t("summary.step4")}</s-list-item>
+                </s-ordered-list>
+                <s-text color="subdued">{t("summary.tip")}</s-text>
+                <Stack direction="inline" gap="small-200" alignItems="end" wrap>
+                  <TextField label={t("summary.subjectLabel")} value={subject} readOnly onChange={() => {}} />
+                  <Button icon="clipboard" onClick={() => onCopy(subject)}>{t("notifications.copy")}</Button>
+                </Stack>
+                <s-text type="strong">{t("summary.messageLabel")}</s-text>
+                <pre style={{ margin: 0, fontSize: 12, background: "var(--s-color-bg-surface-secondary, #f6f6f7)", padding: 8, borderRadius: 6, whiteSpace: "pre-wrap" }}>{message}</pre>
+                <Stack direction="inline" gap="small-200" wrap>
+                  <Button icon="clipboard" onClick={() => onCopy(message)}>{t("notifications.copy")}</Button>
+                  <Button href="shopify://admin/apps/flow" target="_top" icon="external">{t("summary.openFlow")}</Button>
+                </Stack>
+              </Stack>
+            </s-box>
+          </>
+        ) : null}
+      </Stack>
+    </Section>
   );
 }
 

@@ -20,7 +20,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const url = new URL(request.url);
   const view = url.searchParams.get("view") === "calendar" ? "calendar" : "list";
-  const f = parseFilters(url, ctx.today);
+  const f = parseFilters(url, ctx.today, ctx.settings.weekStart);
   const s = ctx.settings;
   const base = {
     view,
@@ -60,7 +60,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const moved: string[] = [];
   const failed: { name: string; reason: string }[] = [];
   for (const o of orders) {
-    const slotId = body.slotId && ctx.settings.methods[o.method as MethodId]?.capacity.slots.some((s) => s.id === body.slotId) ? body.slotId : o.slotId;
+    // The chosen slot if this order's method (or its pickup location's own hours) has it; otherwise keep the order's slot.
+    const loc = o.method === "pickup" ? ctx.settings.locations.find((l) => l.id === o.locationId) : null;
+    const slots = loc?.custom ? loc.custom.capacity.slots : ctx.settings.methods[o.method as MethodId]?.capacity.slots ?? [];
+    const slotId = body.slotId && slots.some((s) => s.id === body.slotId) ? body.slotId : o.slotId;
     try {
       const r = await setOrderSchedule(ctx.shop, ctx.admin, o.orderId, { method: o.method as MethodId, date: body.date, slotId, locationId: o.locationId }, { force: body.force, actor: ctx.actor });
       if (r.ok) moved.push(o.orderName);
@@ -97,13 +100,14 @@ export default function OrdersPage() {
       wide
       secondary={
         <s-button-group slot="secondary-actions">
-          <Button variant={data.view === "list" ? "primary" : "secondary"} onClick={() => set({ view: null })}>{t("orders.viewList")}</Button>
-          <Button variant={data.view === "calendar" ? "primary" : "secondary"} onClick={() => set({ view: "calendar" })}>{t("orders.viewCalendar")}</Button>
+          <Button icon="list-bulleted" variant={data.view === "list" ? "primary" : "secondary"} onClick={() => set({ view: null })}>{t("orders.viewList")}</Button>
+          <Button icon="calendar" variant={data.view === "calendar" ? "primary" : "secondary"} onClick={() => set({ view: "calendar" })}>{t("orders.viewCalendar")}</Button>
+          <Button icon="product" href="/app/production">{t("nav.production")}</Button>
         </s-button-group>
       }
     >
       {!data.anyOrders ? (
-        <EmptyState heading={t("orders.emptyHeading")} text={t("orders.emptyText")} action={<Button href="/app/widget" variant="primary">{t("orders.emptyAction")}</Button>} />
+        <EmptyState heading={t("orders.emptyHeading")} text={t("orders.emptyText")} action={<Button href="/app/appearance" variant="primary">{t("orders.emptyAction")}</Button>} />
       ) : data.view === "calendar" ? (
         <CalendarView data={data} onPick={(d) => navigate(`/app/orders?range=custom&from=${d}&to=${d}`)} onMonth={(m) => set({ month: m })} />
       ) : (

@@ -1,0 +1,43 @@
+[[extensions]]
+name = "Daily schedule"
+handle = "pickday-flow-daily"
+type = "flow_trigger"
+description = "Once a day at the time set in Pickday: the orders scheduled for today or tomorrow. Add a Send internal email action to get a free daily summary."
+
+[settings]
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Day"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Orders"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Local delivery orders"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Pickup orders"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Shipping orders"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Items"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Summary"
+
+  [[settings.fields]]
+  type = "url"
+  key = "Orders page"

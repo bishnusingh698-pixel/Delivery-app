@@ -7,6 +7,7 @@ import { bracesBalanced } from "../../core/texts-ui";
 import { postcodeProblems } from "../../core/areas-ui";
 import { z } from "zod";
 import { defaultSettings } from "../../core/defaults";
+import { MAX_SCAN } from "../../core/engine";
 import type { Settings } from "../../core/types";
 
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM (24-hour)");
@@ -43,7 +44,7 @@ const schedule = z.object({
   lead: z.object({ amount: z.number().int().min(0).max(365 * 24), unit: z.enum(["hours", "days"]), workingDays: z.boolean() }),
   cutoff: z.object({ time: time.nullable(), perWeekday: z.array(time.nullable()).length(7).nullable() }),
   sameDay: z.object({ allowed: z.boolean(), cutoff: time }),
-  windowDays: z.number().int().min(1).max(730),
+  windowDays: z.number().int().min(1).max(MAX_SCAN),
   notBefore: date.nullable(),
   todayTomorrowLabels: z.boolean(),
 });
@@ -101,7 +102,22 @@ export const settingsSchema = z
   .object({
     schemaVersion: z.literal(1),
     businessType: z.string().max(30).nullable(),
-    country: z.string().max(2).nullable(),
+    country: z.string().regex(/^[A-Z]{2}$/).nullable(),
+    dateFormat: z.enum(["auto", "mdy", "dmy", "ymd", "long"]),
+    weekStart: z.union([z.literal(0), z.literal(1), z.literal(6)]).nullable(),
+    holidays: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(30),
+          country: z.string().regex(/^[A-Z]{2}$/),
+          region: z.string().max(10).nullable(),
+          methods: methodsOrAll,
+          locations: idsOrAll,
+          skip: z.array(z.string().max(80)).max(100),
+        }),
+      )
+      .max(10),
+    notes: z.object({ enabled: z.boolean(), methods: methodsOrAll, maxLength: z.number().int().min(20).max(500) }),
     dateMode: z.enum(["order", "item"]),
     methods: z.object({ delivery: methodSettings, pickup: methodSettings, shipping: methodSettings }),
     methodOrder: z.array(method).length(3),
@@ -218,21 +234,19 @@ export const settingsSchema = z
       drawerSelector: z.string().max(200),
       customCss: z.string().max(5000),
       productPageMode: z.enum(["message", "picker"]),
+      position: z.enum(["before", "after"]),
+      drawer: z.boolean(),
     }),
     texts: z.record(z.string().max(20), z.record(z.string().max(80), z.string().max(600))),
     notifications: z.object({
-      digest: z.object({
-        enabled: z.boolean(),
-        time,
-        recipients: z.array(z.string().email()).max(3),
-        includeProduction: z.boolean(),
-      }),
       emailSnippetConfirmed: z.boolean(),
       calendarFeed: z.object({ mode: z.enum(["order", "day"]), includeDetails: z.boolean() }),
       flowEnabled: z.boolean(),
+      dailySummary: z.object({ enabled: z.boolean(), hour: z.number().int().min(0).max(23), day: z.enum(["today", "tomorrow"]) }),
     }),
     tagging: z.object({ enabled: z.boolean(), prefix: z.string().max(20) }),
     productionPrepOffsetDays: z.number().int().min(0).max(30),
+    customerChanges: z.object({ enabled: z.boolean(), hoursBefore: z.number().int().min(0).max(336), maxChanges: z.number().int().min(1).max(10) }),
   })
   .superRefine((s, ctx) => {
     if (!Object.values(s.methods).some((m) => m.enabled)) {
@@ -269,8 +283,21 @@ export function validateSettings(input: unknown): { ok: true; data: Settings } |
   };
 }
 
+/** Text that could end the storefront's JSON <script> block or open an HTML comment. */
+const UNSAFE = /<\/|<!--/;
+
+/** Paths of every string in the document that contains UNSAFE. */
+export function unsafeStrings(v: unknown, path: string[] = [], out: string[] = []): string[] {
+  if (typeof v === "string") {
+    if (UNSAFE.test(v)) out.push(path.join("."));
+  } else if (Array.isArray(v)) v.forEach((x, i) => unsafeStrings(x, [...path, String(i)], out));
+  else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) unsafeStrings(x, [...path, k], out);
+  return out;
+}
+
 function contentIssues(s: Settings): SettingsIssue[] {
   const out: SettingsIssue[] = [];
+  for (const path of unsafeStrings(s)) out.push({ path, message: 'Remove "</" and "<!--" from this text' });
   for (const [locale, map] of Object.entries(s.texts)) {
     for (const [key, text] of Object.entries(map)) if (!bracesBalanced(text)) out.push({ path: `texts.${locale}.${key}`, message: "Unbalanced { } in text" });
   }
