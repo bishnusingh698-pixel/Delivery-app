@@ -6,7 +6,7 @@ import { isValidDate } from "../../core/civil";
 import { CUSTOMER_ACTOR } from "../../core/customer-change";
 import { METHOD_IDS, type MethodId } from "../../core/types";
 import { Button, Checkbox, EmptyState, Modal, Page, Section, Select, Stack, closeModal, openModal } from "../components/polaris";
-import { useFormatDate, useMethodLabel } from "../components/shared";
+import { useFormatDate, useFormatDateTime, useMethodLabel } from "../components/shared";
 import { useT } from "../i18n/react";
 import { adminContext } from "../services/settings.server";
 import { adminCalendar, getOrderSchedule, setOrderSchedule } from "../services/reschedule.server";
@@ -57,6 +57,7 @@ export default function OrderDetail() {
   const fmt = useFormatDate();
   const label = useMethodLabel();
   const [params] = useSearchParams();
+  const fmtAt = useFormatDateTime(data.found ? data.timeZone : "UTC");
   const back = { href: `/app/orders${params.get("back") ? `?${params.get("back")}` : ""}`, label: t("orders.title") };
   if (!data.found) {
     return (
@@ -111,7 +112,7 @@ export default function OrderDetail() {
           <Stack gap="small-200">
             {[...o.history].reverse().map((h, n) => (
               <s-text key={n}>
-                {new Date(h.at).toLocaleString()} · {h.by === CUSTOMER_ACTOR ? t("customerChanges.byCustomer") : h.by ?? t("order.staff")}: {h.from?.date ? fmt(h.from.date) : "—"} → {fmt(h.to.date)}{h.to.slot ? ` ${h.to.slot}` : ""}{h.forced ? ` (${t("order.override")})` : ""}
+                {fmtAt(h.at)} · {h.by === CUSTOMER_ACTOR ? t("customerChanges.byCustomer") : h.by ?? t("order.staff")}: {h.from?.date ? fmt(h.from.date) : "—"} → {fmt(h.to.date)}{h.to.slot ? ` ${h.to.slot}` : ""}{h.forced ? ` (${t("order.override")})` : ""}
               </s-text>
             ))}
           </Stack>
@@ -135,7 +136,8 @@ function ChangeModal({ data }: { data: Found }) {
   const days = useFetcher<typeof loader>();
   const save = useFetcher<typeof action>();
   const [method, setMethod] = useState<MethodId>(data.pick.method);
-  const [location, setLocation] = useState<string | null>(data.pick.location);
+  // Pickup at a store with locations: a location is always chosen (the list shows the first one).
+  const [location, setLocation] = useState<string | null>(data.pick.location ?? (data.pick.method === "pickup" ? data.locations[0]?.id ?? null : null));
   const [date, setDate] = useState(data.order?.date ?? "");
   const [slot, setSlot] = useState(data.order?.slotId ?? "");
   const [force, setForce] = useState(false);
@@ -144,7 +146,8 @@ function ChangeModal({ data }: { data: Found }) {
     if (method === data.pick.method && location === data.pick.location) return;
     days.load(`/app/orders/${data.id}?method=${method}${location ? `&location=${location}` : ""}`);
   }, [method, location]);
-  const pick = days.data && days.data.found && (days.data.pick.method === method) ? days.data.pick : data.pick;
+  const fetched = days.data && days.data.found ? days.data.pick : null;
+  const pick = fetched && fetched.method === method && (fetched.location ?? null) === (location ?? null) ? fetched : data.pick;
   const day = pick.days.find((d) => d.date === date);
 
   useEffect(() => {
@@ -171,7 +174,7 @@ function ChangeModal({ data }: { data: Found }) {
       <Stack gap="base">
         {save.data && !save.data.ok ? <s-banner tone="critical">{t("order.rejected", { reason: t(`reason.${save.data.reason}`, { detail: "" }) })}</s-banner> : null}
         {data.methods.length > 1 ? (
-          <Select label={t("orders.colMethod")} value={method} options={data.methods.map((m) => ({ value: m, label: label(m) }))} onChange={(v) => { setMethod(v as MethodId); setDate(""); setSlot(""); }} />
+          <Select label={t("orders.colMethod")} value={method} options={data.methods.map((m) => ({ value: m, label: label(m) }))} onChange={(v) => { setMethod(v as MethodId); setLocation(v === "pickup" ? location ?? data.locations[0]?.id ?? null : null); setDate(""); setSlot(""); }} />
         ) : null}
         {method === "pickup" && data.locations.length ? (
           <Select label={t("orders.location")} value={location ?? ""} options={data.locations.map((l) => ({ value: l.id, label: l.name }))} onChange={(v) => { setLocation(v || null); setDate(""); setSlot(""); }} />

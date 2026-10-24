@@ -5,6 +5,7 @@ import { useFetcher, useLoaderData, useRevalidator } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { hasFeature } from "../../core/publish";
 import { Button, Locked, Page, Section, Stack, TextField } from "../components/polaris";
+import { useFormatDateTime } from "../components/shared";
 import { useT } from "../i18n/react";
 import { logActivity, recentActivity } from "../models/settings.server";
 import { adminContext, saveSettings } from "../services/settings.server";
@@ -16,6 +17,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const activity = await recentActivity(ctx.shop, 50);
   return {
     allowed: hasFeature(ctx.plan, "importExport"),
+    timeZone: ctx.row.timeZone,
     doc: exportDocument(ctx.shop, ctx.settings, await refsFor(ctx.admin, ctx.settings)),
     activity: activity.map((a) => ({ id: a.id, at: a.at.toISOString(), actor: a.actor, kind: a.kind, summary: a.summary })),
   };
@@ -67,7 +69,8 @@ export const action = async ({ request }: ActionFunctionArgs): Promise<Result | 
 };
 
 export default function TransferPage() {
-  const { allowed, doc, activity } = useLoaderData<typeof loader>();
+  const { allowed, doc, activity, timeZone } = useLoaderData<typeof loader>();
+  const fmtAt = useFormatDateTime(timeZone);
   const t = useT();
   const shopify = useAppBridge();
   const share = useFetcher<typeof action>();
@@ -119,7 +122,7 @@ export default function TransferPage() {
           </Stack>
           {sh ? (
             <s-banner tone="success" heading={t("transfer.codeReady", { code: sh.code })}>
-              {t("transfer.codeHelp", { time: new Date(sh.expiresAt).toLocaleString() })}
+              {t("transfer.codeHelp", { time: fmtAt(sh.expiresAt) })}
             </s-banner>
           ) : null}
         </Stack>
@@ -163,7 +166,7 @@ export default function TransferPage() {
             <s-table-body>
               {activity.map((a) => (
                 <s-table-row key={a.id}>
-                  <s-table-cell>{new Date(a.at).toLocaleString()}</s-table-cell>
+                  <s-table-cell>{fmtAt(a.at)}</s-table-cell>
                   <s-table-cell>{a.summary}</s-table-cell>
                   <s-table-cell>{a.actor ?? "Pickday"}</s-table-cell>
                 </s-table-row>

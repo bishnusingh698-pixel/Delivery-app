@@ -3,6 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Button, Page, Section, Stack, TextField } from "../components/polaris";
+import { useFormatDateTime } from "../components/shared";
 import { BRAND } from "../config/brand";
 import { useT } from "../i18n/react";
 import prisma from "../db.server";
@@ -66,6 +67,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function HelpPage() {
   const { support, themeLink, diag } = useLoaderData<typeof loader>();
+  const fmtAt = useFormatDateTime(diag.timeZone);
   const t = useT();
   const shopify = useAppBridge();
   const fetcher = useFetcher<typeof action>();
@@ -121,7 +123,7 @@ export default function HelpPage() {
               <s-table-row><s-table-cell>{t("help.diag.embed")}</s-table-cell><s-table-cell>{yes(diag.embed)}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.validation")}</s-table-cell><s-table-cell>{yes(diag.validation)}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.delivery")}</s-table-cell><s-table-cell>{yes(diag.delivery)}</s-table-cell></s-table-row>
-              <s-table-row><s-table-cell>{t("help.diag.published")}</s-table-cell><s-table-cell>{diag.publishedAt ? new Date(diag.publishedAt).toLocaleString() : t("help.never")}</s-table-cell></s-table-row>
+              <s-table-row><s-table-cell>{t("help.diag.published")}</s-table-cell><s-table-cell>{diag.publishedAt ? fmtAt(diag.publishedAt) : t("help.never")}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.lastOrder")}</s-table-cell><s-table-cell>{diag.lastOrder ?? t("help.never")}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.timeZone")}</s-table-cell><s-table-cell>{diag.timeZone}</s-table-cell></s-table-row>
             </s-table-body>
@@ -151,7 +153,7 @@ export default function HelpPage() {
           <s-text color="subdued">{t("help.debugHelp")}</s-text>
           {diag.debugUntil ? (
             <>
-              <s-text>{t("help.debugOnUntil", { time: new Date(diag.debugUntil).toLocaleString() })}</s-text>
+              <s-text>{t("help.debugOnUntil", { time: fmtAt(diag.debugUntil) })}</s-text>
               <Button loading={busy === "debugOff"} onClick={() => post("debugOff")}>{t("help.debugOff")}</Button>
             </>
           ) : (

@@ -37,6 +37,23 @@ export function useFormatDate() {
   }, [locale]);
 }
 
+/**
+ * Date and time in the store's time zone and the admin language. Unlike toLocaleString() it renders the
+ * same on the server and in the browser, so the page hydrates without a mismatch.
+ */
+export function useFormatDateTime(timeZone: string) {
+  const { locale } = useI18n();
+  return useMemo(() => {
+    let f: Intl.DateTimeFormat;
+    try {
+      f = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone });
+    } catch {
+      f = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" });
+    }
+    return (at: string | Date) => f.format(new Date(at));
+  }, [locale, timeZone]);
+}
+
 export function countryName(code: string, locale: string): string {
   try {
     return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
