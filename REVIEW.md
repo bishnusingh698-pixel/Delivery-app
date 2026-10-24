@@ -9,6 +9,12 @@ Baseline before fixing: `npm run typecheck` ✅, `npm run lint` ✅ (0 errors, 2
 `prisma migrate deploy` on an empty database ✅ and `prisma migrate diff` (migrations vs schema) shows no drift.
 Every bug below was found by reading the code and tracing the flows; none was caught by the existing tests.
 
+After the fixes: `npm run typecheck` ✅, `npm run lint` ✅ (0 errors, the same 20 style warnings), `npm test` ✅ (365 passed, 20 new
+tests for these bugs, including database tests), `npm run build` ✅, browser tests ✅ (38 widget checks, run repeatedly, + admin preview),
+`prisma migrate deploy` of all three migrations on an empty database ✅, no schema drift. One new migration
+(`20261025000000_scheduled_item_zone_tags`, two nullable/defaulted columns): safe on a brand new Neon database.
+A randomized check of 8,000 store setups confirmed that the storefront calendar and the checkout Function agree on every offered date.
+
 ## Bugs
 
 | # | Severity | File:line | Bug | Root cause | Status |
@@ -59,3 +65,24 @@ Every bug below was found by reading the code and tracing the flows; none was ca
 DECISIONS D-09: two shoppers can still book the very last spot within the same few seconds. Counts now reach the storefront and the
 checkout Function at most ~3 seconds after each order even on busy days (R3), but a hard reservation needs the server during checkout,
 which is not possible for free on Render (the instance sleeps) and would make checkout depend on the app server.
+
+## Manual test checklist (real development store)
+
+Do these on a development store with the Dawn theme (plus one other theme with a cart drawer if you can), after `npm run deploy`.
+
+1. **Install, no embed yet:** install the app, finish or skip the wizard, but do **not** turn on the app embed. Add a product to the cart and check out: checkout must **not** ask for a date (R1). Home shows the red "date picker isn't showing" alert.
+2. **Turn the embed on:** theme editor → App embeds → Pickday on → Save. Within ~15 seconds (theme webhook) or after "Check again", Help → Diagnostics shows the embed on. Now checkout without a date is blocked with "choose a date".
+3. **Switch theme:** publish another theme that doesn't have the embed on. Within a minute, checkout without a date goes through again (no shopper is trapped). Publish Dawn back.
+4. **Cart page and drawer:** pick a date and slot in the cart page, then in the cart drawer; change quantities, remove and re-add items: the date stays. Click checkout right after picking: the order shows the date and slot under "Additional details".
+5. **Express checkout:** pick a date, then immediately tap Shop Pay / Apple Pay / Google Pay in the cart: the order has the date (R25). Try "Buy it now" on a product page while a date is required: the button is hidden.
+6. **Delivery fee (Pro):** add a weekday fee, pick that weekday: a "Delivery fee" line appears. Delete the fee line in the cart: it comes back by itself and checkout works (R2). On a product page with an empty cart, pick that weekday: no fee line yet; add the product: the fee line appears (R23).
+7. **Limits:** set a daily limit of 2 orders, place 2 orders for the same day from two browsers, then reload the cart: the day shows full within a few seconds. Place several orders quickly one after another: the count keeps up (R3). Refund all items of one order: its spot is free again (R6).
+8. **Tag rule (Pro):** tag a product `cake`, add a daily limit of 3 for tag `cake`, order 3: the day becomes "sold out" for cakes (R4).
+9. **Date per item (Pro):** switch to one date per item, order two products for different days. The order shows on both days in Orders (list and calendar), on Home's counts, in the day sheet, the CSV and the calendar feed (R7). In a delivery zone with its own limit, both days count toward the zone (R5).
+10. **Time zones:** set the store time zone to one far from yours and check that "today", the cutoff and "Tomorrow" follow the store. Add a pickup location with its own time zone and check its cutoff.
+11. **Change dates from the admin and customer accounts:** order page → Change date (also for a pickup order: a location is selected) (R14, R27); customer account → order → Change date. A day without time slots never gets a slot (R24).
+12. **Settings in two tabs:** open Delivery in one tab and Settings in another; change hours on Delivery and save; change the date format on Settings and save: the hours stay (R26).
+13. **Empty input:** untick every day for an offered method and save: an error says to choose at least one day (R29).
+14. **Regions without postcodes (if you sell to one):** delivery areas by region; pick a covered region in the cart, type another at checkout: checkout says it isn't delivered there (R10).
+15. **Uninstall and reinstall** within 48 h: settings are kept, checkout doesn't ask for a date until the embed is found on again.
+
