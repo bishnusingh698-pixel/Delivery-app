@@ -2,9 +2,9 @@
 
 *Let customers pick the day. Delivery, pickup and shipping dates with time slots, holidays and daily limits, for every Shopify plan.*
 
-Pickday is a public Shopify app. Shoppers choose a delivery date, pickup date or shipping date (and optionally a time slot and delivery instructions) in the cart, cart drawer or on the product page. Checkout then shows only the matching shipping option and stops the order if the date is missing or no longer valid. Merchants see their orders by day, print day sheets, route sheets and production lists, and get a daily summary email.
+Pickday is a public Shopify app. Shoppers choose a delivery date, pickup date or shipping date (and optionally a time slot and delivery instructions) in the cart, cart drawer or on the product page. Checkout then shows only the matching shipping option and stops the order if the date is missing or no longer valid. Merchants see their orders by day, print day sheets, route sheets and production lists, and follow them in their own calendar app. Pickday sends no emails.
 
-It works on **every Shopify plan** (no Shopify Plus features: a theme app extension, cart attributes and Shopify Functions, which public apps may use on all plans) and runs for **$0 a month**: one free Render web service, a free Neon Postgres database, free cron-job.org pings and the free Brevo email plan. The storefront and checkout never call the server (settings live inside each store as app-owned metafields), so shoppers are never affected when the free server sleeps.
+It works on **every Shopify plan** (no Shopify Plus features: a theme app extension, cart attributes and Shopify Functions, which public apps may use on all plans) and runs for **$0 a month**: one free Render web service, a free Neon Postgres database and free cron-job.org pings. No email service is needed. The storefront and checkout never call the server (settings live inside each store as app-owned metafields), so shoppers are never affected when the free server sleeps.
 
 | File | What's in it |
 |---|---|
@@ -28,7 +28,7 @@ It works on **every Shopify plan** (no Shopify Plus features: a theme app extens
 - **Worldwide**: country selector that loads the usual working days (Friday–Saturday, Thursday–Friday and Saturday-only weekends included), first day of the week and date format; date format setting (store language, written month, MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD); 28 storefront languages with right-to-left Arabic and Hebrew; the admin in 8 languages; every cut-off and "today" in the store's time zone (or a pickup location's own).
 - **Appearance**: colours (text on the accent colour stays readable automatically), corners, calendar or dropdown, compact layout, icons, position above or below the checkout button, cart drawer on/off, optional notes box (delivery instructions or gift message), every text per language, and a live preview that runs the real storefront widget with the unsaved settings.
 - **Orders**: list and calendar with filters, CSV export, day and route sheets, production list, bulk date changes, date changes from the Shopify order page, a next-14-days chart and "Close a day" on Home.
-- **Product rules**, **delivery fees**, **checkout matching**, **notifications** (order email snippets, daily summary, calendar feed, Shopify Flow) and **import/export**.
+- **Product rules**, **delivery fees**, **checkout matching**, **notifications** (date snippets for Shopify's order emails, calendar feed, Shopify Flow) and **import/export**.
 
 Plans: **Free** (every method, time slots, holidays, closed days, notes, 1 pickup location, 50 scheduled orders a month), **Starter $7.99** (daily and per-slot limits, checkout matching, 3 locations, 500 orders), **Pro $14.99** (everything, unlimited). Development stores get Pro free.
 
@@ -42,7 +42,7 @@ These steps need your accounts. Do them in this order; each says where to click.
 
 1. Go to [partners.shopify.com](https://partners.shopify.com) → **Apps** → **Create app** → **Create app manually**.
 2. Name it `Pickday: Delivery Date Picker` and click **Create**.
-3. On the app's page copy the **Client ID** and **Client secret** into a note (steps 4 and 5).
+3. On the app's page copy the **Client ID** and **Client secret** into a note (steps 3 and 4).
 4. The app's page URL ends with the app handle (for example `pickday-delivery-date-picker`). Write it down: it's `SHOPIFY_APP_HANDLE`.
 
 ### 2. Create the database (Neon, free)
@@ -53,14 +53,7 @@ These steps need your accounts. Do them in this order; each says where to click.
 
 The tables are created automatically on the first start (`prisma migrate deploy`); the single migration works on an empty database.
 
-### 3. Email for the merchant daily summary (Brevo, free, optional)
-
-1. Sign up at [brevo.com](https://www.brevo.com) → **Senders, Domains & Dedicated IPs** → **Domains** → add your domain and follow the DNS steps.
-2. **SMTP & API** → **API Keys** → **Generate a new API key**: that's `BREVO_API_KEY`. Your sender (for example `digest@yourdomain.com`) is `EMAIL_FROM`.
-
-Skip this and the summary email is simply hidden.
-
-### 4. Put the server online (Render, free)
+### 3. Put the server online (Render, free)
 
 1. Sign up at [render.com](https://render.com) with your GitHub account.
 2. Click **New** → **Blueprint** → choose this repository → **Apply**. Render reads `render.yaml` and creates the `pickday` web service (Node 22, free plan, health check `/healthz`).
@@ -75,19 +68,18 @@ Skip this and the summary email is simply hidden.
 | `SCOPES` | Pre-filled by `render.yaml` (same list as `shopify.app.toml`) | yes |
 | `DATABASE_URL` | Pooled Neon URL from step 2 | yes |
 | `DIRECT_URL` | Direct Neon URL from step 2 | yes |
-| `JOBS_SECRET` | Generated by Render; click the eye icon and copy it for step 6 | yes |
+| `JOBS_SECRET` | Generated by Render; click the eye icon and copy it for step 5 | yes |
 | `NODE_ENV` | `production` (pre-filled) | yes |
 | `NODE_VERSION` | `22.12.0` (pre-filled) | yes |
 | `BILLING_TEST` | `false` (pre-filled). Set `true` only while testing charges on a real store | yes |
 | `SUPPORT_EMAIL` | Your support address (shown on the Help page and the public page) | recommended |
-| `BREVO_API_KEY`, `EMAIL_FROM` | From step 3 | optional |
 | `SHOP_CUSTOM_DOMAIN` | Only for Shopify-internal custom admin domains; leave unset | no |
 
 `PORT` is set by Render; `HOST` and `FRONTEND_PORT` are only used by `shopify app dev`.
 
 4. Click **Save changes** and wait for the deploy to say **Live**. Open `https://<your-service>.onrender.com/healthz`: it shows `ok`.
 
-### 5. Connect the code to your app and deploy the extensions
+### 4. Connect the code to your app and deploy the extensions
 
 On your computer (needs [Node.js 22](https://nodejs.org) and Git):
 
@@ -106,7 +98,7 @@ npm run deploy                     # uploads the theme extension, both Functions
 
 `npm run deploy` asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks) and the access scopes.
 
-### 6. Scheduled jobs and keep-awake (cron-job.org, free)
+### 5. Scheduled jobs and keep-awake (cron-job.org, free)
 
 Sign up at [cron-job.org](https://cron-job.org) and create 3 jobs (**Create cronjob**):
 
@@ -116,19 +108,19 @@ Sign up at [cron-job.org](https://cron-job.org) and create 3 jobs (**Create cron
 | Pickday hourly | `https://<your-service>.onrender.com/jobs/hourly` | Every hour at minute 2 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
 | Pickday daily | `https://<your-service>.onrender.com/jobs/daily` | Every day at 03:10 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
 
-Click **Test run** on each: keep-awake answers `ok`, the others `started` (status 202). A 403 means the secret doesn't match. The hourly job rolls each store's dates and public holidays forward and sends daily summaries; the daily job prunes old data, re-checks the app embed and syncs the store's time zone.
+Click **Test run** on each: keep-awake answers `ok`, the others `started` (status 202). A 403 means the secret doesn't match. The hourly job rolls each store's dates and public holidays forward; the daily job prunes old data, re-checks the app embed and syncs the store's time zone.
 
-### 7. Partner Dashboard settings
+### 6. Partner Dashboard settings
 
 1. **API access** → **Protected customer data access** → **Request access**. Select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason "Printed delivery day sheets and route sheets. Addresses, phone numbers and delivery instructions are read live when the merchant prints and never stored; only the order number and the customer's first name are stored." Answer the data protection questions with `PRIVACY.md`. Order webhooks need this approval to reach a live store.
 2. **App setup** → **Embedded app**: on (already set by `shopify.app.toml`).
 3. **Distribution** → **Shopify App Store** (public). Charges are created by the app itself with Shopify's Billing API (Starter and Pro, 14-day trials), so leave Shopify's "Managed pricing" off and describe the three plans in the listing's pricing section.
 
-### 8. Test on a development store
+### 7. Test on a development store
 
 Partner Dashboard → **Stores** → **Add store** → **Development store**. Then your app → **Test your app** → choose the store → **Install**. The app opens on the setup wizard. Follow `CHECKLIST.md`.
 
-### 9. Before submitting to the App Store
+### 8. Before submitting to the App Store
 
 1. In Render, check `BILLING_TEST` is `false`.
 2. Set `SUPPORT_EMAIL`, and the website in `app/config/brand.ts`.
@@ -177,7 +169,6 @@ GitHub Actions runs all of these on every push (`.github/workflows/ci.yml`), wit
 | Render web service | 750 instance hours/month, sleeps after 15 min idle | One service, kept awake by a 10-minute ping |
 | Neon Postgres | 0.5 GB storage, scales to zero | One small JSON settings row per store, one row per order, old rows pruned daily; the keep-awake ping never touches the database |
 | cron-job.org | Unlimited jobs | 3 jobs |
-| Brevo | 300 emails/day | At most 1 email per store per day |
 
 Public holidays come from the bundled open-source `date-holidays` dataset: no paid API.
 

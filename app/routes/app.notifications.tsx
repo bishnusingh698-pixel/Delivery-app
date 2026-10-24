@@ -5,10 +5,9 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { hasFeature } from "../../core/publish";
 import { SNIPPET_IDS, snippetFor, type SnippetId } from "../../core/snippets";
 import type { Settings } from "../../core/types";
-import { Button, Checkbox, ChoiceList, Locked, Page, Section, Stack, Switch, TextField, TimeSelect } from "../components/polaris";
+import { Button, Checkbox, ChoiceList, Locked, Page, Section, Stack, Switch, TextField } from "../components/polaris";
 import { SettingsChrome, useSettingsForm } from "../components/settings-form";
 import { useT } from "../i18n/react";
-import { emailConfigured } from "../services/email.server";
 import { regenerateFeedToken } from "../services/feed.server";
 import { adminContext, patchSettingsAction, saveSettings, shopMeta } from "../services/settings.server";
 
@@ -20,8 +19,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     meta: shopMeta(ctx),
     initial: { notifications: ctx.settings.notifications } as Pick<Settings, "notifications">,
     feedUrl: ctx.row.feedToken ? `${appUrl()}/feeds/${ctx.row.feedToken}.ics` : null,
-    emailReady: emailConfigured(),
-    locale: ctx.row.adminLocale,
   };
 };
 
@@ -43,25 +40,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function NotificationsPage() {
-  const { meta, initial, feedUrl, emailReady, locale } = useLoaderData<typeof loader>();
+  const { meta, initial, feedUrl } = useLoaderData<typeof loader>();
   const t = useT();
   const shopify = useAppBridge();
-  const form = useSettingsForm(initial, {
-    validate: (d) =>
-      d.notifications.digest.enabled && !d.notifications.digest.recipients.length
-        ? [{ path: "notifications.digest.recipients", message: t("notifications.recipientsRequired") }]
-        : [],
-  });
-  const { draft, update, errorFor } = form;
+  const form = useSettingsForm(initial);
+  const { draft, update } = form;
   const n = draft.notifications;
-  const pro = hasFeature(meta.plan, "digest");
   const feedAllowed = hasFeature(meta.plan, "calendarFeed");
   const flowAllowed = hasFeature(meta.plan, "flow");
   const feed = useFetcher<typeof action>();
   const confirm = useFetcher<typeof action>();
   const [url, setUrl] = useState(feedUrl);
   const [confirmed, setConfirmed] = useState(initial.notifications.emailSnippetConfirmed);
-  const [recipients, setRecipients] = useState(n.digest.recipients.join(", "));
 
   useEffect(() => {
     const d = feed.data as { intent?: string; feedUrl?: string } | undefined;
@@ -92,40 +82,7 @@ export default function NotificationsPage() {
 
   return (
     <Page title={t("notifications.title")} subtitle={t("notifications.subtitle")}>
-      <SettingsChrome form={form} fieldLabels={{ "notifications.digest.recipients": t("notifications.recipients") }} />
-
-      <Section heading={t("notifications.digestHeading")}>
-        {!pro ? <Locked plan="Pro" label={t("notifications.digestLocked")} upgradeLabel={t("common.upgrade")} /> : null}
-        <Stack gap="base">
-          <s-text color="subdued">{t("notifications.digestHelp")}</s-text>
-          {pro && !emailReady ? <s-banner tone="warning">{t("notifications.emailNotConfigured")}</s-banner> : null}
-          <Switch label={t("notifications.digestEnabled")} checked={n.digest.enabled} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.enabled = v))} />
-          <s-grid gridTemplateColumns="repeat(auto-fit, minmax(220px, 1fr))" gap="base">
-            <TimeSelect
-              label={t("notifications.sendAt")}
-              details={t("notifications.sendAtHelp", { zone: meta.timeZone })}
-              value={n.digest.time}
-              locale={locale}
-              step={30}
-              disabled={!pro}
-              onChange={(v) => update((d) => (d.notifications.digest.time = v ?? "18:00"))}
-            />
-            <TextField
-              id="f-notifications-digest-recipients"
-              label={t("notifications.recipients")}
-              details={t("notifications.recipientsHelp")}
-              value={recipients}
-              disabled={!pro}
-              error={errorFor("notifications.digest.recipients")}
-              onChange={(v) => {
-                setRecipients(v);
-                update((d) => (d.notifications.digest.recipients = v.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean).slice(0, 3)));
-              }}
-            />
-          </s-grid>
-          <Checkbox label={t("notifications.includeProduction")} checked={n.digest.includeProduction} disabled={!pro} onChange={(v) => update((d) => (d.notifications.digest.includeProduction = v))} />
-        </Stack>
-      </Section>
+      <SettingsChrome form={form} />
 
       <Section heading={t("notifications.snippetsHeading")}>
         <Stack gap="base">

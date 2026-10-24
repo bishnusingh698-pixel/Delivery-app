@@ -147,15 +147,6 @@ CREATE TABLE "ActivityLog" (
 );
 
 -- CreateTable
-CREATE TABLE "DigestLog" (
-    "shop" TEXT NOT NULL,
-    "day" TEXT NOT NULL,
-    "sentAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "DigestLog_pkey" PRIMARY KEY ("shop","day")
-);
-
--- CreateTable
 CREATE TABLE "ShareCode" (
     "code" TEXT NOT NULL,
     "shop" TEXT NOT NULL,

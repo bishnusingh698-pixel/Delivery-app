@@ -268,7 +268,6 @@ export interface WidgetSettings {
 }
 
 export interface NotificationSettings {
-  digest: { enabled: boolean; time: string; recipients: string[]; includeProduction: boolean };
   emailSnippetConfirmed: boolean;
   calendarFeed: { mode: "order" | "day"; includeDetails: boolean };
   flowEnabled: boolean;

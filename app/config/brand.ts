@@ -16,6 +16,4 @@ export const BRAND = {
   logoUrl: "/logo.svg",
   /** "Powered by" link on the Free plan. */
   poweredByUrl: "https://pickday.app/?utm_source=widget",
-  emailFromName: "Pickday",
-  emailFromAddress: process.env.EMAIL_FROM || "digest@pickday.app",
 } as const;

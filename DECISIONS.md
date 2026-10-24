@@ -72,11 +72,11 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-29 Bulk moves reuse the single-order path.** Each order in a bulk move goes through the same checks as "Change date" (unless "Ignore limits" is ticked), so counts, tags, attributes, history and Flow triggers stay consistent. Customers are never emailed.
 
-**D-30 The daily summary.** Sent by the hourly job in the first run at or after the chosen time (store time zone), at most once per store per day (a log row is written before sending). Only Pro stores, only when Brevo is configured. It never goes to customers.
+**D-30 No email.** Pickday sends no emails (the earlier optional daily summary for merchants was removed in round 2, so no email service or API key is needed). Merchants follow upcoming orders on Home (next 14 days), the Orders page and the calendar feed; Shopify sends all customer emails, and the snippets add the date to them.
 
 **D-31 Calendar feed is a secret link.** Anyone with the URL can read it, so it holds only order number, first name, method and slot (items only if the merchant opts in) and can be regenerated. Window: 30 days back to 180 days ahead. Calendar apps cache it, so changes show up with a delay.
 
-**D-32 Data retention.** Daily job: webhook logs after 7 days, digest logs after 60 days, activity log after 180 days, capacity counts 3 days after the date, schedules 400 days after the date (so "last year" comparisons work), all data of stores uninstalled for 60 days (if Shopify's shop/redact never arrived).
+**D-32 Data retention.** Daily job: webhook logs after 7 days, activity log after 180 days, capacity counts 3 days after the date, schedules 400 days after the date (so "last year" comparisons work), all data of stores uninstalled for 60 days (if Shopify's shop/redact never arrived).
 
 **D-33 Email snippets, not template edits.** Pickday can't and won't change notification templates. It gives copy-paste Liquid that reads the order's "Delivery date" attribute and re-formats the ISO date, so the date follows the template's language where Shopify supports it.
 
@@ -94,7 +94,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-39 Checkout re-checks the delivery address.** For delivery, the postcode or region typed at checkout must still be covered (message "Sorry, we don't deliver to … yet"), and its zone decides the schedule. In "pick your area" mode the shopper's chosen area is trusted. When the config had to be trimmed (D-11) and the order uses a zone, the date check is skipped rather than judged by the wrong rules.
 
-**D-40 Importing settings from another store keeps your own notifications.** Digest recipients, the calendar feed and the Flow switch are never copied from another store. Imported fees get this store's own fee variants straight away.
+**D-40 Importing settings from another store keeps your own notifications.** The calendar feed and the Flow switch are never copied from another store. Imported fees get this store's own fee variants straight away.
 
 **D-41 Known limit: date per item and capacity.** In date-per-item mode each line is checked on its own at checkout, so two lines on the same nearly-full day can together go over the limit by one order. Zone limits and tag-based product limits also aren't applied per item, and surcharges are not added in date-per-item mode. The daily counts stay correct (the day shows as full afterwards); a fix is on the roadmap.
 
@@ -109,7 +109,7 @@ Short notes on choices made where the brief left room, or where Shopify works di
 
 **D-46 A shop that reinstalled keeps its data.** `shop/redact` arrives 48 hours after an uninstall. If the shop has installed Pickday again by then, the request is logged and nothing is deleted.
 
-**D-47 Share codes are stored as a SHA-256 hash.** The code itself is shown once. Creating a code and its use are logged in the source store's activity log, the import in the importing store's. Digest email recipients are never part of an export. No extra attempt limit: entering a code needs a logged-in admin and a 10-character code has about 50 bits.
+**D-47 Share codes are stored as a SHA-256 hash.** The code itself is shown once. Creating a code and its use are logged in the source store's activity log, the import in the importing store's. No extra attempt limit: entering a code needs a logged-in admin and a 10-character code has about 50 bits.
 
 **D-48 Production server.** `server.mjs` replaces `react-router-serve` with the same Express setup plus two changes: request logs hide calendar feed tokens, and `/feeds` and `/ics` are limited to 30 requests per minute per IP (in memory, enough for one instance).
 

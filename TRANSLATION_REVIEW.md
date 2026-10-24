@@ -631,7 +631,6 @@ Register: "vous" throughout, the same as the Shopify admin in French. Imperative
 | Theme editor / App embeds | Éditeur de thème / Intégrations d'applications |
 | Cart drawer | Tiroir de panier |
 | Snippet | Extrait |
-| Daily summary (digest) | Récapitulatif quotidien |
 | Schedule (page) | Calendrier |
 | Route sheet / Day sheet | Feuille de route / Feuille du jour |
 
@@ -645,14 +644,13 @@ Shopify admin paths used: Paramètres > Notifications > Notifications aux client
 5. `help.faq.notShowing.a`, `widget.setup.blockText`: I left the block name "Pickday date picker" in English. If the theme extension localizes the block name, it should match that name instead.
 6. `help.faq.changeDate.a` uses « Ignorer les limites ». It assumes `orders.ignoreLimits` ("Ignorer les limites pour cette modification") is the visible label.
 7. `help.faq.checkoutBlocked.a` / `help.faq.expressButtons.*`: "Acheter maintenant" for "Buy it now". I believe Shopify FR themes use this; some use "Acheter".
-8. `digest.subject`: rewritten as "Pickday : commandes du {date} ({count})" to avoid needing plurals.
-9. `methods.offer`: "Proposer : {method}". I used the label style because the method name's article and gender vary.
-10. `schedule.forMethod`: "Calendrier : {method}". This was reworded for the same reason.
-11. `home.alert.vacationText`: "du {start} jusqu'à la fin, le {end}". This assumes the dates render without an article; it may read awkwardly depending on the date format.
-12. `transfer.productMapped` / `transfer.productMissing`: "identifiant" for handle. Shopify FR sometimes shows "handle" or "Identifiant" in SEO settings.
-13. `common.discard`: "Ignorer" (Polaris contextual save bar wording). Shopify sometimes uses "Supprimer".
-14. `preview.rightNow`: "Il est actuellement {now} ({zone})." I put the zone in parentheses instead of "in {zone}".
-15. Extension `changed`: "Modifications : {{count}}. Dernière : {{from}} → {{to}}". I restructured it to avoid "fois" plural handling.
+8. `methods.offer`: "Proposer : {method}". I used the label style because the method name's article and gender vary.
+9. `schedule.forMethod`: "Calendrier : {method}". This was reworded for the same reason.
+10. `home.alert.vacationText`: "du {start} jusqu'à la fin, le {end}". This assumes the dates render without an article; it may read awkwardly depending on the date format.
+11. `transfer.productMapped` / `transfer.productMissing`: "identifiant" for handle. Shopify FR sometimes shows "handle" or "Identifiant" in SEO settings.
+12. `common.discard`: "Ignorer" (Polaris contextual save bar wording). Shopify sometimes uses "Supprimer".
+13. `preview.rightNow`: "Il est actuellement {now} ({zone})." I put the zone in parentheses instead of "in {zone}".
+14. Extension `changed`: "Modifications : {{count}}. Dernière : {{from}} → {{to}}". I restructured it to avoid "fois" plural handling.
 
 ## Admin: de
 
@@ -742,12 +740,11 @@ Register: "você" (Shopify pt-BR admin style), imperative for actions ("Adicione
 7. help.faq.checkoutBlocked.a – "Data obrigatória em Programação" mirrors English, though the toggle lives on Methods page.
 8. help.faq.changeDate.a – "Ignorar limites" refers to orders.ignoreLimits ("Ignorar limites nesta alteração"); the order-page extension says "Ignorar capacidade e regras".
 9. orders.status.fulfilled / statusFulfilled "Processado" – Shopify pt-BR term; "Concluído" also possible.
-10. digest.subject "Pickday: pedidos para {date}: {count}" – restructured for the no-plural rule; double colon is slightly awkward.
-11. orders.bulkConfirm "Mover pedidos para {date}: {count}" – same restructuring.
-12. surcharges.taxHeading "Tributos" – could be "Impostos".
-13. reason.beyondWindow "Longe demais" – short but slightly vague (means too far in the future).
-14. transfer.codeLabel/createCode – shortened "share code" to "código" for space.
-15. surcharges.errAmount keeps "4.50" (decimal point) as in English; Brazilian users would write 4,50 – depends on the input parser.
+10. orders.bulkConfirm "Mover pedidos para {date}: {count}" – restructured for the no-plural rule.
+11. surcharges.taxHeading "Tributos" – could be "Impostos".
+12. reason.beyondWindow "Longe demais" – short but slightly vague (means too far in the future).
+13. transfer.codeLabel/createCode – shortened "share code" to "código" for space.
+14. surcharges.errAmount keeps "4.50" (decimal point) as in English; Brazilian users would write 4,50 – depends on the input parser.
 
 ## Admin: it
 
@@ -781,12 +778,11 @@ Register: informal "tu" (as Shopify's Italian admin), imperative verbs ("Scegli"
 7. help.faq.*.a – "Acquista ora" for Buy it now (Shopify IT dynamic checkout button label).
 8. areas.regionCodesHelp / testRegionCode – examples changed from CA, NY to MI, RM (Italian province codes).
 9. capacity.hideBefore – "Nascondi una fascia quando mancano meno di (stesso giorno)" reads together with a following duration input; verify UI layout.
-10. digest.subject – "Pickday: ordini per il {date}: {count}" (double colon to avoid plural).
-11. orders.bulkConfirm – "Sposta gli ordini al {date} ({count})" (count moved to parenthesis to avoid plural).
-12. preview.rightNow – "In questo momento a {zone} sono le {now}" assumes {now} is a time (not date+time).
-13. home.alert.vacationText – "dal {start} fino alla fine, il {end}" – assumes date formats fit "il …".
-14. capacity.from/until "Dalle/Fino alle" assume time values; closures/orders/products from/to use "Dal/Al" (dates).
-15. surcharges.taxable "Tassa i supplementi" – shortened; alternative "Applica le imposte ai supplementi".
+10. orders.bulkConfirm – "Sposta gli ordini al {date} ({count})" (count moved to parenthesis to avoid plural).
+11. preview.rightNow – "In questo momento a {zone} sono le {now}" assumes {now} is a time (not date+time).
+12. home.alert.vacationText – "dal {start} fino alla fine, il {end}" – assumes date formats fit "il …".
+13. capacity.from/until "Dalle/Fino alle" assume time values; closures/orders/products from/to use "Dal/Al" (dates).
+14. surcharges.taxable "Tassa i supplementi" – shortened; alternative "Applica le imposte ai supplementi".
 
 ## Admin: ja
 

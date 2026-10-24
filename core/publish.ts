@@ -35,7 +35,7 @@ export const PLAN_FEATURES: Record<PlanId, Set<string>> = {
   pro: new Set([
     ...STARTER,
     "unlimitedLocations", "areas", "productRules", "dateMode", "surcharges", "production", "bulkReschedule",
-    "routeSheet", "calendarFeed", "flow", "digest", "customCss", "importExport",
+    "routeSheet", "calendarFeed", "flow", "customCss", "importExport",
   ]),
 };
 

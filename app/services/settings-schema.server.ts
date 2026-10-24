@@ -239,12 +239,6 @@ export const settingsSchema = z
     }),
     texts: z.record(z.string().max(20), z.record(z.string().max(80), z.string().max(600))),
     notifications: z.object({
-      digest: z.object({
-        enabled: z.boolean(),
-        time,
-        recipients: z.array(z.string().email()).max(3),
-        includeProduction: z.boolean(),
-      }),
       emailSnippetConfirmed: z.boolean(),
       calendarFeed: z.object({ mode: z.enum(["order", "day"]), includeDetails: z.boolean() }),
       flowEnabled: z.boolean(),

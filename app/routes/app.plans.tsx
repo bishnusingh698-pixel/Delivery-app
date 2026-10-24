@@ -61,7 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 const PLANS: { id: PlanId; price: string; features: string[] }[] = [
   { id: "free", price: "$0", features: ["allMethods", "datePicker", "slots", "closures", "notes", "languages", "checkoutBlock", "orders"] },
   { id: "starter", price: "$7.99", features: ["everythingFree", "capacity", "checkoutMatching"] },
-  { id: "pro", price: "$14.99", features: ["everythingStarter", "areas", "productRules", "surcharges", "production", "routeSheet", "digest", "calendarFeed", "flow", "importExport"] },
+  { id: "pro", price: "$14.99", features: ["everythingStarter", "areas", "productRules", "surcharges", "production", "routeSheet", "calendarFeed", "flow", "importExport"] },
 ];
 
 export default function PlansPage() {

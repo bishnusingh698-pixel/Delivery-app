@@ -1,5 +1,5 @@
 /**
- * Reading scheduled orders for the Orders, Production and Home pages and the digest.
+ * Reading scheduled orders for the Orders, Production and Home pages.
  * Every query is scoped by shop.
  */
 import type { Prisma, ScheduledOrder } from "@prisma/client";

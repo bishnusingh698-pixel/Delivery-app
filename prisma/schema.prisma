@@ -154,14 +154,6 @@ model ActivityLog {
   @@index([shop, at])
 }
 
-model DigestLog {
-  shop   String
-  day    String // store-local date the digest was sent for
-  sentAt DateTime @default(now())
-
-  @@id([shop, day])
-}
-
 model ShareCode {
   code      String   @id
   shop      String

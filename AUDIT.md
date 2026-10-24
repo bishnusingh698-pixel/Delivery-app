@@ -15,7 +15,7 @@ Source of truth for this round of work. Updated as items land (✅ done, ⏳ in 
 | Orders | `routes/webhooks.orders.tsx` → `services/orders.server.ts` | Idempotent, out-of-order safe; counts rebuilt per date (`services/counts.server.ts`). Tags + order metafield + Flow. |
 | Thank-you / order status | `extensions/pickday-thank-you` | Allowed on all plans. |
 | Admin order block / actions | `extensions/pickday-admin` + `routes/api.order.$id.tsx`, `api.draft.$id.tsx` | Session-token authenticated. |
-| Jobs | `routes/jobs.hourly.tsx`, `jobs.daily.tsx` (cron-job.org, secret header) | Republish, digest, pruning, embed check, shop info sync. |
+| Jobs | `routes/jobs.hourly.tsx`, `jobs.daily.tsx` (cron-job.org, secret header) | Republish (dates and holidays roll forward), pruning, embed check, shop info sync. |
 | Uninstall / GDPR | `webhooks.app.uninstalled.tsx`, `webhooks.compliance.tsx` | Data kept 48 h for a reinstall, deleted on `shop/redact`. |
 
 Baseline checks before this round: `npm run typecheck` ✅, `npm run lint` ✅ (0 errors, 21 warnings), `npm test` ✅ (278 passed, 9 DB tests skipped without a database), `npm run build` ✅.
@@ -97,6 +97,7 @@ App Store reviewer view
 | **Widget position**, drawer switch, automatic text contrast | Styling without code (B24). | ✅ |
 | **Generous Free plan**: every method, time slots, holidays and closures, notes, 1 location, 50 orders/month. Starter: daily and slot limits, checkout matching, 3 locations, 500 orders. Pro: everything. | New stores get a correct picker; paid plans sell capacity and advanced rules. | ✅ |
 | Remove: storefront "Powered by" link; Methods, Schedule, Slots & capacity, Locations and Settings-hub pages (merged) | Less to learn, reviewer-safe. | ✅ |
+| Remove: the merchant daily summary email (Brevo), its settings, `DigestLog` table, `BREVO_API_KEY`/`EMAIL_FROM` and 18 admin texts | Owner request: no email service, zero cost. It only ever emailed the merchant's staff, never customers; Home, Orders and the calendar feed cover the same need. Customers still get Shopify's own order emails (with the date via the snippets). Only `SUPPORT_EMAIL` (a displayed address) remains. | ✅ |
 
 ## 4. Verification notes
 

@@ -101,7 +101,6 @@ export function defaultSettings(country: string | null = null): Settings {
     },
     texts: {},
     notifications: {
-      digest: { enabled: false, time: "18:00", recipients: [], includeProduction: true },
       emailSnippetConfirmed: false,
       calendarFeed: { mode: "order", includeDetails: false },
       flowEnabled: true,

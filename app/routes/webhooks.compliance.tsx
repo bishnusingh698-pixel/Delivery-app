@@ -52,7 +52,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         db.capacityCount.deleteMany({ where: { shop } }),
         db.productCount.deleteMany({ where: { shop } }),
         db.activityLog.deleteMany({ where: { shop } }),
-        db.digestLog.deleteMany({ where: { shop } }),
         db.shareCode.deleteMany({ where: { shop } }),
         db.webhookLog.deleteMany({ where: { shop } }),
         db.settings.deleteMany({ where: { shop } }),
