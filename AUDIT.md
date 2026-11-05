@@ -86,6 +86,15 @@ Ran the real wizard → settings → published config → engine → checkout pa
 
 Checked and correct: Friday–Saturday (Gulf, Israel), Thursday–Friday (Iran) and Saturday-only (Nepal) weekends; cut-offs in UTC+5:30 and +5:45; Nowruz, Rosh Hashanah and Eid (marked "may shift"); Gregorian calendar and Latin digits forced in every locale (Thai, Persian, Saudi Arabic); minimum order in the shopper's currency; the checkout backstop rounds time down so it never rejects before a cut-off; the widget sets no cookies and calls no third party.
 
+### Round 5: the merchant decides
+
+| # | Sev | Where | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| B50 | M | `core/defaults.ts`, wizard, Settings | Public holidays were closed automatically: on install (before the merchant saw anything), by a wizard switch that started on (and treated a missing answer as "on"), and when the country changed in Settings. | Off until the merchant turns them on (D-68). | ✅ |
+| B51 | M | business presets | Hidden choices the wizard didn't show: furniture got a daily limit of 5 orders, florist a same-day cut-off, every type its own booking window. | No hidden limit or same-day rule; the florist's noon cut-off and the booking window are shown and editable in the wizard. | ✅ |
+| B52 | M | wizard and Settings country lists | Only countries in the holiday dataset could be chosen: stores in Kuwait, Qatar, Oman, Jordan, Lebanon, Iraq or Nepal couldn't pick their country (or get its weekend). | All 250 countries (`ALL_COUNTRIES`); holiday availability checked separately. | ✅ |
+| B53 | m | Home | The yearly "turn on holidays" offer also appeared for countries with no holiday list, and right after a "no" in the wizard. | Not shown in either case. | ✅ |
+
 ## 2. UX problems
 
 Admin

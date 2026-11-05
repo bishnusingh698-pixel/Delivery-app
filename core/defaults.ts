@@ -56,7 +56,8 @@ export function defaultSettings(country: string | null = null): Settings {
     country,
     dateFormat: "auto",
     weekStart: country ? region.weekStart : null,
-    holidays: country ? [countryHolidaySet(country)] : [],
+    // Off until the merchant turns them on: a store may well open on public holidays.
+    holidays: [],
     notes: { enabled: false, methods: "all", maxLength: 250 },
     dateMode: "order",
     methods: {
@@ -148,8 +149,9 @@ export function applyBusinessPreset(s: Settings, type: BusinessType): Settings {
       on("pickup", true);
       on("shipping", false);
       all((m) => {
+        // Same day until noon, shown as the cut-off in the wizard (no hidden same-day rule).
         m.schedule.lead = { amount: 0, unit: "days", workingDays: false };
-        m.schedule.sameDay = { allowed: true, cutoff: "12:00" };
+        m.schedule.cutoff.time = "12:00";
         m.schedule.weekdays = six;
         m.slotsEnabled = true;
       });
@@ -196,7 +198,6 @@ export function applyBusinessPreset(s: Settings, type: BusinessType): Settings {
         m.schedule.lead = { amount: 7, unit: "days", workingDays: true };
         m.schedule.weekdays = [...work];
         m.schedule.windowDays = 90;
-        m.capacity.maxPerDay = 5;
       });
       break;
     default:
@@ -206,20 +207,22 @@ export function applyBusinessPreset(s: Settings, type: BusinessType): Settings {
 }
 
 /**
- * Switch the store's country and load its usual week start, date format and public holidays.
- * Working days of every method (and pickup locations with their own hours) change only when asked.
+ * Switch the store's country and load its usual week start. Working days, date format and
+ * public holidays change only when the merchant asks for them.
  */
-export function applyCountry(s: Settings, country: string, opts: { workdays: boolean; dateFormat: boolean }): Settings {
+export function applyCountry(s: Settings, country: string, opts: { workdays: boolean; dateFormat: boolean; holidays?: boolean }): Settings {
   const next: Settings = JSON.parse(JSON.stringify(s));
   const r = regionDefaults(country);
   next.country = country;
   next.weekStart = r.weekStart;
   if (opts.dateFormat) next.dateFormat = r.dateFormat;
-  // Replace the previous country's public holidays (kept: sets for other countries the merchant added).
-  const old = s.country;
-  const kept = next.holidays.find((h) => h.country === country && !h.region);
-  next.holidays = next.holidays.filter((h) => h.country !== old && h.country !== country);
-  next.holidays.unshift(kept ?? countryHolidaySet(country));
+  if (opts.holidays) {
+    // Replace the previous country's public holidays (kept: sets for other countries the merchant added).
+    const old = s.country;
+    const kept = next.holidays.find((h) => h.country === country && !h.region);
+    next.holidays = next.holidays.filter((h) => h.country !== old && h.country !== country);
+    next.holidays.unshift(kept ?? countryHolidaySet(country));
+  }
   if (opts.workdays) {
     for (const m of Object.values(next.methods)) m.schedule.weekdays = [...r.workdays];
     for (const l of next.locations) if (l.custom) l.custom.schedule.weekdays = [...r.workdays];
@@ -235,13 +238,15 @@ export interface WizardChoices {
   workdays: number[];
   lead: { amount: number; unit: "days" | "hours" };
   cutoff: string | null;
+  /** How many days ahead customers can book. */
+  windowDays?: number;
   holidays: boolean;
   /** Pickup address when pickup is on and the store has no pickup location yet. */
   pickup: { name: string; address: string } | null;
 }
 
 /** Suggested answers for step 2, from the country and business type picked in step 1. */
-export function wizardSuggestion(s: Settings, country: string | null, type: BusinessType | null): Pick<WizardChoices, "methods" | "workdays" | "lead" | "cutoff"> {
+export function wizardSuggestion(s: Settings, country: string | null, type: BusinessType | null): Pick<WizardChoices, "methods" | "workdays" | "lead" | "cutoff" | "windowDays"> {
   let next = country ? applyCountry(s, country, { workdays: true, dateFormat: false }) : (JSON.parse(JSON.stringify(s)) as Settings);
   if (type && type !== "other") next = applyBusinessPreset(next, type);
   const enabled = next.methodOrder.filter((id) => next.methods[id].enabled);
@@ -251,12 +256,13 @@ export function wizardSuggestion(s: Settings, country: string | null, type: Busi
     workdays: [...first.schedule.weekdays],
     lead: { amount: first.schedule.lead.amount, unit: first.schedule.lead.unit },
     cutoff: first.schedule.cutoff.time,
+    windowDays: first.schedule.windowDays,
   };
 }
 
 /** Turn the wizard's answers into settings (country defaults → business preset → the merchant's answers). */
 export function applyWizard(s: Settings, c: WizardChoices): Settings {
-  let next = c.country ? applyCountry(s, c.country, { workdays: true, dateFormat: false }) : (JSON.parse(JSON.stringify(s)) as Settings);
+  let next = c.country ? applyCountry(s, c.country, { workdays: true, dateFormat: false, holidays: c.holidays }) : (JSON.parse(JSON.stringify(s)) as Settings);
   if (c.businessType && c.businessType !== "other") next = applyBusinessPreset(next, c.businessType);
   const methods = c.methods.length ? c.methods : (["shipping"] as MethodId[]);
   for (const id of Object.keys(next.methods) as MethodId[]) {
@@ -265,6 +271,7 @@ export function applyWizard(s: Settings, c: WizardChoices): Settings {
     m.schedule.weekdays = [...new Set(c.workdays)].filter((d) => d >= 0 && d <= 6).sort();
     m.schedule.lead = { ...m.schedule.lead, amount: Math.max(0, Math.min(c.lead.unit === "hours" ? 720 : 365, Math.round(c.lead.amount))), unit: c.lead.unit };
     m.schedule.cutoff = { time: c.cutoff, perWeekday: null };
+    if (c.windowDays !== undefined) m.schedule.windowDays = Math.max(1, Math.min(365, Math.round(c.windowDays)));
   }
   next.methodOrder = [...next.methodOrder.filter((id) => methods.includes(id)), ...next.methodOrder.filter((id) => !methods.includes(id))];
   next.defaultMethod = null;

@@ -8,6 +8,7 @@ import { Link, useFetcher, useLoaderData } from "react-router";
 import { addDays, isValidDate, isValidTime } from "../../core/civil";
 import { BUSINESS_TYPES, applyWizard, countryHolidaySet, wizardSuggestion, type BusinessType, type WizardChoices } from "../../core/defaults";
 import { HOLIDAY_GAPS } from "../../core/holidays";
+import { ALL_COUNTRIES } from "../../core/regions";
 import { alerts, busyDays, checklist, type ChecklistId } from "../../core/home";
 import { hasFeature } from "../../core/publish";
 import { METHOD_IDS, type HolidayItem, type MethodId, type Settings } from "../../core/types";
@@ -17,7 +18,7 @@ import { CountrySelect, WeekdayPicker, countryName, newId, useFormatDate, useMet
 import { useI18n, useT } from "../i18n/react";
 import { flagsOf, requireShop, setFlags, warningsOf } from "../models/shop.server";
 import { checkEmbed, themeEditorLink } from "../services/embed.server";
-import { holidayCountries } from "../services/holidays.server";
+import { hasHolidayData, holidayCountries } from "../services/holidays.server";
 import { fetchShopifyLocations } from "../services/locations.server";
 import { dayCounts } from "../services/orders-query.server";
 import { storefrontConfigFor } from "../services/publish.server";
@@ -44,7 +45,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       mode: "wizard" as const,
       ...previewData(ctx),
       full: ctx.settings,
-      countries: holidayCountries("en").map((c) => c.code),
+      countries: [...ALL_COUNTRIES],
+      holidayCountries: holidayCountries("en").map((c) => c.code),
       country: ctx.settings.country ?? ctx.row.country,
       firstLocation: first ? { name: first.name, address: first.address } : null,
     };
@@ -72,7 +74,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     checklistDismissed: !!flags.checklistDismissed,
     overview: { today: sum([ctx.today]), tomorrow: sum([addDays(ctx.today, 1)]), week: sum(week) },
     chart: Object.entries(counts).map(([date, c]) => ({ date, orders: Object.values(c.methods).reduce((n, v) => n + (v?.orders ?? 0), 0), used: c.used, max: c.max })),
-    alerts: alerts({ settings: ctx.settings, today: ctx.today, flags, embedChecked: !!flags.embedCheckedAt, busyDays: busy, usagePct: usage.limit === null ? null : usage.pct, warnings: warningsOf(ctx.row), plan: ctx.plan }),
+    alerts: alerts({
+      settings: ctx.settings,
+      today: ctx.today,
+      flags,
+      embedChecked: !!flags.embedCheckedAt,
+      busyDays: busy,
+      usagePct: usage.limit === null ? null : usage.pct,
+      warnings: warningsOf(ctx.row),
+      plan: ctx.plan,
+      holidayData: !!ctx.settings.country && hasHolidayData(ctx.settings.country),
+    }),
     celebrate: !!flags.firstOrderAt && !flags.firstOrderCelebrated,
     methods: ctx.settings.methodOrder.filter((m) => ctx.settings.methods[m].enabled),
     closedToday: ctx.settings.closures.some((c) => !c.yearly && c.start <= ctx.today && c.end >= ctx.today && c.methods === "all" && c.locations === "all"),
@@ -89,8 +101,10 @@ function parseChoices(raw: unknown): WizardChoices | null {
   const lead = c.lead && typeof c.lead.amount === "number" && (c.lead.unit === "days" || c.lead.unit === "hours") ? c.lead : { amount: 1, unit: "days" as const };
   const cutoff = typeof c.cutoff === "string" && isValidTime(c.cutoff) ? c.cutoff : null;
   const pickup = c.pickup && typeof c.pickup.name === "string" ? { name: String(c.pickup.name).slice(0, 100), address: String(c.pickup.address ?? "").slice(0, 300) } : null;
+  const windowDays = typeof c.windowDays === "number" && Number.isFinite(c.windowDays) ? c.windowDays : undefined;
   if (!workdays.length) return null;
-  return { country, businessType, methods, workdays, lead, cutoff, holidays: c.holidays !== false, pickup };
+  // Holidays close the store only when the merchant switched them on.
+  return { country, businessType, methods, workdays, lead, cutoff, windowDays, holidays: c.holidays === true, pickup };
 }
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -102,11 +116,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const choices = parseChoices(body.choices);
     if (!choices) return { ok: false as const, error: "invalid" };
     let next: Settings = applyWizard(ctx.settings, choices);
-    // Limits from a business preset need Starter: keep the picker working on Free.
+    // Daily limits need Starter: keep the picker working on Free.
     if (!hasFeature(ctx.plan, "capacity")) for (const id of METHOD_IDS) next.methods[id].capacity.maxPerDay = null;
     next = { ...next, businessType: choices.businessType };
     const r = await saveSettings(ctx, next, `Setup: ${choices.businessType ?? "other"}, ${choices.country ?? "-"}, ${choices.methods.join("+")}`);
-    if (r.ok) await setFlags(ctx.shop, { welcomeDone: true });
+    // "No holidays" is an answer: don't ask again on Home this year.
+    if (r.ok) await setFlags(ctx.shop, { welcomeDone: true, ...(choices.holidays ? {} : { holidayYearOffered: Number(ctx.today.slice(0, 4)) }) });
     return r.ok ? { ok: true as const } : { ok: false as const, error: r.issues[0]?.message ?? "invalid" };
   }
   if (intent === "closeDay") {
@@ -151,11 +166,11 @@ function Wizard({ d }: { d: WizardData }) {
   const [country, setCountry] = useState<string | null>(d.country);
   const [type, setType] = useState<BusinessType | null>(null);
   const [answers, setAnswers] = useState(() => wizardSuggestion(d.full, country, null));
-  const [holidays, setHolidays] = useState(true);
+  const [holidays, setHolidays] = useState(false);
   const [pickup, setPickup] = useState(d.firstLocation ?? { name: "", address: "" });
   // The chosen country's holidays (the loader only has the store's own country), for the preview and the summary.
   const holidayFetcher = useFetcher<{ country: string; holidays: HolidayItem[] }>();
-  const hasHolidayData = !!country && d.countries.includes(country);
+  const hasHolidayData = !!country && d.holidayCountries.includes(country);
   useEffect(() => {
     if (hasHolidayData) holidayFetcher.load(`/app/api/holidays?country=${country}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -268,6 +283,15 @@ function Wizard({ d }: { d: WizardData }) {
                   onChange={(v) => setAnswers({ ...answers, lead: { ...answers.lead, unit: v as "days" | "hours" } })}
                 />
                 <TimeSelect label={t("wizard.cutoff")} details={t("wizard.cutoffHelp")} allowEmpty={t("schedule.noCutoff")} locale={locale} value={answers.cutoff} onChange={(v) => setAnswers({ ...answers, cutoff: v })} />
+                <NumberField
+                  label={t("schedule.window")}
+                  details={t("schedule.windowHelp")}
+                  min={1}
+                  max={365}
+                  suffix={t("schedule.days")}
+                  value={answers.windowDays ?? 30}
+                  onChange={(v) => setAnswers({ ...answers, windowDays: v ?? 30 })}
+                />
               </s-stack>
               {country && hasHolidayData ? (
                 <s-stack gap="small-200">

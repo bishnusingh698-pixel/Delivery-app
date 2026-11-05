@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyBusinessPreset, applyCountry, applyWizard, defaultSettings, sixDays, wizardSuggestion } from "../core/defaults";
+import { applyBusinessPreset, applyCountry, applyWizard, countryHolidaySet, defaultSettings, sixDays, wizardSuggestion } from "../core/defaults";
 import { attributeDate, formatDate, formatShopperDate } from "../core/dateformat";
 import { onAccent } from "../core/color";
 import { holidayClosures } from "../core/holidays";
@@ -24,11 +24,11 @@ describe("regional defaults", () => {
     expect(regionDefaults(null).workdays).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("new stores get their country's working days, week start and public holidays", () => {
+  it("new stores get their country's working days and week start, but no holidays until the merchant turns them on", () => {
     const s = defaultSettings("SA");
     expect(s.methods.shipping.schedule.weekdays).toEqual([0, 1, 2, 3, 4]);
     expect(s.weekStart).toBe(0);
-    expect(s.holidays).toEqual([{ id: "hs_sa", country: "SA", region: null, methods: "all", locations: "all", skip: [] }]);
+    expect(s.holidays).toEqual([]);
     expect(s.dateFormat).toBe("auto");
     expect(validateSettings(s).ok).toBe(true);
     expect(defaultSettings(null).holidays).toEqual([]);
@@ -41,9 +41,10 @@ describe("regional defaults", () => {
     expect(bakery.methods.pickup.schedule.weekdays).toEqual([0, 1, 2, 3, 4, 5]);
   });
 
-  it("changing the country swaps holidays and optionally working days", () => {
-    const us = defaultSettings("US");
-    const ae = applyCountry(us, "AE", { workdays: false, dateFormat: true });
+  it("changing the country changes holidays and working days only when asked", () => {
+    const us = { ...defaultSettings("US"), holidays: [countryHolidaySet("US")] };
+    expect(applyCountry(us, "AE", { workdays: false, dateFormat: false }).holidays.map((h) => h.country)).toEqual(["US"]);
+    const ae = applyCountry(us, "AE", { workdays: false, dateFormat: true, holidays: true });
     expect(ae.holidays.map((h) => h.country)).toEqual(["AE"]);
     expect(ae.methods.shipping.schedule.weekdays).toEqual(us.methods.shipping.schedule.weekdays);
     expect(ae.dateFormat).toBe("dmy");
@@ -52,7 +53,22 @@ describe("regional defaults", () => {
     expect(sa.dateFormat).toBe("auto");
     // Same country again keeps skipped holidays.
     const skipped = { ...us, holidays: [{ ...us.holidays[0], skip: ["12-25"] }] };
-    expect(applyCountry(skipped, "US", { workdays: false, dateFormat: false }).holidays[0].skip).toEqual(["12-25"]);
+    expect(applyCountry(skipped, "US", { workdays: false, dateFormat: false, holidays: true }).holidays[0].skip).toEqual(["12-25"]);
+  });
+
+  it("the wizard closes on holidays only when the merchant says so, and shows every limit it sets", () => {
+    const base = defaultSettings("DE");
+    const answers = { country: "DE", businessType: "furniture" as const, methods: ["delivery" as const], workdays: [1, 2, 3, 4, 5], lead: { amount: 7, unit: "days" as const }, cutoff: null, pickup: null };
+    expect(applyWizard(base, { ...answers, holidays: false }).holidays).toEqual([]);
+    expect(applyWizard(base, { ...answers, holidays: true }).holidays.map((h) => h.country)).toEqual(["DE"]);
+    // No hidden daily limit from the preset; the booking window is the merchant's answer.
+    const w = applyWizard(base, { ...answers, holidays: false, windowDays: 45 });
+    expect(w.methods.delivery.capacity.maxPerDay).toBeNull();
+    expect(w.methods.delivery.schedule.windowDays).toBe(45);
+    // Florist: same day until noon is the visible cut-off, not a hidden rule.
+    const florist = wizardSuggestion(base, "DE", "florist");
+    expect(florist.cutoff).toBe("12:00");
+    expect(applyBusinessPreset(base, "florist").methods.delivery.schedule.sameDay.allowed).toBe(false);
   });
 
   it("week order follows the store setting when set", () => {
@@ -109,7 +125,7 @@ describe("public holiday sets", () => {
   });
 
   it("closes the day for shoppers once published", () => {
-    const s = defaultSettings("US");
+    const s = { ...defaultSettings("US"), holidays: [countryHolidaySet("US")] };
     s.methods.shipping.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
     s.methods.shipping.schedule.lead = { amount: 0, unit: "days", workingDays: false };
     s.methods.shipping.schedule.cutoff.time = null;

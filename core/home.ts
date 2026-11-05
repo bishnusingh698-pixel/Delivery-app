@@ -42,6 +42,8 @@ export function alerts(input: {
   usagePct: number | null;
   warnings: { code: string; detail?: string }[];
   plan?: PlanId;
+  /** Does the holiday dataset know the store's country? (No offer when there's nothing to turn on.) */
+  holidayData?: boolean;
 }): Alert[] {
   const out: Alert[] = [];
   const { settings: s, today } = input;
@@ -55,9 +57,10 @@ export function alerts(input: {
   if (v.enabled && (!v.end || v.end >= today)) out.push({ id: "vacation", tone: "info", params: { start: v.start ?? today, end: v.end ?? "" } });
   if (input.busyDays.length) out.push({ id: "busy", tone: "warning", params: { count: input.busyDays.length, first: input.busyDays[0].date } });
   if (input.usagePct !== null && input.usagePct >= 80) out.push({ id: "usage", tone: input.usagePct >= 100 ? "critical" : "warning", params: { pct: input.usagePct } });
-  // Public holidays renew by themselves (holiday sets); only suggest them when none are on.
+  // Holidays are the merchant's choice: offer them at most once a year (dismissable), only when none
+  // are on and the country has a list. Never turned on without the merchant.
   const year = Number(today.slice(0, 4));
-  if (!s.holidays.length && s.country && input.flags.holidayYearOffered !== year) out.push({ id: "holidays", tone: "info", params: { country: s.country } });
+  if (!s.holidays.length && s.country && input.holidayData !== false && input.flags.holidayYearOffered !== year) out.push({ id: "holidays", tone: "info", params: { country: s.country } });
   return out;
 }
 
