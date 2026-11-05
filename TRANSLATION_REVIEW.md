@@ -848,3 +848,10 @@ Register: "je". Key terms: Lokale bezorging / Ophalen in winkel / Verzending, ti
 
 - **Admin `summary.step1`–`summary.step4`, `summary.tip` (all 7 languages):** these name Shopify Flow's own buttons ("Create workflow", "Select a trigger", "Send internal email", "Turn on workflow") as I expect Flow shows them in that language. Compare with Flow in a store set to that language and adjust the button names to match exactly. The trigger name "Daily schedule" and the field "Orders" stay in English, because Flow shows app trigger names as the app defines them.
 - **Storefront `change.*` (27 languages):** texts for the customer account "Change delivery date" button and dialog. They are short, and use the same tone as the rest of each language's storefront texts (German "du", French "vous"). `change.taken` was rewritten in German and French to agree with the noun.
+
+## Added in round 8 (November 2026): please review
+
+| Key | English | Where |
+|---|---|---|
+| `buyNow.continue` | Continue to checkout | Button in the date window that opens from "Buy it now" (max 32 characters) |
+| `buyNow.close` | Close | Label of the window's close button (copied from each language's `change.close`) |

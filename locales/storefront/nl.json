@@ -113,5 +113,7 @@
   "change.none": "Er zijn nu geen andere datums beschikbaar. Neem contact op met de winkel.",
   "change.saved": "Nieuwe datum opgeslagen",
   "change.taken": "Die datum of tijd is net volgeboekt. Kies een andere.",
-  "change.error": "Deze datum kan nu niet worden gewijzigd. Neem contact op met de winkel."
+  "change.error": "Deze datum kan nu niet worden gewijzigd. Neem contact op met de winkel.",
+  "buyNow.continue": "Doorgaan naar afrekenen",
+  "buyNow.close": "Sluiten"
 }

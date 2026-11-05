@@ -364,6 +364,17 @@ export default function AppearancePage() {
             ]}
             onChange={(v) => setW("productPageMode", v as WidgetSettings["productPageMode"])}
           />
+          <ChoiceList
+            id={fieldId("widget.buyNow")}
+            label={t("widget.buyNow")}
+            value={w.buyNow ?? "ask"}
+            options={[
+              { value: "ask", label: t("widget.buyNowAsk"), details: t("widget.buyNowAskHelp") },
+              { value: "hide", label: t("widget.buyNowHide"), details: t("widget.buyNowHideHelp") },
+              { value: "off", label: t("widget.buyNowOff"), details: t("widget.buyNowOffHelp") },
+            ]}
+            onChange={(v) => setW("buyNow", v as WidgetSettings["buyNow"])}
+          />
           <TextField
             id={fieldId("widget.drawerSelector")}
             label={t("widget.drawerSelector")}

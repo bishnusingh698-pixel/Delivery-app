@@ -113,5 +113,7 @@
   "change.none": "Saat ini tidak ada tanggal lain yang tersedia. Silakan hubungi toko.",
   "change.saved": "Tanggal baru disimpan",
   "change.taken": "Tanggal atau waktu itu baru saja penuh. Silakan pilih yang lain.",
-  "change.error": "Tanggal ini tidak dapat diubah sekarang. Silakan hubungi toko."
+  "change.error": "Tanggal ini tidak dapat diubah sekarang. Silakan hubungi toko.",
+  "buyNow.continue": "Lanjutkan ke pembayaran",
+  "buyNow.close": "Tutup"
 }

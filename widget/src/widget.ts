@@ -15,6 +15,16 @@ import { shopifyCart, type Cart, type CartApi } from "./cart";
 import { h, nextId, swap } from "./dom";
 import { makeTexts, type Texts } from "./i18n";
 
+export interface ProductBoot {
+  id: string;
+  title: string;
+  tags: string[];
+  collections: string[];
+  giftCard: boolean;
+  requiresShipping: boolean;
+  variants: { id: string; requiresShipping: boolean }[];
+}
+
 export interface BootData {
   config: StorefrontConfig | null;
   availability: Availability | null;
@@ -25,7 +35,9 @@ export interface BootData {
   template: string;
   pseudo?: boolean;
   assetBase: string;
-  /** The cart at page render (Liquid `cart | json`, same shape as /cart.js): saves a request on load. */
+  /** The product of a product page (app embed), for "Buy it now" (widget.buyNow). */
+  product?: ProductBoot | null;
+  /** The cart at page render (printed by Liquid in the shape of /cart.js): saves a request on load. */
   cart?: Cart | null;
   /** Collections of items in the cart at page render (Liquid). */
   itemCollections?: Record<string, string[]>;

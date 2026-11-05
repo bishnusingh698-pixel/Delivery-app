@@ -113,5 +113,7 @@
   "change.none": "Aucune autre date n'est disponible pour le moment. Veuillez contacter la boutique.",
   "change.saved": "Nouvelle date enregistrée",
   "change.taken": "Cette date ou ce créneau est désormais complet. Veuillez en choisir un autre.",
-  "change.error": "Cette date ne peut pas être modifiée pour le moment. Veuillez contacter la boutique."
+  "change.error": "Cette date ne peut pas être modifiée pour le moment. Veuillez contacter la boutique.",
+  "buyNow.continue": "Continuer vers le paiement",
+  "buyNow.close": "Fermer"
 }

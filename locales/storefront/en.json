@@ -113,5 +113,7 @@
   "change.none": "No other dates are available right now. Please contact the store.",
   "change.saved": "New date saved",
   "change.taken": "That date or time just filled up. Please choose another.",
-  "change.error": "This date can't be changed right now. Please contact the store."
+  "change.error": "This date can't be changed right now. Please contact the store.",
+  "buyNow.continue": "Continue to checkout",
+  "buyNow.close": "Close"
 }

@@ -55,10 +55,15 @@ const cartState = {
 
 const cartPage = `<main><form action="/cart" method="post"><div data-pickday-mount="block"></div><button type="submit" name="checkout">Check out</button></form></main>`;
 
-async function open(page: Page, locale: string, pseudo = false, opts: { cfg?: ReturnType<typeof config>; body?: string; path?: string; wait?: boolean } = {}) {
+const cakeItem = cartState.items[0];
+let addCalls = 0;
+
+async function open(page: Page, locale: string, pseudo = false, opts: { cfg?: ReturnType<typeof config>; body?: string; path?: string; wait?: boolean; product?: unknown; emptyCart?: boolean } = {}) {
   cartState.attributes = {};
+  cartState.items = opts.emptyCart ? [] : [cakeItem];
+  addCalls = 0;
   const doc = (body: string, template: string) => {
-    const boot = { config: opts.cfg ?? config(), availability: null, locale, country: "US", currency: "USD", rate: 1, template, pseudo, assetBase: "/assets/" };
+    const boot = { config: opts.cfg ?? config(), availability: null, locale, country: "US", currency: "USD", rate: 1, template: opts.product && template !== "cart" ? "product" : template, pseudo, assetBase: "/assets/", product: template === "cart" ? null : opts.product ?? null };
     return `<!doctype html><html lang="${locale}"><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/pickday.css">
     <style>body{font-family:system-ui,sans-serif;margin:0;padding:0 16px}main{max-width:100%}</style></head>
     <body>${body}
@@ -74,6 +79,13 @@ async function open(page: Page, locale: string, pseudo = false, opts: { cfg?: Re
       return route.fulfill({ body: readFileSync(f), contentType: f.endsWith(".css") ? "text/css; charset=utf-8" : "application/javascript; charset=utf-8" });
     }
     if (url.pathname === "/cart.js") return route.fulfill({ json: cartState });
+    if (url.pathname === "/cart/add.js") {
+      addCalls++;
+      const form = route.request().postData() ?? "";
+      if (!/name="id"\r?\n\r?\n11/.test(form)) return route.fulfill({ status: 422, json: { message: "no variant" } });
+      cartState.items = [cakeItem];
+      return route.fulfill({ json: cakeItem });
+    }
     if (url.pathname === "/cart/update.js") {
       const body = JSON.parse(route.request().postData() ?? "{}");
       for (const [k, v] of Object.entries(body.attributes ?? {})) {
@@ -198,6 +210,38 @@ async function main() {
     await page.waitForSelector(".side-basket .pickday .pd-root", { timeout: 5000 });
     assert(await page.isVisible(".side-basket [data-pd-err]"), "no message next to the button");
     assert(new URL(page.url()).pathname === "/", "left the page");
+  });
+
+  const cake = { id: "1", title: "Cake", tags: [], collections: [], giftCard: false, requiresShipping: true, variants: [{ id: "11", requiresShipping: true }] };
+  const productPage = `<main><h1>Cake</h1><form action="/cart/add" method="post"><input type="hidden" name="id" value="11"><input name="quantity" value="1"><button type="submit">Add to cart</button><div class="shopify-payment-button"><button type="button" class="shopify-payment-button__button shopify-payment-button__button--unbranded">Buy it now</button></div></form></main>`;
+
+  await check("Buy it now: adds the product, asks for the date, then goes to checkout with it (D-74)", async () => {
+    await open(page, "en", false, { body: productPage, path: "/", wait: false, product: cake, emptyCart: true });
+    await page.waitForFunction(() => !!(window as any).Pickday?.ready);
+    await page.click(".shopify-payment-button__button");
+    await page.waitForSelector("dialog.pd-dialog[open] .pd-root", { timeout: 5000 });
+    assert(addCalls === 1, `cart/add.js called ${addCalls} times`);
+    await page.click("dialog .pd-continue");
+    assert(await page.isVisible("dialog [data-pd-err]"), "continued without a date");
+    assert(new URL(page.url()).pathname === "/", "left the page without a date");
+    await page.click("dialog .pd-day.is-available >> nth=0");
+    await page.click("dialog .pd-chip >> nth=0");
+    await Promise.all([page.waitForURL("**/checkout", { timeout: 5000 }), page.click("dialog .pd-continue")]);
+    assert(/"d":"\d{4}-\d\d-\d\d"/.test(cartState.attributes._pickday ?? ""), `no date in the cart: ${cartState.attributes._pickday}`);
+  });
+
+  await check("Buy it now: 'hide' hides the button on products that need a date", async () => {
+    await open(page, "en", false, { cfg: config("pro", (s) => (s.widget.buyNow = "hide")), body: productPage, path: "/", wait: false, product: cake });
+    await page.waitForFunction(() => !!(window as any).Pickday?.ready);
+    assert(!(await page.isVisible(".shopify-payment-button__button")), "Buy it now still visible");
+  });
+
+  await check("Buy it now: a product that needs no date is left alone", async () => {
+    await open(page, "en", false, { body: productPage, path: "/", wait: false, product: { ...cake, giftCard: true } });
+    await page.waitForFunction(() => !!(window as any).Pickday?.ready);
+    await page.click(".shopify-payment-button__button");
+    await page.waitForTimeout(300);
+    assert(addCalls === 0 && !(await page.isVisible("dialog.pd-dialog")), "intercepted a product without a date");
   });
 
   const overflow = async () =>

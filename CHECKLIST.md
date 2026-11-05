@@ -97,6 +97,14 @@ Updated after every phase. "Needs a live store" means the step can only be check
 4. Plans: upgrade to Starter (test charge), then switch to Pro. After a minute, Plans and Home show Pro. Downgrade to Free: the calendar feed address (Notifications) now answers "Not found"; upgrade to Pro again and it works.
 5. Privacy webhooks, from the Cloud Shell app folder after the deploy: `npx -y @shopify/cli@4.9.5 app webhook trigger --client-id <Client ID> --client-secret <Client secret> --topic customers/redact --api-version 2026-10 --address https://<your-service>.onrender.com/webhooks/compliance`. Render's log shows `POST /webhooks/compliance 200` (the sample customer isn't in your store, so nothing changes). Without `--client-secret` it shows 401: the app refuses messages Shopify didn't sign, which is also correct.
 
+## How to test round 8 (needs a live store)
+
+1. Product page of a product that needs a date, cart empty: click **Buy it now**. A window opens with the date picker; **Continue to checkout** without a date shows "Please choose a date"; pick a date (and slot) and continue: checkout opens with the product and, on the order, the date.
+2. Same with a date already chosen in the cart: **Buy it now** goes straight to checkout.
+3. Appearance → "Buy it now" button → **Hide it**, save: the Buy it now and express buttons disappear on products that need a date (gift cards and products excluded from dates keep them).
+4. A gift card or a product excluded from dates: Buy it now works as usual (no window).
+5. On a phone, with three methods on: the method buttons sit in one row; the calendar starts at the current week.
+
 ## Acceptance tests
 
 "Automated" = covered by `npm test` or `npm run test:browser` and passing. "Needs a live store" = the code is in place but it can only be confirmed on a development store (Shopify checkout, webhooks, theme editor and calendars can't run here). Steps for each are in the "How to test" sections above.
@@ -143,6 +151,8 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | 38 | A store with very large settings still requires a date at checkout (Shopify's 10,000-byte Function limit), and Home says the full check doesn't fit | ✅ Automated (`tests/deploy-rules.test.ts`, `tests/round7-fixes.test.ts`) — confirm a normal store shows no such warning |
 | 39 | Privacy webhooks: data request listed, redaction removes the first name (orders and log), shop deletion removes the store only | ✅ Automated (database test) — confirm with `shopify app webhook trigger` on a live store |
 | 40 | Plan follows Shopify's active subscription even when billing webhooks arrive out of order; calendar feed stops after leaving Pro | ✅ Automated — confirm on a development store (upgrade, switch plan, downgrade) |
+| 41 | "Buy it now" on a product that needs a date asks for the date, then checks out with it; "hide" hides it; products without a date are left alone | ✅ Automated (browser) — confirm with real Buy it now and wallet buttons on a live store |
+| 42 | The picker shows without waiting for its texts and the cart one after another | ✅ Measured (D-75) — check the product and cart pages feel quick on a phone |
 
 ## Automated checks (run `npm test`)
 

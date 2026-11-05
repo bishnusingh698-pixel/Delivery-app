@@ -113,5 +113,7 @@
   "change.none": "Muita vapaita päiviä ei ole juuri nyt. Ota yhteyttä kauppaan.",
   "change.saved": "Uusi päivä tallennettu",
   "change.taken": "Päivä tai aika täyttyi juuri. Valitse toinen.",
-  "change.error": "Päivää ei voi vaihtaa juuri nyt. Ota yhteyttä kauppaan."
+  "change.error": "Päivää ei voi vaihtaa juuri nyt. Ota yhteyttä kauppaan.",
+  "buyNow.continue": "Jatka kassalle",
+  "buyNow.close": "Sulje"
 }

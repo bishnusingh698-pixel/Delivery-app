@@ -113,5 +113,7 @@
   "change.none": "Obecnie nie ma innych dostępnych terminów. Skontaktuj się ze sklepem.",
   "change.saved": "Nowa data została zapisana",
   "change.taken": "Ten termin lub godzina właśnie się zapełniły. Wybierz inny.",
-  "change.error": "Tej daty nie można teraz zmienić. Skontaktuj się ze sklepem."
+  "change.error": "Tej daty nie można teraz zmienić. Skontaktuj się ze sklepem.",
+  "buyNow.continue": "Przejdź do kasy",
+  "buyNow.close": "Zamknij"
 }

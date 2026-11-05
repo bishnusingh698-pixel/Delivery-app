@@ -12,9 +12,9 @@ import { nowInZone } from "../../core/tz";
 import { attributeDate } from "../../core/dateformat";
 import { onAccent } from "../../core/color";
 import type { CartLine } from "../../core/types";
-import { onCartChange } from "./cart";
+import { addForm, onCartChange } from "./cart";
 import { h, nextId } from "./dom";
-import { Pickday, type BootData } from "./widget";
+import { Pickday, type BootData, type ProductBoot } from "./widget";
 
 declare global {
   interface Window {
@@ -90,6 +90,7 @@ async function main() {
   }
   // After the cart is read, so a date already chosen shows in the product page picker.
   setupProduct(pd);
+  setupBuyNow(pd);
   mountAll();
 
   onCartChange(() => void pd.refresh().then(mountAll));
@@ -155,6 +156,139 @@ async function main() {
 }
 
 const cartUrl = () => `${(window as any).Shopify?.routes?.root ?? "/"}cart`;
+const checkoutUrl = () => `${(window as any).Shopify?.routes?.root ?? "/"}checkout`;
+
+/* ------------------------------------------------------------ Buy it now */
+
+/** Shopify's "Buy it now" and wallet buttons on a product form (unbranded, Shop Pay, Apple Pay …). */
+const BUY_NOW = "shopify-payment-button, .shopify-payment-button, shopify-accelerated-checkout";
+
+const productLine = (p: ProductBoot): CartLine => ({
+  key: `product-${p.id}`,
+  productId: p.id,
+  variantId: p.variants[0]?.id ?? "",
+  quantity: 1,
+  title: p.title,
+  giftCard: p.giftCard,
+  requiresShipping: p.requiresShipping,
+  tags: p.tags,
+  collections: p.collections,
+});
+
+/** Does this product need a date that a method requires? (only then does "Buy it now" need help) */
+function needsRequiredDate(pd: Pickday, line: CartLine): boolean {
+  if (!lineNeedsDate(line, pd.cfg.productRules)) return false;
+  return methodsFor(pd.cfg, pd.country, [line]).some((id) => pd.cfg.methods.find((m) => m.id === id)?.dateRequired);
+}
+
+/**
+ * "Buy it now" skips the cart, and Shopify carries neither cart attributes nor (reliably) line item
+ * properties into it, so the date chosen in the cart can't reach that checkout (D-74). On a product
+ * that needs a date: "ask" adds the product to the cart, asks for the date in a window, then goes to
+ * checkout; "hide" hides the buttons; "off" leaves them (checkout then asks to go back to the cart).
+ */
+function setupBuyNow(pd: Pickday) {
+  const product = pd.boot.product;
+  const mode = pd.cfg.widget.buyNow ?? "ask";
+  if (!product || mode === "off" || !needsRequiredDate(pd, productLine(product))) return;
+  if (mode === "hide") {
+    hideBuyNow("");
+    return;
+  }
+  const variants = new Set(product.variants.map((v) => v.id));
+  let busy = false;
+  document.addEventListener(
+    "click",
+    (e) => {
+      const button = (e.target as Element | null)?.closest(BUY_NOW);
+      const form = button?.closest<HTMLFormElement>('form[action*="/cart/add"]');
+      if (!button || !form) return;
+      // Only this page's product (not a quick-add of another product on the same page).
+      const variant = new FormData(form).get("id");
+      if (variant && !variants.has(String(variant))) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (busy) return;
+      busy = true;
+      void buyNow(pd, form).finally(() => (busy = false));
+    },
+    true,
+  );
+}
+
+async function buyNow(pd: Pickday, form: HTMLFormElement) {
+  try {
+    await addForm(form);
+    await pd.refresh();
+    pd.api.notifyTheme();
+  } catch (e) {
+    // Couldn't add it (sold out, a required option missing…): the cart page shows what's wrong.
+    console.warn("[Pickday] buy it now", e);
+    location.href = cartUrl();
+    return;
+  }
+  if (!pd.blockingMessage()) {
+    await pd.flush();
+    location.href = checkoutUrl();
+    return;
+  }
+  openDateDialog(pd);
+}
+
+/** The date picker in a window, with "Continue to checkout". Without <dialog> support: the cart page. */
+function openDateDialog(pd: Pickday) {
+  if (typeof HTMLDialogElement === "undefined" || typeof HTMLDialogElement.prototype.showModal !== "function") {
+    location.href = cartUrl();
+    return;
+  }
+  const mount = h("div", { "data-pickday-mount": "dialog", class: "pickday" });
+  const go = h(
+    "button",
+    {
+      type: "button",
+      class: "pd-continue",
+      onclick: async () => {
+        if (!pd.canCheckout()) return;
+        go.disabled = true;
+        await pd.flush();
+        location.href = checkoutUrl();
+      },
+    },
+    pd.tx.t("buyNow.continue"),
+  );
+  const dialog: HTMLDialogElement = h(
+    "dialog",
+    { class: "pickday pd-dialog", dir: pd.tx.rtl ? "rtl" : "ltr", "aria-label": pd.tx.t("heading") },
+    h("button", { type: "button", class: "pd-dialog-close", "aria-label": pd.tx.t("buyNow.close"), onclick: () => dialog.close() }, svgClose()),
+    mount,
+    go,
+  );
+  // A dialog sits above the page with the browser's default white background: use the page's own colours.
+  const bg = [document.body, document.documentElement].map((el) => getComputedStyle(el).backgroundColor).find((c) => c && c !== "transparent" && !/rgba\(.*,\s*0\)$/.test(c));
+  dialog.style.background = bg ?? "#fff";
+  dialog.style.color = getComputedStyle(document.body).color;
+  dialog.style.setProperty("--pd-accent", pd.cfg.widget.accent);
+  dialog.style.setProperty("--pd-on-accent", onAccent(pd.cfg.widget.accent));
+  dialog.style.setProperty("--pd-radius", `${pd.cfg.widget.radius}px`);
+  dialog.addEventListener("close", () => {
+    pd.mounts.delete(mount);
+    dialog.remove();
+  });
+  document.body.append(dialog);
+  pd.mount(mount);
+  dialog.showModal();
+}
+
+function svgClose(): SVGSVGElement {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(ns, "path");
+  path.setAttribute("d", "M6 6l12 12M18 6L6 18");
+  svg.append(path);
+  return svg;
+}
 
 /** Put the picker next to a checkout button: above it, or below it (Appearance → Position). */
 function placeNear(pd: Pickday, checkout: Element, el: HTMLElement) {
@@ -261,7 +395,7 @@ function hideBuyNow(formId: string) {
   const form = formId ? document.getElementById(formId) : null;
   const scope = form ? `#${CSS.escape(formId)} ` : "";
   const style = document.createElement("style");
-  style.textContent = `${scope}.shopify-payment-button{display:none!important}`;
+  style.textContent = `${scope}.shopify-payment-button,${scope}shopify-accelerated-checkout{display:none!important}`;
   document.head.append(style);
 }
 

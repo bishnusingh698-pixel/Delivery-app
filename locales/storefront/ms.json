@@ -113,5 +113,7 @@
   "change.none": "Tiada tarikh lain yang tersedia buat masa ini. Sila hubungi kedai.",
   "change.saved": "Tarikh baharu disimpan",
   "change.taken": "Tarikh atau masa itu baru sahaja penuh. Sila pilih yang lain.",
-  "change.error": "Tarikh ini tidak boleh ditukar sekarang. Sila hubungi kedai."
+  "change.error": "Tarikh ini tidak boleh ditukar sekarang. Sila hubungi kedai.",
+  "buyNow.continue": "Teruskan ke pembayaran",
+  "buyNow.close": "Tutup"
 }

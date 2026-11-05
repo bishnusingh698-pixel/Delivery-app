@@ -113,5 +113,7 @@
   "change.none": "Momentálně nejsou k dispozici žádné jiné termíny. Kontaktujte prosím obchod.",
   "change.saved": "Nové datum bylo uloženo",
   "change.taken": "Tento termín nebo čas se právě zaplnil. Vyberte prosím jiný.",
-  "change.error": "Toto datum teď nelze změnit. Kontaktujte prosím obchod."
+  "change.error": "Toto datum teď nelze změnit. Kontaktujte prosím obchod.",
+  "buyNow.continue": "Pokračovat k pokladně",
+  "buyNow.close": "Zavřít"
 }

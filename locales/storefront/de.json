@@ -113,5 +113,7 @@
   "change.none": "Gerade sind keine anderen Termine frei. Bitte kontaktiere den Shop.",
   "change.saved": "Neues Datum gespeichert",
   "change.taken": "Dieser Termin ist gerade ausgebucht. Bitte wähle einen anderen.",
-  "change.error": "Dieses Datum kann gerade nicht geändert werden. Bitte kontaktiere den Shop."
+  "change.error": "Dieses Datum kann gerade nicht geändert werden. Bitte kontaktiere den Shop.",
+  "buyNow.continue": "Weiter zur Kasse",
+  "buyNow.close": "Schließen"
 }
