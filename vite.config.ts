@@ -15,8 +15,18 @@ if (
   delete process.env.HOST;
 }
 
-const host = new URL(process.env.SHOPIFY_APP_URL || "http://localhost")
-  .hostname;
+function appHost(): string {
+  const raw = process.env.SHOPIFY_APP_URL || "http://localhost";
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    // A clear line in the Render log instead of "TypeError: Invalid URL".
+    throw new Error(
+      `SHOPIFY_APP_URL must be the full app address, like https://your-service.onrender.com (got "${raw}"). Fix it in Render > your service > Environment, then redeploy.`,
+    );
+  }
+}
+const host = appHost();
 
 let hmrConfig;
 if (host === "localhost") {
