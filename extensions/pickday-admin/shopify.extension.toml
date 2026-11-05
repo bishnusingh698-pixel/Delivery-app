@@ -1,7 +1,8 @@
 api_version = "2026-07"
 
-# "Change delivery date" actions on orders and draft orders. The order page block is its own
-# extension (pickday-order-block): Shopify doesn't allow a block and actions together.
+# "Change delivery date" action on orders. Shopify allows one action target per extension and no
+# block next to it: the draft order action is pickday-draft-action, the order page block is
+# pickday-order-block (its button opens this action with navigate("extension:pickday-admin")).
 
 [[extensions]]
 name = "t:name"
@@ -11,7 +12,3 @@ type = "ui_extension"
 [[extensions.targeting]]
 module = "./src/ScheduleAction.tsx"
 target = "admin.order-details.action.render"
-
-[[extensions.targeting]]
-module = "./src/ScheduleAction.tsx"
-target = "admin.draft-order-details.action.render"
