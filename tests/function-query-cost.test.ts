@@ -45,7 +45,9 @@ const MARGIN = 2;
 describe("Function input query cost", () => {
   it("the model matches Shopify's figure for the query it rejected", () => {
     const hours = Array.from({ length: 23 }, (_, i) => `h${String(i + 1).padStart(2, "0")}: timeAfter(time: "${String(i + 1).padStart(2, "0")}:00:00")`).join("\n");
-    const old = readFileSync("extensions/pickday-validation/src/run.graphql", "utf8").replace(/localTime \{\s*date/, `localTime {\n date\n${hours}`);
+    const old = readFileSync("extensions/pickday-validation/src/run.graphql", "utf8")
+      .replace(/\s*cutoff[AB]: timeAfter\(time: \$cutoff[AB]\)/g, "")
+      .replace(/localTime \{\s*date/, `localTime {\n date\n${hours}`);
     expect(queryCost(old)).toBe(49); // Shopify said 50
   });
 

@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { customizeDelivery, minutesFromAliases, shiftTime, validate, type DeliveryConfig, type ValidationInput } from "../core/checkout";
+import { customizeDelivery, cutoffTimeChecks, minutesFromAliases, nowWindow, shiftTime, timeCheckVariables, validate, type DeliveryConfig, type ValidationInput } from "../core/checkout";
 import { toFunctionConfig } from "../core/publish";
 import type { Selection, StorefrontConfig } from "../core/types";
 import { config } from "./helpers";
@@ -219,5 +219,60 @@ describe("delivery customization Function", () => {
   it("does nothing when matching is off or there's no choice", () => {
     expect(run(sel(), { ...dc, enabled: false })).toEqual([]);
     expect(run(null)).toEqual([]);
+  });
+});
+
+describe("cut-off time checks (two timeAfter aliases)", () => {
+  // 2026-10-14 is a Wednesday; default schedule: Mon–Fri, 1 working day notice, cut-off 14:00.
+  const cfg = config((s) => (s.methods.shipping.dateRequired = true));
+  const withChecks = (answers: Record<string, boolean>, checks = cutoffTimeChecks(cfg, "2026-10-14")): ValidationInput => {
+    const base = vInput(cfg);
+    return {
+      ...base,
+      shop: { localTime: { date: "2026-10-14", ...answers } },
+      validation: { metafield: { jsonValue: { ...toFunctionConfig(cfg), timeChecks: checks } } },
+    };
+  };
+
+  it("uses today's cut-offs: method, same day, per weekday, other-zone pickup and zones", () => {
+    expect(cutoffTimeChecks(cfg, "2026-10-14")).toEqual([14 * 60, 1439]);
+    const busy = config((s) => {
+      s.methods.shipping.schedule.sameDay = { allowed: true, cutoff: "10:00" };
+      s.methods.shipping.schedule.cutoff = { time: "14:00", perWeekday: ["14:00", "14:00", "14:00", "12:00", "14:00", "14:00", "14:00"] };
+    });
+    expect(cutoffTimeChecks(busy, "2026-10-14")).toEqual([10 * 60, 12 * 60]); // Wednesday's own cut-off
+    const pickup = config((s) => {
+      s.methods.shipping.enabled = false;
+      s.methods.pickup.enabled = true;
+      s.methods.pickup.schedule.cutoff = { time: "16:00", perWeekday: null };
+      s.locations = [{ id: "l1", shopifyLocationId: null, name: "Lisbon", address: "", mapUrl: "", instructions: {}, timeZone: "Europe/Lisbon", enabled: true, countries: "all", custom: null }];
+    });
+    // Lisbon is an hour behind Berlin: 16:00 there is 17:00 in the shop's zone.
+    expect(cutoffTimeChecks(pickup, "2026-10-14", { l1: -60 })).toEqual([16 * 60, 17 * 60]);
+    expect(timeCheckVariables([14 * 60, 1439])).toEqual({ cutoffA: "14:00:00", cutoffB: "23:59:00" });
+  });
+
+  it("blocks an order whose cut-off passed while paying, and accepts it before", () => {
+    // Tomorrow (Thu) is bookable before 14:00 only.
+    expect(validate(withChecks({ cutoffA: false, cutoffB: false }), messages)).toEqual([]);
+    expect(validate(withChecks({ cutoffA: true, cutoffB: false }), messages).length).toBe(1);
+  });
+
+  it("never reads 'now' later than it is, so it can't block a valid order", () => {
+    for (let i = 0; i < 2000; i++) {
+      const now = Math.floor(Math.random() * 1440);
+      const checks = [Math.floor(Math.random() * 1440), Math.floor(Math.random() * 1440)].sort((a, b) => a - b);
+      const answers = { cutoffA: now >= checks[0], cutoffB: now >= checks[1] }; // what Shopify answers
+      const w = nowWindow({ date: "2026-10-14", ...answers }, checks);
+      expect(w.lo).toBeLessThanOrEqual(now);
+      expect(now).toBeLessThan(w.hi);
+    }
+  });
+
+  it("without answers or check times, treats the whole day as possible (lenient)", () => {
+    expect(nowWindow({ date: "2026-10-14" }, undefined)).toEqual({ lo: 0, hi: 1440 });
+    expect(nowWindow({ date: "2026-10-14", cutoffA: true }, undefined)).toEqual({ lo: 0, hi: 1440 });
+    // Older hourly aliases still narrow the window to that hour.
+    expect(nowWindow({ date: "2026-10-14", h13: true, h14: false }, undefined)).toEqual({ lo: 13 * 60, hi: 14 * 60 });
   });
 });
