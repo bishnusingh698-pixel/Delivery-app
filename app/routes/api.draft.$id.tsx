@@ -44,6 +44,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const method = body.method as MethodId;
   if (!METHOD_IDS.includes(method) || !isValidDate(body.date)) return cors(Response.json({ ok: false, reason: "invalid" }, { status: 400 }));
-  const r = await scheduleDraftOrder(session.shop, admin, String(params.id), { method, date: body.date as string, slotId: (body.slotId as string) ?? null, locationId: (body.locationId as string) ?? null }, { force: body.force === true });
+  const r = await scheduleDraftOrder(session.shop, admin, String(params.id), { method, date: body.date as string, slotId: typeof body.slotId === "string" ? body.slotId : null, locationId: typeof body.locationId === "string" ? body.locationId : null }, { force: body.force === true });
   return cors(Response.json(r, { status: r.ok ? 200 : 409 }));
 };

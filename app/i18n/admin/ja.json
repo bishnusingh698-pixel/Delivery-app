@@ -691,7 +691,7 @@
   "planOff.products": "商品ルール",
   "planOff.surcharges": "配達手数料",
   "plans.current": "現在のプラン",
-  "plans.devStore": "これは開発ストアのため、Proの全機能を無料で使えます。プランは実際のストアにアプリをインストールすると適用されます。",
+  "plans.devStore": "これは開発ストアのため、ここでのプラン料金はすべてテスト料金です。どのプランでも自由にお試しいただけます。請求は発生しません。",
   "plans.downgrade": "無料プランに切り替え",
   "plans.downgradeConfirm": "無料プランに切り替えますか？有料機能はすぐにオフになります（設定は保持され、再度アップグレードすると元に戻ります）。",
   "plans.feature.allMethods": "ローカルデリバリー、店舗受取、配送を同時に提供",

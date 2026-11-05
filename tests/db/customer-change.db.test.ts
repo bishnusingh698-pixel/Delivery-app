@@ -3,12 +3,12 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const token = { sub: "gid://shopify/Customer/77", dest: "https://test-customer.myshopify.com" };
 const calls: { query: string; variables: any }[] = [];
-const live = { customerId: "gid://shopify/Customer/77", cancelledAt: null as string | null, status: "UNFULFILLED" };
+const live = { cancelledAt: null as string | null, status: "UNFULFILLED" };
 const admin = {
   graphql: async (query: string, opts?: { variables?: any }) => {
     calls.push({ query, variables: opts?.variables });
     const data: any = {};
-    if (query.includes("order(id")) data.order = { customer: { id: live.customerId }, cancelledAt: live.cancelledAt, displayFulfillmentStatus: live.status, customAttributes: [] };
+    if (query.includes("order(id")) data.order = { cancelledAt: live.cancelledAt, displayFulfillmentStatus: live.status, customAttributes: [] };
     for (const m of ["orderUpdate", "tagsAdd", "tagsRemove", "metafieldsSet"]) if (query.includes(m)) data[m] = { userErrors: [] };
     return new Response(JSON.stringify({ data }));
   },
@@ -49,17 +49,26 @@ describe.skipIf(!process.env.DATABASE_URL)("customer date changes", async () => 
     s.customerChanges = { enabled: true, hoursBefore: 24, maxChanges: 1 };
     await prisma.settings.create({ data: { shop: SHOP, version: 1, data: s as any } });
     await prisma.scheduledOrder.create({
-      data: { shop: SHOP, orderId: "3001", orderName: "#3001", method: "shipping", date: "2027-03-10", itemCount: 1, items: [{ lineId: "1", productId: "1", variantId: "11", title: "Cake", variant: null, qty: 1, needsDate: true }] },
+      data: { shop: SHOP, orderId: "3001", orderName: "#3001", customerId: "77", method: "shipping", date: "2027-03-10", itemCount: 1, items: [{ lineId: "1", productId: "1", variantId: "11", title: "Cake", variant: null, qty: 1, needsDate: true }] },
     });
   });
   afterAll(cleanup);
 
   it("hides the order from another customer", async () => {
-    live.customerId = "gid://shopify/Customer/99";
+    token.sub = "gid://shopify/Customer/99";
     const r = await get();
     expect(r.status).toBe(404);
     expect(r.body).toEqual({ canChange: false, block: "notFound" });
-    live.customerId = "gid://shopify/Customer/77";
+    token.sub = "gid://shopify/Customer/77";
+  });
+
+  it("hides guest orders (no customer id recorded) and never asks Shopify for the customer", async () => {
+    await prisma.scheduledOrder.update({ where: { shop_orderId: { shop: SHOP, orderId: "3001" } }, data: { customerId: null } });
+    expect(await get()).toEqual({ status: 404, body: { canChange: false, block: "notFound" } });
+    await prisma.scheduledOrder.update({ where: { shop_orderId: { shop: SHOP, orderId: "3001" } }, data: { customerId: "77" } });
+    await get();
+    // Order.customer needs the read_customers scope, which Pickday doesn't ask for.
+    expect(calls.filter((c) => c.query.includes("order(id")).every((c) => !/customer\s*\{/.test(c.query))).toBe(true);
   });
 
   it("refuses once the order is fulfilled in Shopify", async () => {

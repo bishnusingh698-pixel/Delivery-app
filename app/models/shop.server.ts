@@ -61,8 +61,11 @@ export async function clearWarning(shop: string, code: string) {
   await prisma.shop.update({ where: { shop }, data: { warnings: list.filter((w) => w.code !== code) } });
 }
 
-export function planOf(row: Pick<Shop, "plan" | "isDevStore">): PlanId {
-  if (row.isDevStore) return "pro"; // development stores get everything for free
+/**
+ * The plan whose features apply. Development stores follow their (test) subscription like any
+ * other store, so the Free, Starter and Pro limits can be tried before launch.
+ */
+export function planOf(row: Pick<Shop, "plan">): PlanId {
   return (["free", "starter", "pro"].includes(row.plan) ? row.plan : "free") as PlanId;
 }
 

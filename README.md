@@ -32,7 +32,7 @@ It works on **every Shopify plan** (no Shopify Plus features: a theme app extens
 - **Customers change their own date** from their order in Shopify's customer accounts, until a deadline you set (for example 24 hours before), only to dates the cart would offer, with the same limits.
 - **Product rules**, **delivery fees**, **checkout matching**, **notifications** (date snippets for Shopify's order emails, calendar feed, Shopify Flow) and **import/export**.
 
-Plans: **Free** (every method, time slots, holidays, closed days, notes, daily summary, 1 pickup location, 50 scheduled orders a month), **Starter $7.99** (daily and per-slot limits, checkout matching, customer date changes, 3 locations, 500 orders), **Pro $14.99** (everything, unlimited). Development stores get Pro free.
+Plans: **Free** (every method, time slots, holidays, closed days, notes, daily summary, 1 pickup location, 50 scheduled orders a month), **Starter $7.99** (daily and per-slot limits, checkout matching, customer date changes, 3 locations, 500 orders), **Pro $14.99** (everything, unlimited). On development stores every plan charge is a test charge, so any plan can be tried (and reviewed) for free.
 
 ---
 
@@ -81,6 +81,8 @@ The tables are created automatically on the first start (`prisma migrate deploy`
 
 4. Click **Save changes** and wait for the deploy to say **Live**. Open `https://<your-service>.onrender.com/healthz`: it shows `ok`.
 
+If the deploy fails, open **Logs**. A line starting with `[pickday] setting problem:` names the variable that is missing or wrong (the server refuses to start without the required ones, instead of half-working). Warnings for `JOBS_SECRET`, `SUPPORT_EMAIL` and `BILLING_TEST` appear there too.
+
 ### 4. Connect the code to your app and deploy the extensions
 
 On your computer (needs [Node.js 22](https://nodejs.org) and Git):
@@ -98,7 +100,7 @@ npx shopify app config link        # choose the app from step 1; keep the existi
 npm run deploy                     # uploads the theme extension, both Functions, the thank-you, customer account and admin extensions, Flow triggers
 ```
 
-`npm run deploy` first writes your Render URL (from `shopify.app.toml`) into the customer account extension, then asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks) and the access scopes.
+`npm run deploy` first checks `shopify.app.toml` (it stops if `client_id` is empty, the URL is still the example `https://pickday.onrender.com`, or `redirect_urls` don't match `application_url`), then writes your Render URL (from `shopify.app.toml`) into the customer account extension, then asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks) and the access scopes.
 
 ### 5. Scheduled jobs and keep-awake (cron-job.org, free)
 
@@ -114,7 +116,7 @@ Click **Test run** on each: keep-awake answers `ok`, the others `started` (statu
 
 ### 6. Partner Dashboard settings
 
-1. **API access** → **Protected customer data access** → **Request access**. Select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason "Printed delivery day sheets and route sheets. Addresses, phone numbers and delivery instructions are read live when the merchant prints and never stored; only the order number and the customer's first name are stored." Answer the data protection questions with `PRIVACY.md`. Order webhooks need this approval to reach a live store.
+1. **API access** → **Protected customer data access** → **Request access**. Select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason "Printed delivery day sheets and route sheets. Addresses, phone numbers and delivery instructions are read live when the merchant prints and never stored; only the order number, the customer's first name and the customer ID (to let customers change their own date) are stored." Answer the data protection questions with `PRIVACY.md`. Order webhooks need this approval to reach a live store.
 2. **API access** → **Allow network access in checkout and account UI extensions** → **Allow network access**. The "Change date" button on the customer's order page (extension `pickday-customer-change`) calls your Render URL; without this approval Shopify doesn't let it load.
 3. **App setup** → **Embedded app**: on (already set by `shopify.app.toml`).
 4. **Distribution** → **Shopify App Store** (public). Charges are created by the app itself with Shopify's Billing API (Starter and Pro, 14-day trials), so leave Shopify's "Managed pricing" off and describe the three plans in the listing's pricing section.
@@ -122,6 +124,8 @@ Click **Test run** on each: keep-awake answers `ok`, the others `started` (statu
 ### 7. Test on a development store
 
 Partner Dashboard → **Stores** → **Add store** → **Development store**. Then your app → **Test your app** → choose the store → **Install**. The app opens on the setup wizard. Follow `CHECKLIST.md`.
+
+A development store starts on the Free plan, like a real store. To try Starter or Pro features, open **Settings → Plans** and click **Upgrade**: Shopify shows its approval page with a test charge, and nothing is billed. This is also how Shopify's reviewers check billing.
 
 ### 8. Before submitting to the App Store
 

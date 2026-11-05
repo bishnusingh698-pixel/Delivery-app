@@ -37,12 +37,13 @@ async function check(rawId: string | undefined, sub: string | undefined, dest: s
   const { settings } = await loadSettings(shop);
   if (!hasFeature(planOf(row), "customerChanges") || !settings.customerChanges.enabled) return { ok: false, status: 200, block: "off" };
   const existing = await prisma.scheduledOrder.findUnique({ where: { shop_orderId: { shop, orderId } } });
-  if (!existing) return { ok: false, status: 404, block: "notFound" };
+  // Only the order's own customer (id from the order webhook; reading it live would need read_customers).
+  if (!existing || !existing.customerId || existing.customerId !== numericId(sub)) return { ok: false, status: 404, block: "notFound" };
   const { admin } = await unauthenticated.admin(shop);
-  // Live from Shopify: who owns the order and whether it's still open.
-  const live = await gql(admin, `query($id: ID!) { order(id: $id) { customer { id } cancelledAt displayFulfillmentStatus } }`, { id: gid("Order", orderId) });
+  // Live from Shopify: whether it's still open.
+  const live = await gql(admin, `query($id: ID!) { order(id: $id) { cancelledAt displayFulfillmentStatus } }`, { id: gid("Order", orderId) });
   const o = live.order;
-  if (!o || !o.customer?.id || numericId(o.customer.id) !== numericId(sub)) return { ok: false, status: 404, block: "notFound" };
+  if (!o) return { ok: false, status: 404, block: "notFound" };
   const { config } = await storefrontConfigFor(shop);
   const timeZone = engineTimeZone(config, existing.method as MethodId, existing.locationId);
   let block = customerChangeBlock(settings.customerChanges, existing, timeZone);

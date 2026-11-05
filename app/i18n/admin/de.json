@@ -691,7 +691,7 @@
   "planOff.products": "Produktregeln",
   "planOff.surcharges": "Liefergebühren",
   "plans.current": "Aktueller Tarif",
-  "plans.devStore": "Dies ist ein Entwicklungsshop, daher sind hier alle Pro-Funktionen kostenlos. Tarife gelten, sobald die App in einem echten Shop installiert ist.",
+  "plans.devStore": "Dies ist ein Entwicklungsshop, daher sind alle Tarifgebühren hier Testgebühren: Wähle einen beliebigen Tarif zum Ausprobieren, es wird nichts berechnet.",
   "plans.downgrade": "Zu Free wechseln",
   "plans.downgradeConfirm": "Zu Free wechseln? Kostenpflichtige Funktionen werden sofort deaktiviert (deine Einstellungen bleiben erhalten und kommen bei einem erneuten Upgrade zurück).",
   "plans.feature.allMethods": "Lokale Zustellung, Abholung und Versand zusammen",

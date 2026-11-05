@@ -6,10 +6,10 @@ Pickday ("the app") helps Shopify merchants let their customers choose a deliver
 
 ## Short version
 
-- Pickday stores **the order number, the customer's first name, the items and the chosen date, time slot, method and delivery area** for each scheduled order. Nothing else about customers.
+- Pickday stores **the order number, the customer's first name, the customer's Shopify customer ID (a number, for orders placed with a customer account), the items and the chosen date, time slot, method and delivery area** for each scheduled order. Nothing else about customers: no email, phone number or address.
 - **Addresses and phone numbers are never stored.** They're read from Shopify only at the moment a merchant prints a day sheet or route sheet, and discarded right after.
 - **Pickday sends no emails at all**, neither to customers nor to merchants. Shopify keeps sending its own order emails. If a merchant sets up the optional daily summary, Shopify Flow (in the merchant's own store) sends it to the merchant's staff; it contains order totals, not customer details.
-- **Customers can change their own date** (if the merchant allows it) from their order page in Shopify's customer accounts. Pickday checks the order belongs to the signed-in customer by asking Shopify at that moment; it doesn't store the customer's ID or email.
+- **Customers can change their own date** (if the merchant allows it) from their order page in Shopify's customer accounts. Pickday checks the order belongs to the signed-in customer by comparing their Shopify customer ID with the one Shopify sent with the order. It doesn't store the customer's email.
 - Data is deleted automatically: everything for a store 48 hours after it uninstalls (when Shopify sends the deletion request), and old orders 400 days after their date.
 - No tracking, no analytics, no advertising, no selling of data. The storefront widget sets no cookies.
 
@@ -20,7 +20,7 @@ Pickday ("the app") helps Shopify merchants let their customers choose a deliver
 | Store domain, name, time zone, language, currency, country, Shopify plan type | Merchant | To run the app in the store's language and time zone | Until uninstall + 48 h |
 | Pickday settings (methods, schedules, locations, areas, texts…) | Merchant | The app's configuration | Until uninstall + 48 h |
 | Name of the staff member who changed something | Merchant staff | Change history ("who moved this order") | 180 days |
-| Order number, customer first name, items, chosen date, slot, method, pickup location, delivery area or postcode | Customer | Order lists, capacity counting, calendars, printed sheets | 400 days after the delivery date, or until uninstall + 48 h |
+| Order number, customer first name, Shopify customer ID, items, chosen date, slot, method, pickup location, delivery area or postcode | Customer | Order lists, capacity counting, calendars, printed sheets | 400 days after the delivery date, or until uninstall + 48 h |
 | Customer name, address, phone, order note, delivery instructions | Customer | Printed day and route sheets only | **Not stored** (read live from Shopify when printing) |
 | Shopper's cart choice (date, slot, method, postcode, optional delivery instructions) | Customer | Saved by Shopify as cart attributes so checkout and the order know the choice | Held by Shopify, not by Pickday |
 
@@ -42,7 +42,7 @@ If a merchant creates a calendar feed, anyone with its secret address can read t
 Customers ask the merchant, who asks Shopify. Shopify then sends Pickday:
 
 - **Data request:** Pickday records which of its stored orders belong to the customer (order number, first name, schedule) so the merchant can provide them.
-- **Redaction request:** Pickday removes the customer's first name, delivery postcode/area and change history from those orders.
+- **Redaction request:** Pickday removes the customer's first name, customer ID, delivery postcode/area and change history from those orders (the orders Shopify lists, and any other order with that customer's ID).
 - **Shop deletion (48 hours after uninstall):** Pickday deletes everything it holds for that store.
 
 ## Security

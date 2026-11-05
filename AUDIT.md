@@ -55,6 +55,21 @@ Checked and **not** bugs: cutoff boundary (`>=` at exactly the cutoff = next day
 
 Known limitation kept (DECISIONS D-09): two shoppers can book the last spot within the same few seconds; counts republish ~3 s after each order and the Function re-checks at checkout. A hard reservation would need the server during checkout (not free-tier safe).
 
+### Round 3: production readiness (App Store review and Render deploys)
+
+| # | Sev | Where | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| B35 | C | `app/routes/app.plans.tsx`, `app/models/shop.server.ts`, `app/services/billing.server.ts` | Development stores got Pro for free and the Upgrade/Downgrade buttons were hidden, so Shopify's reviewers (who test on development stores) could not try billing: a common rejection. With `BILLING_TEST=false` a charge on a development store would also have failed (they accept only test charges). | Development stores always use test charges and follow their real subscription; the buttons are shown everywhere. Banner text updated in 8 languages. `tests/billing.test.ts`. | ✅ |
+| B36 | C | `app/routes/api.customer.order.$id.tsx`, `app/services/reschedule.server.ts` | Both read `order.customer`, which needs the `read_customers` scope that Pickday doesn't request: customer date changes and the admin "Change date" for unrecorded orders could fail with "Access denied". | The customer's id is stored from the order webhook (new column `customerId`, migration `20261105000000_order_customer_id`) and compared with the session token; the first name comes from the order's addresses. Privacy webhooks also redact and report by customer id. DB tests updated. | ✅ |
+| B37 | M | `app/routes/_index/route.tsx` | The public page asked for the myshopify.com address, which App Store apps may not do. | Form removed; install and login go through Shopify only. | ✅ |
+| B38 | M | `app/config/brand.ts`, `app/routes/app.help.tsx` | Without `SUPPORT_EMAIL` the app showed the made-up address `support@pickday.app`. | No fallback address; the contact links are hidden until the setting is filled, and the server logs a warning. | ✅ |
+| B39 | M | `server.mjs` | A missing or mistyped Render variable gave a half-working app (failed installs, wrong plan return link, Home checklist never green); a trailing slash in `SHOPIFY_APP_URL` broke redirects. | Startup check: refuses to start with a clear `[pickday] setting problem:` line for each missing required setting; trims the trailing slash; warns about `JOBS_SECRET`, `SUPPORT_EMAIL`, `BILLING_TEST=true`. | ✅ |
+| B40 | M | `server.mjs` | An unhandled promise rejection stops Node; Render's SIGTERM on each deploy cut requests in flight. | Process-wide rejection logger; graceful shutdown (stop accepting, finish open requests, exit within 20 s). | ✅ |
+| B41 | M | `package.json` `deploy`, `scripts/check-deploy-config.mjs` | `npm run deploy` happily uploaded the example URL `https://pickday.onrender.com`, making the customer "Change date" button call someone else's server. | Pre-deploy check: stops on an empty `client_id`, the example URL, or `redirect_urls` that don't match `application_url`. | ✅ |
+| B42 | m | `app/routes/api.draft.$id.tsx` | `slotId`/`locationId` from the request body weren't type-checked. | Only strings are accepted, as in the order route. | ✅ |
+
+Verified: typecheck, lint (0 errors), 350 tests including the 15 database tests against Postgres 16, build, browser tests, and a smoke test of the built server (`/healthz` 200, bad webhook signature 401, jobs without secret 403, missing settings stop the start with a clear message, SIGTERM shuts down cleanly).
+
 ## 2. UX problems
 
 Admin

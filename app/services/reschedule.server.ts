@@ -59,7 +59,8 @@ async function orderItems(shop: string, admin: AdminGraphql, orderId: string, ex
   if (existing) return { name: existing.orderName, first: existing.customerFirst, items: existing.items as unknown as StoredItem[] };
   const data = await gql(
     admin,
-    `query($id: ID!) { order(id: $id) { name customer { firstName } lineItems(first: 100) { nodes { id title variantTitle quantity: currentQuantity requiresShipping isGiftCard product { id } variant { id } } } } }`,
+    // First name from the order's own addresses: the customer object would need the read_customers scope.
+    `query($id: ID!) { order(id: $id) { name billingAddress { firstName } shippingAddress { firstName } lineItems(first: 100) { nodes { id title variantTitle quantity: currentQuantity requiresShipping isGiftCard product { id } variant { id } } } } }`,
     { id: gid("Order", orderId) },
   );
   const o = data.order;
@@ -75,7 +76,8 @@ async function orderItems(shop: string, admin: AdminGraphql, orderId: string, ex
       qty: l.quantity,
       needsDate: l.requiresShipping && !l.isGiftCard,
     }));
-  return { name: o.name as string, first: (o.customer?.firstName as string | null) ?? null, items };
+  const first = ((o.shippingAddress?.firstName || o.billingAddress?.firstName) as string | null | undefined)?.trim() || null;
+  return { name: o.name as string, first, items };
 }
 
 /** Calendar for the admin date picker, with this order's own counts released. */
@@ -163,7 +165,7 @@ export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderI
   assertNoUserErrors(res.orderUpdate, "orderUpdate");
 
   if (!saved.limited) {
-    await writeToShopify(shop, admin, settings, { orderId, orderName: info.name, customerFirst: info.first, selection: sel, method: choice.method, date: choice.date, slotId: saved.slotId, slotLabel, locationId: saved.locationId, zoneId: saved.zoneId, area: saved.area, status: "scheduled", items: info.items, itemCount: saved.itemCount, perItem: [], updatedAt: null, shippingTitle: null }, existing?.tags ?? []);
+    await writeToShopify(shop, admin, settings, { orderId, orderName: info.name, customerFirst: info.first, customerId: existing?.customerId ?? null, selection: sel, method: choice.method, date: choice.date, slotId: saved.slotId, slotLabel, locationId: saved.locationId, zoneId: saved.zoneId, area: saved.area, status: "scheduled", items: info.items, itemCount: saved.itemCount, perItem: [], updatedAt: null, shippingTitle: null }, existing?.tags ?? []);
     await flowTrigger(shop, admin, existing ? "rescheduled" : "scheduled", saved).catch(() => {});
   }
   await logActivity(shop, "order", `${info.name}: ${existing?.date ?? "no date"} → ${choice.date}${slotLabel ? ` ${slotLabel}` : ""}${opts.force ? " (override)" : ""}`, opts.actor ?? null);

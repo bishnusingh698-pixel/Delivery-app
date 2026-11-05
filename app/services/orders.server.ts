@@ -45,6 +45,7 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
   const data = {
     orderName: parsed.orderName,
     customerFirst: parsed.customerFirst,
+    customerId: parsed.customerId,
     method: keepAdminDate ? existing!.method : parsed.method,
     date: keepAdminDate ? existing!.date : parsed.date,
     slotId: keepAdminDate ? existing!.slotId : parsed.slotId,
@@ -68,7 +69,7 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     existing.itemCount === data.itemCount &&
     stable(existing.items) === stable(data.items);
   if (same) {
-    await prisma.scheduledOrder.update({ where: { id: existing!.id }, data: { sourceUpdatedAt: data.sourceUpdatedAt } });
+    await prisma.scheduledOrder.update({ where: { id: existing!.id }, data: { sourceUpdatedAt: data.sourceUpdatedAt, customerId: data.customerId } });
     return "unchanged";
   }
 
@@ -204,6 +205,7 @@ export async function releaseLimited(shop: string, admin: AdminGraphql, since: D
           orderId: o.orderId,
           orderName: o.orderName,
           customerFirst: o.customerFirst,
+          customerId: o.customerId,
           selection: null,
           method: o.method as ParsedOrder["method"],
           date: o.date,

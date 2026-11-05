@@ -23,6 +23,13 @@ describe("order parsing", () => {
     expect(p.items.map((i) => i.needsDate)).toEqual([true, false]);
   });
 
+  it("keeps the customer's numeric id (who may change the date) and nothing for guests", () => {
+    expect(parseOrder(order({ customer: { id: 555, first_name: "Ana" } }), settings())!.customerId).toBe("555");
+    expect(parseOrder(order({ customer: { id: "gid://shopify/Customer/555" } }), settings())!.customerId).toBe("555");
+    expect(parseOrder(order({ customer: null }), settings())!.customerId).toBeNull();
+    expect(parseOrder(order({ customer: { id: "x; drop" } }), settings())!.customerId).toBeNull();
+  });
+
   it("ignores orders without a Pickday choice", () => {
     expect(parseOrder(order({ note_attributes: [] }), settings())).toBeNull();
   });

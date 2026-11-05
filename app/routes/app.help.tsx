@@ -160,14 +160,16 @@ export default function HelpPage() {
         </Stack>
       </Section>
 
-      <Section heading={t("help.contactHeading")}>
-        <Stack gap="small-200">
-          <s-text>{t("help.contactText")}</s-text>
-          <Button href={`mailto:${support}?subject=${encodeURIComponent("Pickday help: " + diag.shop)}&body=${encodeURIComponent("\n\n---\n" + diagText)}`} target="_blank">
-            {t("help.email", { email: support })}
-          </Button>
-        </Stack>
-      </Section>
+      {support ? (
+        <Section heading={t("help.contactHeading")}>
+          <Stack gap="small-200">
+            <s-text>{t("help.contactText")}</s-text>
+            <Button href={`mailto:${support}?subject=${encodeURIComponent("Pickday help: " + diag.shop)}&body=${encodeURIComponent("\n\n---\n" + diagText)}`} target="_blank">
+              {t("help.email", { email: support })}
+            </Button>
+          </Stack>
+        </Section>
+      ) : null}
     </Page>
   );
 }

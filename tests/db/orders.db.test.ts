@@ -22,7 +22,7 @@ describe.skipIf(!hasDb)("recording orders", async () => {
     name: `#${id}`,
     updated_at: updated,
     note_attributes: [{ name: "_pickday", value: sel(d) }],
-    customer: { first_name: "Ana" },
+    customer: { id: 4242, first_name: "Ana" },
     line_items: [{ id: id * 10, product_id: 1, variant_id: 11, title: "Cake", quantity: 2 }],
     ...extra,
   });
@@ -66,6 +66,7 @@ describe.skipIf(!hasDb)("recording orders", async () => {
     const row = await prisma.scheduledOrder.findFirst({ where: { shop: SHOP, orderId: "2" } });
     expect(row?.limited).toBe(true);
     expect(await count("2026-10-21")).toBe(1);
+    expect(row?.customerId).toBe("4242"); // who may change the date from their account
   });
 
   it("counts a per-item order once, not twice", async () => {

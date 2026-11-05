@@ -19,18 +19,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // Shopify is the source of truth: mirror the active subscription on every visit.
   let plan = ctx.plan;
   try {
-    const check = await billing.check({ plans: [PLAN_STARTER, PLAN_PRO], isTest: billingTest() });
+    const check = await billing.check({ plans: [PLAN_STARTER, PLAN_PRO], isTest: billingTest(ctx.row) });
     const sub = check.appSubscriptions[0] ?? null;
     const change = await applySubscription(ctx.shop, sub ? { id: sub.id, name: sub.name, status: sub.status } : null);
     if (change) {
-      plan = ctx.row.isDevStore ? "pro" : change.to;
+      plan = change.to;
       await releaseAfterUpgrade(ctx.shop, ctx.admin, change);
     }
   } catch (e) {
     console.error("[plans] billing check", (e as Error).message);
   }
   const usage = await monthlyUsage(ctx.shop, { ...ctx.row, plan });
-  return { plan, devStore: ctx.row.isDevStore, usage, test: billingTest() };
+  return { plan, devStore: ctx.row.isDevStore, usage, test: billingTest(ctx.row) };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -38,7 +38,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { billing, redirect } = await authenticate.admin(request);
   const form = await request.formData();
   const intent = String(form.get("intent"));
-  const isTest = billingTest();
+  const isTest = billingTest(ctx.row);
   if (intent === "starter" || intent === "pro") {
     const handle = ctx.shop.replace(".myshopify.com", "");
     const returnUrl = `https://admin.shopify.com/store/${handle}/apps/${process.env.SHOPIFY_APP_HANDLE ?? "pickday"}/app/plans`;
@@ -110,7 +110,7 @@ export default function PlansPage() {
                   ))}
                 </s-unordered-list>
                 {p.id !== "free" ? <s-text color="subdued">{t("plans.trial")}</s-text> : null}
-                {devStore ? null : current ? (
+                {current ? (
                   <Button disabled>{t("plans.current")}</Button>
                 ) : (
                   <Button variant={p.id === "pro" ? "primary" : "secondary"} loading={busy === p.id} onClick={() => choose(p.id)}>
