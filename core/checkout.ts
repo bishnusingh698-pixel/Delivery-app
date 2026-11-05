@@ -57,21 +57,16 @@ export interface ValidationError {
 
 const tail = (gid: string | undefined) => (gid ? gid.slice(gid.lastIndexOf("/") + 1) : "");
 
-/** Current minutes in the shop zone, floored to the hour (from `hNN: timeAfter(...)` aliases). */
+/**
+ * Current minutes in the shop zone, floored to the hour, from optional `hNN: timeAfter(...)` aliases.
+ * The validation input query asks for the date only (23 hourly checks would cost 23 of Shopify's
+ * 30-point input query limit), so this is 0 in production: the start of the day, the most lenient
+ * reading. Cut-offs are enforced to the minute by the widget before checkout (D-24).
+ */
 export function minutesFromAliases(localTime: Record<string, unknown> | undefined): number {
   let m = 0;
   for (let h = 1; h < 24; h++) if (localTime?.[`h${String(h).padStart(2, "0")}`] === true) m = h * 60;
   return m;
-}
-
-/** The hourly aliases for the input query (kept in sync with minutesFromAliases). */
-export function timeAliasesGraphql(): string {
-  const out: string[] = [];
-  for (let h = 1; h < 24; h++) {
-    const hh = String(h).padStart(2, "0");
-    out.push(`h${hh}: timeAfter(time: "${hh}:00:00")`);
-  }
-  return out.join("\n        ");
 }
 
 export function textFor(messages: Messages, overrides: StorefrontConfig["texts"] | undefined, language: string | undefined, key: string): string {

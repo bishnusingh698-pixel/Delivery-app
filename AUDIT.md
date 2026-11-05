@@ -95,6 +95,13 @@ Checked and correct: Friday–Saturday (Gulf, Israel), Thursday–Friday (Iran) 
 | B52 | M | wizard and Settings country lists | Only countries in the holiday dataset could be chosen: stores in Kuwait, Qatar, Oman, Jordan, Lebanon, Iraq or Nepal couldn't pick their country (or get its weekend). | Every country and territory a store can be in (`ALL_COUNTRIES`: 243 ISO codes = 193 UN members, 2 observer states, inhabited territories like Hong Kong or Puerto Rico, and Kosovo); holiday availability checked separately. | ✅ |
 | B53 | m | Home | The yearly "turn on holidays" offer also appeared for countries with no holiday list, and right after a "no" in the wizard. | Not shown in either case. | ✅ |
 
+### Round 6: first deploy
+
+| # | Sev | Where | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| B54 | C | `extensions/pickday-validation/src/run.graphql` | `shopify app deploy` refused the validation Function: "Query has complexity of 50, which exceeds max complexity of 30". The 23 hourly `timeAfter` checks cost 23 points; local tests can't see Shopify's limit. | Date only (cost about 27). The Function no longer blocks for a passed cut-off; the widget does that to the minute (D-02, D-24). `tests/function-query-cost.test.ts` estimates both queries' cost and size so this can't come back. | ✅ |
+| B55 | M | build / deploy | Render: Node 22.12 too old for a dependency (EBADENGINE); a placeholder `SHOPIFY_APP_URL` gave "Invalid URL". | Node 22.23.4; clear build error (pull requests #7, #8). | ✅ |
+
 ## 2. UX problems
 
 Admin
