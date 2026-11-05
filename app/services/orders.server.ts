@@ -157,14 +157,19 @@ export async function writeToShopify(shop: string, admin: AdminGraphql, settings
   await prisma.scheduledOrder.update({ where: { shop_orderId: { shop, orderId: o.orderId } }, data: { tags } });
 }
 
-/** Has this webhook delivery been processed already? Records it if not. */
+/**
+ * Has this webhook delivery been processed already? Records it if not. Only "this id is already
+ * recorded" (unique constraint, P2002) means a duplicate: any other database error is thrown, so
+ * the webhook is answered with an error and Shopify delivers it again instead of it being dropped.
+ */
 export async function firstDelivery(id: string | null, shop: string, topic: string): Promise<boolean> {
   if (!id) return true;
   try {
     await prisma.webhookLog.create({ data: { id, shop, topic } });
     return true;
-  } catch {
-    return false;
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") return false;
+    throw e;
   }
 }
 

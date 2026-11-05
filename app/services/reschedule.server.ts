@@ -14,6 +14,7 @@ import { buildAvailability, recountDates, toLine, type StoredItem } from "./coun
 import { flowTrigger } from "./flow.server";
 import { assertNoUserErrors, gid, gql, numericId, type AdminGraphql } from "./graphql.server";
 import { writeToShopify } from "./orders.server";
+import { withLock } from "./lock.server";
 import { storefrontConfigFor, schedulePublish } from "./publish.server";
 import { engineTimeZone, findSlot } from "../../core/engine";
 import { attributeDate } from "../../core/dateformat";
@@ -115,7 +116,13 @@ export async function getOrderSchedule(shop: string, admin: AdminGraphql, orderI
  * (merchant override). Writes our record, recounts, updates the order's
  * attributes, tags and metafield in Shopify, and fires the Flow trigger.
  */
-export async function setOrderSchedule(shop: string, admin: AdminGraphql, orderId: string, choice: ScheduleChoice, opts: { force?: boolean; actor?: string | null } = {}) {
+export function setOrderSchedule(shop: string, admin: AdminGraphql, orderId: string, choice: ScheduleChoice, opts: { force?: boolean; actor?: string | null } = {}) {
+  // One change per store at a time, shared with the order webhooks: two staff members or customers
+  // can't both take the last place in a slot, and a webhook can't overwrite a change half-way.
+  return withLock(`order:${shop}`, () => applyOrderSchedule(shop, admin, orderId, choice, opts));
+}
+
+async function applyOrderSchedule(shop: string, admin: AdminGraphql, orderId: string, choice: ScheduleChoice, opts: { force?: boolean; actor?: string | null }) {
   const existing = await prisma.scheduledOrder.findUnique({ where: { shop_orderId: { shop, orderId } } });
   const info = await orderItems(shop, admin, orderId, existing);
   const lines = info.items.filter((i) => i.needsDate !== false).map(toLine);

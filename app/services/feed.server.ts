@@ -5,7 +5,8 @@ import { addDays } from "../../core/civil";
 import { icsCalendar, icsEvent } from "../../core/calendar";
 import type { MethodId } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
-import { shopToday } from "../models/shop.server";
+import { planOf, shopToday } from "../models/shop.server";
+import { hasFeature } from "../../core/publish";
 import { adminT } from "./admin-t.server";
 import type { StoredItem } from "./counts.server";
 
@@ -18,6 +19,8 @@ export async function regenerateFeedToken(shop: string) {
 export async function feedFor(token: string): Promise<string | null> {
   const row = await prisma.shop.findUnique({ where: { feedToken: token } });
   if (!row?.active) return null;
+  // A Pro feature: after a downgrade the feed stops (the link works again after an upgrade).
+  if (!hasFeature(planOf(row), "calendarFeed")) return null;
   const { settings } = await loadSettings(row.shop);
   const { t } = await adminT(row);
   const today = shopToday(row);

@@ -2,7 +2,7 @@
 name = "Daily schedule"
 handle = "pickday-flow-daily"
 type = "flow_trigger"
-description = "Once a day at the time set in Pickday: the orders scheduled for today or tomorrow. Add a Send internal email action to get a free daily summary."
+description = "Once a day at the hour set in Pickday: the orders for today or tomorrow. Add a Send internal email action for a free daily summary."
 
 [settings]
 

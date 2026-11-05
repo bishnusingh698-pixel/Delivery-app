@@ -6,10 +6,11 @@ import prisma from "../db.server";
 import { unauthenticated } from "../shopify.server";
 import { addDays } from "../../core/civil";
 import { nowInZone } from "../../core/tz";
-import { toFunctionConfig, toStorefrontConfig } from "../../core/publish";
+import { deliveryConfig, fitDeliveryConfig, fitFunctionConfig, ruleVariables, toStorefrontConfig, utf8Bytes } from "../../core/publish";
+
+export { deliveryConfig, fitDeliveryConfig, ruleVariables };
 import { cutoffTimeChecks, timeCheckVariables } from "../../core/checkout";
 import { holidayClosuresFor, holidayRegions } from "./holidays.server";
-import { targetIsEmpty } from "../../core/rules";
 import type { Settings, StorefrontConfig } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
 import { addWarning, clearWarning, flagsOf, planOf, requireShop, shopToday } from "../models/shop.server";
@@ -89,20 +90,6 @@ export async function ensureFunctions(shop: string, admin: AdminGraphql, setting
   return { validationId, deliveryCustomizationId };
 }
 
-/** Collect every tag and collection id used by rules (Function input variables). */
-export function ruleVariables(cfg: StorefrontConfig) {
-  const tags = new Set<string>();
-  const cols = new Set<string>();
-  const pr = cfg.productRules;
-  const targets = [pr.exclude, ...pr.extraLead.map((r) => r.target), ...pr.restrictions.map((r) => r.target), ...pr.limits.map((r) => r.target), ...pr.methodOnly.map((r) => r.target)];
-  for (const t of targets) {
-    if (targetIsEmpty(t)) continue;
-    t.tags.forEach((g) => tags.add(g));
-    t.collections.forEach((c) => cols.add(`gid://shopify/Collection/${c}`));
-  }
-  return { ruleTags: [...tags].slice(0, 100), ruleCollections: [...cols].slice(0, 100) };
-}
-
 export interface PublishResult {
   config: StorefrontConfig;
   bytes: { config: number; availability: number; fn: number };
@@ -143,18 +130,17 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   const client = admin ?? (await unauthenticated.admin(shop)).admin;
   const { row, settings, config, today } = await storefrontConfigFor(shop);
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
-  const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null; tzShift?: Record<string, number>; timeChecks?: number[] } = toFunctionConfig(config);
   // The Function only knows the shop's local time; pickup locations in other zones get an offset (republished hourly, so DST is followed).
   const tzShift = locationTimeShifts(config);
-  if (Object.keys(tzShift).length) fnConfig.tzShift = tzShift;
   // The two "is it past HH:MM?" checks: today's cut-offs. The times go into the config and the
   // query variables in the same metafieldsSet call below (all or nothing), so they always match.
   const timeChecks = cutoffTimeChecks(config, today, tzShift);
-  fnConfig.timeChecks = timeChecks;
   // With the app embed off there is no date picker, so the Function must not require a date.
-  if (flagsOf(row).embedDetected === false) (fnConfig as { embedOff?: boolean }).embedOff = true;
-  // Capacity counts go to the Function too when they fit (otherwise it skips the "full" check, D-11).
-  fnConfig.avail = JSON.stringify(fnConfig).length + JSON.stringify(availability).length < 24000 ? availability : null;
+  const embedOff = flagsOf(row).embedDetected === false;
+  // As much of the check as fits in Shopify's 10,000-byte Function metafield limit (D-70); the
+  // capacity counts go first when it's tight (the Function then skips the "full" check, D-11).
+  const fn = fitFunctionConfig(config, { avail: availability, tzShift, timeChecks, embedOff });
+  const fnConfig = fn.config;
   const vars = { ...ruleVariables(config), ...timeCheckVariables(timeChecks) };
 
   const owners = await appInstallationId(shop, client);
@@ -198,7 +184,7 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
     fnFields.push({ ownerId: ids.validationId, namespace: FN_NAMESPACE, key: "vars", type: "json", value: json(vars) });
   }
   if (ids.deliveryCustomizationId) {
-    fnFields.push({ ownerId: ids.deliveryCustomizationId, namespace: FN_NAMESPACE, key: "config", type: "json", value: json(deliveryConfig(config, settings)) });
+    fnFields.push({ ownerId: ids.deliveryCustomizationId, namespace: FN_NAMESPACE, key: "config", type: "json", value: json(fitDeliveryConfig(deliveryConfig(config, settings))) });
   }
   if (fnFields.length) {
     const fnRes = await write(fnFields);
@@ -209,9 +195,13 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
     }
   }
 
-  const bytes = { config: json(config).length, availability: json(availability).length, fn: json(fnConfig).length };
-  if (bytes.config > CONFIG_WARN_BYTES || fnConfig.trimmed) await addWarning(shop, "configLarge", String(bytes.config));
+  const bytes = { config: utf8Bytes(config), availability: utf8Bytes(availability), fn: fn.bytes };
+  // Postcode areas or the merchant's checkout wording left out: dates are still checked at checkout.
+  if (bytes.config > CONFIG_WARN_BYTES || fn.level === "noAreas" || fn.level === "noTexts") await addWarning(shop, "configLarge", String(bytes.config));
   else await clearWarning(shop, "configLarge");
+  // Only "is a date chosen?" (or nothing) is checked at checkout: the merchant must know (D-70).
+  if (fn.level === "dateOnly" || fn.level === "off") await addWarning(shop, "checkoutLimited", fn.level);
+  else await clearWarning(shop, "checkoutLimited");
   await prisma.shop.update({ where: { shop }, data: { publishedAt: new Date(), publishedFor: today, countsDirty: false } });
   return { config, bytes };
 }
@@ -224,24 +214,6 @@ export function thankYouConfig(config: StorefrontConfig) {
     tz: config.tz,
     // Pickup instructions per location and language.
     ins: Object.fromEntries(config.locations.filter((l) => Object.values(l.instructions).some(Boolean)).map((l) => [l.id, l.instructions])),
-  };
-}
-
-/** Delivery customization Function config: only what it needs. */
-export function deliveryConfig(config: StorefrontConfig, settings: Settings) {
-  return {
-    enabled: config.checkoutMatching.enabled,
-    rename: config.checkoutMatching.renameWithDate,
-    renameShipping: settings.checkoutMatching.renameShipping,
-    rateMap: settings.checkoutMatching.rateMap.map((r) => ({ title: r.title.trim().toLowerCase(), method: r.method })),
-    locations: config.locations.map((l) => ({ id: l.id, name: l.name })),
-    names: Object.fromEntries(config.methods.map((m) => [m.id, m.names])),
-    texts: Object.fromEntries(
-      Object.entries(config.texts).map(([loc, map]) => [
-        loc,
-        Object.fromEntries(Object.entries(map).filter(([k]) => k.startsWith("checkout."))),
-      ]),
-    ),
   };
 }
 
