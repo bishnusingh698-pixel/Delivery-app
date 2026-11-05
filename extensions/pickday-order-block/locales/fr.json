@@ -1,0 +1,17 @@
+{
+  "name": "Pickday",
+  "blockHeading": "Date de livraison",
+  "none": "Aucune date de livraison choisie pour cette commande.",
+  "notNeeded": "Rien dans cette commande ne nécessite de date.",
+  "change": "Modifier la date",
+  "set": "Définir la date",
+  "method": "Mode",
+  "status": "Statut",
+  "statusScheduled": "Planifiée",
+  "statusFulfilled": "Traitée",
+  "statusCancelled": "Annulée",
+  "limited": "Enregistrée mais non balisée : la limite mensuelle du forfait est atteinte.",
+  "changed": "Modifications : {{count}}. Dernière : {{from}} → {{to}}",
+  "loading": "Chargement…",
+  "error": "Impossible de charger le planning. Veuillez réessayer."
+}

@@ -1,0 +1,13 @@
+api_version = "2026-07"
+
+# The "Delivery date" block on the order page. Shopify doesn't allow a block and actions in one
+# extension, so the "Change delivery date" actions live in pickday-admin (the block's button opens
+# them with navigate("extension:pickday-admin")).
+[[extensions]]
+name = "t:name"
+handle = "pickday-order-block"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/OrderBlock.tsx"
+target = "admin.order-details.block.render"
