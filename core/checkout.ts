@@ -5,19 +5,88 @@
  *  - validate():          cart.validations.generate.run (the backstop)
  *  - customizeDelivery(): cart.delivery-options.transform.run (checkout matching)
  */
-import { checkSelection, type EngineInput } from "./engine";
+import { checkSelection, cutoffFor, type EngineInput } from "./engine";
 import { format } from "./i18n/format";
 import { matchLocale } from "./i18n/locales";
 import { addDays } from "./civil";
 import { areaCovered, datedLines, findZone, methodsFor } from "./rules";
 import { ATTR_KEY, decodeItemSelection, decodeSelection } from "./selection";
-import type { Availability, CartLine, MethodId, Selection, StorefrontConfig } from "./types";
+import type { Availability, CartLine, MethodId, Schedule, Selection, StorefrontConfig } from "./types";
 
 export type Messages = Record<string, Record<string, string>>;
 
 /** tzShift: minutes to add to the shop's local time to get each pickup location's own local time (set at publish, refreshed hourly). */
 /** embedOff: the app embed was found switched off in the live theme, so shoppers can't pick a date (never block for a missing one). */
-export type FunctionConfig = StorefrontConfig & { trimmed?: boolean; avail?: Availability | null; tzShift?: Record<string, number>; embedOff?: boolean };
+export type FunctionConfig = StorefrontConfig & {
+  trimmed?: boolean;
+  avail?: Availability | null;
+  tzShift?: Record<string, number>;
+  embedOff?: boolean;
+  /** Shop-local minutes asked with `timeAfter` (aliases TIME_CHECK_ALIASES, same order). Written with the query variables. */
+  timeChecks?: number[];
+};
+
+/**
+ * The validation query's `timeAfter` aliases. Each costs 1 of Shopify's 30 input-query points, so
+ * there are two, set at publish to today's cut-off times (cutoffTimeChecks): cut-offs are then
+ * enforced to the minute, not just the date.
+ */
+export const TIME_CHECK_ALIASES = ["cutoffA", "cutoffB"] as const;
+
+/**
+ * Today's cut-off times in shop-local minutes, for the two `timeAfter` checks: every enabled
+ * method's cut-off (per weekday), its same-day cut-off, pickup locations with their own schedule
+ * or time zone (`tzShift` = location minus shop minutes) and delivery zones with their own
+ * cut-off. Earliest first, at most two; unused slots are 23:59. A cut-off left out is only checked
+ * by the widget (the Function stays lenient); "now" can never be read later than it is.
+ */
+export function cutoffTimeChecks(config: StorefrontConfig, today: string, tzShift: Record<string, number> = {}): number[] {
+  const found = new Set<number>();
+  const add = (hm: string | null | undefined, shift = 0) => {
+    if (!hm || !/^\d\d:\d\d$/.test(hm)) return;
+    const m = Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5)) - shift;
+    if (m > 0 && m < 1440) found.add(m);
+  };
+  const fromSchedule = (s: Schedule | undefined, shift = 0) => {
+    if (!s) return;
+    add(cutoffFor(s, today), shift);
+    if (s.sameDay?.allowed) add(s.sameDay.cutoff, shift);
+  };
+  for (const m of config.methods) {
+    if (!m.enabled) continue;
+    fromSchedule(m.schedule);
+    if (m.id === "pickup") {
+      for (const l of config.locations) {
+        if (!l.enabled) continue;
+        const shift = tzShift[l.id] ?? 0;
+        if (l.custom) fromSchedule(l.custom.schedule, shift);
+        else if (shift) fromSchedule(m.schedule, shift);
+      }
+    }
+    if (m.id === "delivery") {
+      for (const z of config.zones) if (z.schedule?.cutoff || z.schedule?.sameDay) fromSchedule({ ...m.schedule, ...stripNullish(z.schedule) } as Schedule);
+    }
+  }
+  const list = [...found].sort((a, b) => a - b).slice(0, TIME_CHECK_ALIASES.length);
+  while (list.length < TIME_CHECK_ALIASES.length) list.push(1439);
+  return list;
+}
+
+/** Query variables for the checks: "HH:MM:00" (TimeWithoutTimezone), in alias order. */
+export function timeCheckVariables(checks: number[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  TIME_CHECK_ALIASES.forEach((alias, i) => {
+    const m = checks[i] ?? 1439;
+    out[alias] = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:00`;
+  });
+  return out;
+}
+
+function stripNullish<T extends object>(o: T): Partial<T> {
+  const out: Partial<T> = {};
+  for (const [k, v] of Object.entries(o)) if (v !== undefined && v !== null) (out as Record<string, unknown>)[k] = v;
+  return out;
+}
 
 /* ------------------------------------------------------- validation */
 
@@ -57,16 +126,33 @@ export interface ValidationError {
 
 const tail = (gid: string | undefined) => (gid ? gid.slice(gid.lastIndexOf("/") + 1) : "");
 
-/**
- * Current minutes in the shop zone, floored to the hour, from optional `hNN: timeAfter(...)` aliases.
- * The validation input query asks for the date only (23 hourly checks would cost 23 of Shopify's
- * 30-point input query limit), so this is 0 in production: the start of the day, the most lenient
- * reading. Cut-offs are enforced to the minute by the widget before checkout (D-24).
- */
+/** Current minutes in the shop zone, floored to the hour, from optional `hNN: timeAfter(...)` aliases (tests, older queries). */
 export function minutesFromAliases(localTime: Record<string, unknown> | undefined): number {
   let m = 0;
   for (let h = 1; h < 24; h++) if (localTime?.[`h${String(h).padStart(2, "0")}`] === true) m = h * 60;
   return m;
+}
+
+/**
+ * Where "now" can be, in shop-local minutes: at or after `lo`, before `hi`. Shopify only answers
+ * "is it at or past T?" for the times the query asks, so "now" is a window, never a guess: a true
+ * answer moves `lo` up to T, a false one moves `hi` down to T. No answers = the whole day.
+ */
+export function nowWindow(localTime: Record<string, unknown> | undefined, checks: number[] | undefined): { lo: number; hi: number } {
+  let lo = 0;
+  let hi = 1440;
+  TIME_CHECK_ALIASES.forEach((alias, i) => {
+    const t = checks?.[i];
+    if (typeof t !== "number" || t < 0 || t >= 1440) return;
+    if (localTime?.[alias] === true) lo = Math.max(lo, t);
+    else if (localTime?.[alias] === false) hi = Math.min(hi, t);
+  });
+  if (localTime && Object.keys(localTime).some((k) => /^h\d\d$/.test(k))) {
+    const h = minutesFromAliases(localTime);
+    lo = Math.max(lo, h);
+    hi = Math.min(hi, h + 60);
+  }
+  return { lo, hi: Math.max(hi, lo + 1) };
 }
 
 export function textFor(messages: Messages, overrides: StorefrontConfig["texts"] | undefined, language: string | undefined, key: string): string {
@@ -164,16 +250,17 @@ export function validate(input: ValidationInput, messages: Messages): Validation
   // let the order through rather than judge it by the wrong rules (D-11).
   if (sel.m === "delivery" && cfg.trimmed && sel.z) return [];
 
-  const shopNow = { date: input.shop?.localTime?.date ?? "", minutes: minutesFromAliases(input.shop?.localTime) };
+  const window = nowWindow(input.shop?.localTime, cfg.timeChecks);
+  const shopNow = { date: input.shop?.localTime?.date ?? "", minutes: window.lo };
   if (!shopNow.date) return [];
   const shift = sel.m === "pickup" && sel.l ? cfg.tzShift?.[sel.l] ?? 0 : 0;
-  // Shopify only says which hour it is, so the minutes are unknown. Check at the start and
-  // at the end of the hour and accept the order if either passes: never block a valid order.
+  // Shopify only says whether it's past the times we ask about, so "now" is somewhere in a window.
+  // Check at its start and its end and accept the order if either passes: never block a valid order.
   const conf: FunctionConfig = cfg;
   const choice = sel;
   const first = validateAt(shiftTime(shopNow, shift));
   if (!first.length) return first;
-  const second = validateAt(shiftTime(shopNow, shift + 59));
+  const second = validateAt(shiftTime(shopNow, shift + (window.hi - 1 - window.lo)));
   return second.length ? first : second;
 
   function validateAt(now: { date: string; minutes: number }): ValidationError[] {

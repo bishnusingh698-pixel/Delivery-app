@@ -7,6 +7,7 @@ import { unauthenticated } from "../shopify.server";
 import { addDays } from "../../core/civil";
 import { nowInZone } from "../../core/tz";
 import { toFunctionConfig, toStorefrontConfig } from "../../core/publish";
+import { cutoffTimeChecks, timeCheckVariables } from "../../core/checkout";
 import { holidayClosuresFor, holidayRegions } from "./holidays.server";
 import { targetIsEmpty } from "../../core/rules";
 import type { Settings, StorefrontConfig } from "../../core/types";
@@ -142,15 +143,19 @@ export async function publishShop(shop: string, admin?: AdminGraphql, opts: { fu
   const client = admin ?? (await unauthenticated.admin(shop)).admin;
   const { row, settings, config, today } = await storefrontConfigFor(shop);
   const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
-  const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null; tzShift?: Record<string, number> } = toFunctionConfig(config);
+  const fnConfig: ReturnType<typeof toFunctionConfig> & { avail?: typeof availability | null; tzShift?: Record<string, number>; timeChecks?: number[] } = toFunctionConfig(config);
   // The Function only knows the shop's local time; pickup locations in other zones get an offset (republished hourly, so DST is followed).
   const tzShift = locationTimeShifts(config);
   if (Object.keys(tzShift).length) fnConfig.tzShift = tzShift;
+  // The two "is it past HH:MM?" checks: today's cut-offs. The times go into the config and the
+  // query variables in the same metafieldsSet call below (all or nothing), so they always match.
+  const timeChecks = cutoffTimeChecks(config, today, tzShift);
+  fnConfig.timeChecks = timeChecks;
   // With the app embed off there is no date picker, so the Function must not require a date.
   if (flagsOf(row).embedDetected === false) (fnConfig as { embedOff?: boolean }).embedOff = true;
   // Capacity counts go to the Function too when they fit (otherwise it skips the "full" check, D-11).
   fnConfig.avail = JSON.stringify(fnConfig).length + JSON.stringify(availability).length < 24000 ? availability : null;
-  const vars = ruleVariables(config);
+  const vars = { ...ruleVariables(config), ...timeCheckVariables(timeChecks) };
 
   const owners = await appInstallationId(shop, client);
   let ids = { validationId: row.validationId, deliveryCustomizationId: row.deliveryCustomizationId };

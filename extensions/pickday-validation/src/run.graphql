@@ -1,4 +1,4 @@
-query Input($ruleTags: [String!], $ruleCollections: [ID!]) {
+query Input($ruleTags: [String!], $ruleCollections: [ID!], $cutoffA: TimeWithoutTimezone!, $cutoffB: TimeWithoutTimezone!) {
   buyerJourney {
     step
   }
@@ -56,9 +56,12 @@ query Input($ruleTags: [String!], $ruleCollections: [ID!]) {
   }
   presentmentCurrencyRate
   shop {
-    # Date only: hourly timeAfter checks cost 23 of Shopify's 30-point input limit (D-24).
+    # Date plus two checks at today's cut-off times (set at publish, D-24). Each timeAfter costs
+    # 1 of Shopify's 30 input-query points: keep tests/function-query-cost.test.ts passing.
     localTime {
       date
+      cutoffA: timeAfter(time: $cutoffA)
+      cutoffB: timeAfter(time: $cutoffB)
     }
   }
   validation {
