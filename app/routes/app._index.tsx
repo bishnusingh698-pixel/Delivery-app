@@ -2,14 +2,15 @@
  * Home: the 3-step setup wizard for a new store, then the dashboard (alerts, what's left to
  * set up, today / tomorrow / next 7 days, the next 14 days at a glance, quick actions).
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useFetcher, useLoaderData } from "react-router";
 import { addDays, isValidDate, isValidTime } from "../../core/civil";
-import { BUSINESS_TYPES, applyWizard, wizardSuggestion, type BusinessType, type WizardChoices } from "../../core/defaults";
+import { BUSINESS_TYPES, applyWizard, countryHolidaySet, wizardSuggestion, type BusinessType, type WizardChoices } from "../../core/defaults";
+import { HOLIDAY_GAPS } from "../../core/holidays";
 import { alerts, busyDays, checklist, type ChecklistId } from "../../core/home";
 import { hasFeature } from "../../core/publish";
-import { METHOD_IDS, type MethodId, type Settings } from "../../core/types";
+import { METHOD_IDS, type HolidayItem, type MethodId, type Settings } from "../../core/types";
 import { LiveWidget } from "../components/live-preview";
 import { Button, Checkbox, DateField, Modal, NumberField, Page, Section, Select, Stack, Switch, TextField, TimeSelect, closeModal, openModal } from "../components/polaris";
 import { CountrySelect, WeekdayPicker, countryName, newId, useFormatDate, useMethodLabel } from "../components/shared";
@@ -152,7 +153,20 @@ function Wizard({ d }: { d: WizardData }) {
   const [answers, setAnswers] = useState(() => wizardSuggestion(d.full, country, null));
   const [holidays, setHolidays] = useState(true);
   const [pickup, setPickup] = useState(d.firstLocation ?? { name: "", address: "" });
-  const choices: WizardChoices = { country, businessType: type, ...answers, holidays, pickup: answers.methods.includes("pickup") ? pickup : null };
+  // The chosen country's holidays (the loader only has the store's own country), for the preview and the summary.
+  const holidayFetcher = useFetcher<{ country: string; holidays: HolidayItem[] }>();
+  const hasHolidayData = !!country && d.countries.includes(country);
+  useEffect(() => {
+    if (hasHolidayData) holidayFetcher.load(`/app/api/holidays?country=${country}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [country, hasHolidayData]);
+  const countryHolidays = holidayFetcher.data?.country === country ? holidayFetcher.data.holidays : null;
+  const previewHolidays = useMemo(
+    () => (country && countryHolidays ? { ...d.holidayItems, [countryHolidaySet(country).id]: countryHolidays } : d.holidayItems),
+    [country, countryHolidays, d.holidayItems],
+  );
+  const formatDate = useFormatDate();
+  const choices: WizardChoices = { country, businessType: type, ...answers, holidays: holidays && hasHolidayData, pickup: answers.methods.includes("pickup") ? pickup : null };
   const choicesKey = JSON.stringify(choices);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const draft = useMemo(() => applyWizard(d.full, choices), [d.full, choicesKey]);
@@ -255,8 +269,18 @@ function Wizard({ d }: { d: WizardData }) {
                 />
                 <TimeSelect label={t("wizard.cutoff")} details={t("wizard.cutoffHelp")} allowEmpty={t("schedule.noCutoff")} locale={locale} value={answers.cutoff} onChange={(v) => setAnswers({ ...answers, cutoff: v })} />
               </s-stack>
-              {country ? (
-                <Switch label={t("wizard.holidays", { country: countryName(country, locale) })} details={t("wizard.holidaysHelp")} checked={holidays} onChange={setHolidays} />
+              {country && hasHolidayData ? (
+                <s-stack gap="small-200">
+                  <Switch label={t("wizard.holidays", { country: countryName(country, locale) })} details={t("wizard.holidaysHelp")} checked={holidays} onChange={setHolidays} />
+                  {holidays && countryHolidays?.length ? (
+                    <s-text color="subdued">
+                      {t("wizard.holidaysNext", { list: countryHolidays.slice(0, 4).map((h) => `${h.name} (${formatDate(h.date)})`).join(", ") })}
+                    </s-text>
+                  ) : null}
+                  {holidays && HOLIDAY_GAPS.has(country) ? <s-banner tone="warning">{t("holidays.gapNote")}</s-banner> : null}
+                </s-stack>
+              ) : country ? (
+                <s-banner tone="warning">{t("wizard.holidaysNone", { country: countryName(country, locale) })}</s-banner>
               ) : null}
               <s-stack direction="inline" gap="small-200">
                 <Button onClick={() => setStep(1)}>{t("wizard.back")}</Button>
@@ -267,7 +291,7 @@ function Wizard({ d }: { d: WizardData }) {
             </s-stack>
           </Section>
           <Section heading={t("preview.heading")} aside>
-            <LiveWidget settings={draft} meta={{ ...d.preview, country }} holidayItems={d.holidayItems} />
+            <LiveWidget settings={draft} meta={{ ...d.preview, country }} holidayItems={previewHolidays} />
           </Section>
         </>
       ) : null}
@@ -300,7 +324,7 @@ function Wizard({ d }: { d: WizardData }) {
             </s-stack>
           </Section>
           <Section heading={t("preview.heading")} aside>
-            <LiveWidget settings={draft} meta={{ ...d.preview, country }} holidayItems={d.holidayItems} />
+            <LiveWidget settings={draft} meta={{ ...d.preview, country }} holidayItems={previewHolidays} />
           </Section>
         </>
       ) : null}

@@ -118,7 +118,7 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | 21 | Flow "Schedule created" fires with correct data | Needs a live store |
 | 22 | No emails are sent by Pickday (summary email removed) | ✅ By design (no email code or service) |
 | 23 | Export from store A, import into B with product remapping; share code works once and expires | ✅ Automated (round trip); remapping by product handle and one-time codes need two live stores |
-| 24 | Free plan 31st order → upgrade banner; checkout still works | ✅ Logic automated (usage alerts, limited orders still recorded) — confirm on a live store |
+| 24 | Free plan 51st order of the month → upgrade banner; checkout still works | ✅ Logic automated (usage alerts, limited orders still recorded) — confirm on a live store |
 | 25 | Server stopped: storefront and Functions still work | ✅ By design (metafields only; widget makes no server calls) — confirm on a live store |
 | 26 | Keyboard and screen reader usable; reduced motion respected | ✅ Automated (keyboard navigation in browser test; reduced-motion CSS); screen reader pass needs a person |
 | 27 | Uninstall leaves no theme code; reinstall works | ✅ By design (theme app extension only) — confirm on a live store |

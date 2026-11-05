@@ -70,6 +70,22 @@ Known limitation kept (DECISIONS D-09): two shoppers can book the last spot with
 
 Verified: typecheck, lint (0 errors), 350 tests including the 15 database tests against Postgres 16, build, browser tests, and a smoke test of the built server (`/healthz` 200, bad webhook signature 401, jobs without secret 403, missing settings stop the start with a clear message, SIGTERM shuts down cleanly).
 
+### Round 4: simulated shoppers in 12 countries
+
+Ran the real wizard → settings → published config → engine → checkout path for stores in Saudi Arabia, the UAE, Kuwait, India, Nepal, Iran, Israel, Germany, Sweden, the UK and the US, with the bundled holiday data (`tests/regional.test.ts`, `tests/engine.test.ts`).
+
+| # | Sev | Where | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| B43 | C | `app/services/holidays.server.ts` | "Bank" days counted as public holidays: Berlin, Vienna, Zurich and Nordic shops were closed on Christmas Eve and New Year's Eve (a bakery's busiest days), Swedish and Finnish ones on Midsummer Eve; 47 such days worldwide. | Public holidays only (D-63). | ✅ |
+| B44 | M | holiday dataset, UAE | Closed on Isra & Mi'raj and the first day of Ramadan (not holidays); Arafat Day and the second National Day missing. | `CORRECTIONS` table (D-64). | ✅ |
+| B45 | M | setup wizard | Kuwait, Qatar, Oman, Jordan, Lebanon, Iraq, Nepal: "Close on public holidays" was on but the dataset has nothing, so Eid stayed bookable with no warning. India's list has no Diwali, Holi, Dussehra or Eid. | No switch without data, with a note to add closed days; India warning in the wizard and on Days off; the wizard lists the next holidays (D-64). | ✅ |
+| B46 | M | setup wizard preview | Holidays were loaded for the store's billing country only, so choosing another country showed none in the preview. | Loads the chosen country's holidays. | ✅ |
+| B47 | M | `core/engine.ts` | With no notice (0 days/hours), "Same-day orders until 12:00" was ignored and today stayed open until the general 14:00 cut-off (the florist preset). | Same-day time always closes today (D-65). | ✅ |
+| B48 | M | `core/postcode.ts` | UK prefixes matched letters, not districts: `E1*` took E14–E18, `E*` took EC and EN, `N*` took NW and NG (Nottingham). | District-aware matching for GB, JE, GG, IM (D-66). | ✅ |
+| B49 | m | docs | CHECKLIST said the Free limit is hit at the 31st order (it's 50); D-02 said the checkout reads time "to the half hour" (it's the hour, rounded down); D-62 said customer changes were on every plan and on Starter; PRIVACY said staff names are kept 180 days (history stays with the order); README allowed a Neon region outside the EU while PRIVACY says Frankfurt; "28 languages" (28 locales, 26 languages); an unused "Powered by" URL. | Corrected. PRIVACY also gains GDPR roles, legal basis, transfers, complaints and a "Who we are" section to fill in. | ✅ |
+
+Checked and correct: Friday–Saturday (Gulf, Israel), Thursday–Friday (Iran) and Saturday-only (Nepal) weekends; cut-offs in UTC+5:30 and +5:45; Nowruz, Rosh Hashanah and Eid (marked "may shift"); Gregorian calendar and Latin digits forced in every locale (Thai, Persian, Saudi Arabic); minimum order in the shopper's currency; the checkout backstop rounds time down so it never rejects before a cut-off; the widget sets no cookies and calls no third party.
+
 ## 2. UX problems
 
 Admin

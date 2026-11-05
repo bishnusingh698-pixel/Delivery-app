@@ -250,6 +250,13 @@ export function computeEarliest(input: EngineInput, rules: ResolvedRules): Earli
     if (date === today) minMinutes = now.minutes;
   }
 
+  // "Same-day orders until X" also closes today at X when no notice is needed (0 days or a few
+  // hours): otherwise the general cut-off would quietly keep today open after X.
+  if (date === today && s.sameDay.allowed && now.minutes >= toMinutes(s.sameDay.cutoff || "00:00")) {
+    date = work ? nextWorkingDay(config, rules, today, locationId) : addDays(today, 1);
+    minMinutes = 0;
+  }
+
   if (date && extra > 0) {
     date = work ? addWorkingDays(config, rules, date, extra, locationId) : addDays(date, extra);
     minMinutes = 0;

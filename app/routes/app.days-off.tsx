@@ -8,7 +8,7 @@ import { useFetcher, useLoaderData, useSearchParams } from "react-router";
 import { addDays, addMonths, daysInMonth, weekday } from "../../core/civil";
 import { closureMatches } from "../../core/engine";
 import { countryHolidaySet } from "../../core/defaults";
-import { allHolidayClosures } from "../../core/holidays";
+import { HOLIDAY_GAPS, allHolidayClosures } from "../../core/holidays";
 import { weekOrder } from "../../core/i18n/week";
 import type { Closure, HolidayItem, HolidaySet, MethodId, Settings, SpecialDay } from "../../core/types";
 import prisma from "../db.server";
@@ -185,9 +185,10 @@ export default function DaysOffPage() {
                   {!list || pending === set.id ? (
                     <s-spinner accessibilityLabel={t("common.loading")} />
                   ) : list.length === 0 ? (
-                    <s-text color="subdued">{t("closures.noHolidays")}</s-text>
+                    <s-text color="subdued">{d.holidayCountries.includes(set.country) ? t("closures.noHolidays") : t("closures.noHolidayData")}</s-text>
                   ) : (
                     <s-stack gap="small-100">
+                      {HOLIDAY_GAPS.has(set.country) ? <s-banner tone="warning">{t("holidays.gapNote")}</s-banner> : null}
                       <s-text color="subdued">{t("daysoff.uncheckToOpen")}</s-text>
                       {list.map((h) => (
                         <Checkbox

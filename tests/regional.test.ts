@@ -7,7 +7,7 @@ import { regionDefaults } from "../core/regions";
 import { weekOrder } from "../core/i18n/week";
 import { applyPlan, hasFeature, toStorefrontConfig } from "../core/publish";
 import { firstAvailableDate, checkSelection } from "../core/engine";
-import { holidayClosuresFor } from "../app/services/holidays.server";
+import { holidayClosuresFor, upcomingHolidays } from "../app/services/holidays.server";
 import { validateSettings } from "../app/services/settings-schema.server";
 import { input } from "./helpers";
 
@@ -170,5 +170,23 @@ describe("setup wizard", () => {
     const none = applyWizard(s, { country: "DE", businessType: null, methods: [], workdays: [1, 2, 3, 4, 5], lead: { amount: 2, unit: "days" }, cutoff: null, holidays: false, pickup: null });
     expect(none.methods.shipping.enabled).toBe(true);
     expect(none.holidays).toEqual([]);
+  });
+
+  it("closes on public holidays only, never on 'bank' days like Christmas Eve", () => {
+    const de = upcomingHolidays("DE", "BE", "en", "2026-12-01", 45).map((h) => h.date);
+    expect(de).toContain("2026-12-25");
+    expect(de).toContain("2027-01-01");
+    expect(de).not.toContain("2026-12-24");
+    expect(de).not.toContain("2026-12-31");
+    const se = upcomingHolidays("SE", null, "en", "2027-06-01", 40).map((h) => h.date);
+    expect(se).not.toContain("2027-06-25"); // Midsummer Eve
+  });
+
+  it("fixes the UAE list: no Isra & Mi'raj or first of Ramadan; Arafat Day and both National Days", () => {
+    const ae = upcomingHolidays("AE", null, "en", "2026-11-05", 400);
+    const names = ae.map((h) => h.name);
+    expect(names.some((n) => /Mi'raj|First day of Ramadan/.test(n))).toBe(false);
+    expect(names).toContain("Arafat Day");
+    expect(ae.map((h) => h.date)).toEqual(expect.arrayContaining(["2026-12-02", "2026-12-03"]));
   });
 });

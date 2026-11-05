@@ -15,7 +15,7 @@ Let customers choose a delivery, pickup or shipping date and time slot, with dai
 Pickday adds a date and time-slot picker to your cart, cart drawer and product pages, in your shoppers' language. Set the days you work, preparation time, cut-off times, holidays and how many orders you can handle per day or slot. Full days close by themselves. Checkout only shows the method the customer chose and stops orders without a valid date. See every order by day, print sheets, get a free daily summary by email, and let customers change their own date.
 
 **Feature list** (up to 5 × 80):
-1. Date and time-slot picker for delivery, pickup and shipping, in 28 languages
+1. Date and time-slot picker for delivery, pickup and shipping, in 26 languages
 2. Daily and per-slot limits, cut-off times, yearly public holidays, vacation
 3. Checkout shows only the chosen method and blocks orders without a date
 4. Orders calendar, day sheets, daily summary email, customer date changes

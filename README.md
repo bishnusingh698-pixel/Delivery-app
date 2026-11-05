@@ -14,7 +14,7 @@ It works on **every Shopify plan** (no Shopify Plus features: a theme app extens
 | `CHECKLIST.md` | Click-by-click test steps on a development store |
 | `PRIVACY.md` | What data is stored, for how long, and how it's deleted |
 | `ROADMAP.md` | Ideas for later versions |
-| `TRANSLATIONS.md` / `TRANSLATION_REVIEW.md` | How the 28 storefront languages were made and checked |
+| `TRANSLATIONS.md` / `TRANSLATION_REVIEW.md` | How the 28 storefront locales (26 languages) were made and checked |
 | `docs/APP_STORE_LISTING.md` | Draft App Store listing |
 | `.env.example` | Every setting the server needs |
 
@@ -25,7 +25,7 @@ It works on **every Shopify plan** (no Shopify Plus features: a theme app extens
 - **Delivery**: local delivery and shipping, each with working days, notice (hours or working days), cut-off (one time or per weekday), same-day option, booking window, time slots, daily and per-slot limits, countries, minimum order, delivery areas by postcode / area / region, and zones with their own days and limits.
 - **Pickup**: any number of pickup locations, each with its own hours, slots, limits, time zone and days off; or pickup at the store with no location set up.
 - **Days off**: public holidays for ~200 countries switched on with one click and renewed every year automatically (any single holiday can be skipped), closed days and yearly dates, vacation mode, special opening days, a year calendar, per-location days off.
-- **Worldwide**: country selector that loads the usual working days (Friday–Saturday, Thursday–Friday and Saturday-only weekends included), first day of the week and date format; date format setting (store language, written month, MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD); 28 storefront languages with right-to-left Arabic and Hebrew; the admin in 8 languages; every cut-off and "today" in the store's time zone (or a pickup location's own).
+- **Worldwide**: country selector that loads the usual working days (Friday–Saturday, Thursday–Friday and Saturday-only weekends included), first day of the week and date format; date format setting (store language, written month, MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD); 28 storefront locales in 26 languages, with right-to-left Arabic and Hebrew (shoppers in other languages see English unless the merchant adds their own texts); the admin in 8 languages; every cut-off and "today" in the store's time zone (or a pickup location's own).
 - **Appearance**: colours (text on the accent colour stays readable automatically), corners, calendar or dropdown, compact layout, icons, position above or below the checkout button, cart drawer on/off, optional notes box (delivery instructions or gift message), every text per language, and a live preview that runs the real storefront widget with the unsaved settings.
 - **Orders**: list and calendar with filters, CSV export, day and route sheets, production list, bulk date changes, date changes from the Shopify order page, a next-14-days chart and "Close a day" on Home.
 - **Daily summary email**, free: Pickday fires a "Daily schedule" Shopify Flow trigger at the hour you choose, and Flow's free **Send internal email** action mails tomorrow's (or today's) orders to you and your staff. No email service or API key.
@@ -49,7 +49,7 @@ These steps need your accounts. Do them in this order; each says where to click.
 
 ### 2. Create the database (Neon, free)
 
-1. Sign up at [neon.tech](https://neon.tech) → **New project** → name `pickday`, region close to your Render region (Frankfurt = `aws-eu-central-1`, Ohio = `aws-us-east-2`).
+1. Sign up at [neon.tech](https://neon.tech) → **New project** → name `pickday`, region **AWS Europe Central (Frankfurt, `aws-eu-central-1`)**, next to the Render server (`render.yaml` uses Frankfurt). `PRIVACY.md` tells merchants their data is in Frankfurt; if you pick another region for either service, change that page too.
 2. On the project dashboard click **Connect**. Copy the connection string with **Connection pooling** on: that's `DATABASE_URL`. Add `&pgbouncer=true&connect_timeout=15` at its end.
 3. Turn **Connection pooling** off and copy again: that's `DIRECT_URL` (used only for migrations). Add `&connect_timeout=15`.
 
@@ -131,7 +131,7 @@ A development store starts on the Free plan, like a real store. To try Starter o
 
 1. In Render, check `BILLING_TEST` is `false`.
 2. Set `SUPPORT_EMAIL`, and the website in `app/config/brand.ts`.
-3. Publish `PRIVACY.md` as a web page (for example GitHub Pages) and use its link in the listing.
+3. Fill in **Who we are** in `PRIVACY.md` (your name or company, postal address, support email), then publish it as a web page (for example GitHub Pages) and use its link in the listing.
 4. Copy `docs/APP_STORE_LISTING.md` into **Distribution** → **Create listing**, add screenshots, submit.
 
 Once you have more than about 100 active stores, move Render to a paid instance for instant admin loading. No code changes are needed.
