@@ -6,20 +6,20 @@ Copy these into Partner Dashboard → your app → Distribution → Shopify App 
 
 **App name** (30): `Pickday: Delivery Date Picker`
 
-**App card subtitle / tagline** (62): `Delivery & pickup dates with daily limits` (the longer line `Let customers pick the day. Set daily limits and stop most overbooking.` is over the limit)
+**App card subtitle / tagline** (56): `Delivery & pickup dates with time slots and daily limits` (marketing tagline in images and video: *Let customers pick the day.*)
 
-**App introduction** (100):
-Let customers choose a delivery, pickup or shipping date and time slot, with daily limits that stop most overbooking.
+**App introduction** (96, max 100):
+Let customers choose a delivery, pickup or shipping date and time slot, with limits you control.
 
-**App details** (500):
-Pickday adds a date and time-slot picker to your cart, cart drawer and product pages, in your shoppers' language. Set the days you work, preparation time, cut-off times, holidays and how many orders you can handle per day or slot. Full days close by themselves. Checkout only shows the method the customer chose and stops orders without a valid date. See every order by day, print sheets, get a free daily summary by email, and let customers change their own date.
+**App details** (459, max 500):
+Pickday adds a date and time-slot picker to your cart, cart drawer and product pages, in your customers' language. Set your working days, preparation time, cut-off times, holidays and how many orders you can take per day or slot. Full days close by themselves. Checkout shows only the method the customer chose and stops orders without a valid date. See orders by day, print day sheets, get a free daily summary email, and let customers change their own date.
 
 **Feature list** (up to 5 × 80):
-1. Date and time-slot picker for delivery, pickup and shipping, in 26 languages
-2. Daily and per-slot limits, cut-off times, yearly public holidays, vacation
-3. Checkout shows only the chosen method and blocks orders without a date
-4. Orders calendar, day sheets, daily summary email, customer date changes
-5. Works on every Shopify plan; no theme code changes
+1. Date and time-slot picker for local delivery, store pickup and shipping
+2. Daily and per-slot limits, cut-off times, preparation time, busy-day overrides
+3. Checkout shows only the chosen method and stops orders without a valid date
+4. Orders calendar, day and route sheets, production list, daily summary email
+5. Public holidays, vacation mode, translated picker; no theme code to edit
 
 **Pricing**
 - Free: 50 scheduled orders a month, delivery + pickup + shipping, time slots, public holidays, closed days, delivery instructions, daily summary email (with Shopify Flow), 1 pickup location.
@@ -32,16 +32,7 @@ Pickday adds a date and time-slot picker to your cart, cart drawer and product p
 
 **Privacy policy URL:** link to the published `PRIVACY.md`.
 
-**Screenshots to take (1600 × 900, desktop) on a development store:**
-1. Cart page with the picker open (calendar + time slots), store theme Dawn.
-2. Cart drawer with the picker and a chosen date.
-3. Checkout with only "Store pickup – Fri 18 Oct" shown.
-4. Admin Orders calendar month view with capacity bars.
-5. Admin Delivery page with the live preview, and the 3-step setup wizard.
-6. Printed day sheet.
-Mobile: cart page at 390 px with the picker.
-
-**Demo store / screencast:** a 60-second screen recording: set a daily limit of 1 → place an order → the day shows as full in the cart.
+**Icon, images and promo video:** generated from the code in `marketing/` (see `marketing/README.md`): app icon 1200 × 1200, six 1600 × 900 listing images (picker, limits, checkout matching, orders calendar, day sheet + daily email, holidays + languages) with alt text, and a 1:39 promo video with voiceover, captions and a YouTube thumbnail.
 
 ## Translations (subtitle and description for the top 6 languages)
 
