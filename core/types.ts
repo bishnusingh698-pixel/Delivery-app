@@ -265,6 +265,12 @@ export interface WidgetSettings {
   position: "before" | "after";
   /** Show the picker in the cart drawer too. */
   drawer: boolean;
+  /**
+   * "Buy it now" skips the cart (where the date is chosen) and Shopify doesn't carry cart attributes
+   * into it. ask: on products that need a date, add the product, ask for the date, then go to checkout;
+   * hide: hide the button on those products; off: leave it (checkout asks shoppers to go back to the cart).
+   */
+  buyNow: "ask" | "hide" | "off";
 }
 
 export interface NotificationSettings {

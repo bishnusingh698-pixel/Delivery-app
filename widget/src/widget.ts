@@ -25,6 +25,8 @@ export interface BootData {
   template: string;
   pseudo?: boolean;
   assetBase: string;
+  /** The cart at page render (Liquid `cart | json`, same shape as /cart.js): saves a request on load. */
+  cart?: Cart | null;
   /** Collections of items in the cart at page render (Liquid). */
   itemCollections?: Record<string, string[]>;
   /** Tags of items in the cart at page render (Liquid). */
@@ -140,7 +142,10 @@ export class Pickday {
   }
 
   async loadCart() {
-    const cart = await this.api.getCart();
+    // The first read uses the cart Liquid printed with the page (no request); later reads ask Shopify.
+    const printed = this.api === shopifyCart && this.boot.cart && Array.isArray(this.boot.cart.items) ? this.boot.cart : null;
+    this.boot.cart = null;
+    const cart = printed ?? (await this.api.getCart());
     this.cart = cart;
     const fees = this.surchargeVariants();
     const lines: CartLine[] = [];
@@ -696,7 +701,7 @@ export class Pickday {
     };
     return h(
       "fieldset",
-      { class: "pd-methods" },
+      { class: `pd-methods${methods.length >= 3 ? " is-stacked" : ""}` },
       h("legend", { class: "pd-sr" }, this.tx.t("methodGroup")),
       methods.map((id) =>
         h(
@@ -1036,8 +1041,11 @@ export class Pickday {
       this.render();
     };
     const rows: Node[] = [];
-    let cells: Node[] = Array.from({ length: lead }, () => h("td", { role: "gridcell" }));
-    for (let i = 0; i < n; i++) {
+    // In the current month, weeks that are entirely in the past take room and offer nothing: start at this week.
+    const pastWeeks = today.startsWith(month.slice(0, 8)) ? Math.floor((lead + Number(today.slice(8, 10)) - 1) / 7) : 0;
+    const start = pastWeeks ? pastWeeks * 7 - lead : 0;
+    let cells: Node[] = Array.from({ length: start ? 0 : lead }, () => h("td", { role: "gridcell" }));
+    for (let i = start; i < n; i++) {
       const date = addDays(month, i);
       const d = byDate.get(date);
       const available = !!d?.available;
@@ -1100,7 +1108,7 @@ export class Pickday {
       h(
         "table",
         { class: "pd-grid", role: "grid", "aria-labelledby": "pd-date-label" },
-        h("thead", null, h("tr", null, order.map((wd) => h("th", { scope: "col", abbr: this.tx.weekdayLong(wd) }, h("span", { "aria-hidden": "true" }, this.tx.weekdayNarrow(wd)), h("span", { class: "pd-sr" }, this.tx.weekdayLong(wd)))))),
+        h("thead", null, h("tr", null, order.map((wd) => h("th", { scope: "col", abbr: this.tx.weekdayLong(wd) }, h("span", { "aria-hidden": "true" }, this.tx.weekdayHeader(wd)), h("span", { class: "pd-sr" }, this.tx.weekdayLong(wd)))))),
         h("tbody", null, rows),
       ),
     );

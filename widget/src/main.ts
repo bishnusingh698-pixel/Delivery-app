@@ -93,6 +93,10 @@ async function main() {
   mountAll();
 
   onCartChange(() => void pd.refresh().then(mountAll));
+  // Back/forward cache restores the page as it was: read the cart again (it may have changed since).
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) void pd.refresh().then(mountAll);
+  });
   // Themes re-render drawers by replacing HTML; put the widget back when that happens.
   let pending = 0;
   new MutationObserver(() => {

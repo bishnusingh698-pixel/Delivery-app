@@ -99,6 +99,7 @@ export function defaultSettings(country: string | null = null): Settings {
       productPageMode: "message",
       position: "before",
       drawer: true,
+      buyNow: "ask",
     },
     texts: {},
     notifications: {
