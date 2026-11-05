@@ -118,6 +118,35 @@ describe("lead time and cutoffs", () => {
     expect(firstAvailableDate(input(cfg, { now: { date: "2026-10-14", minutes: 10 * 60 } }))).toBe("2026-10-15");
   });
 
+  it("same-day cutoff also closes today when no notice is needed (0 days or hours)", () => {
+    // Florist: no notice, general cutoff 14:00, "same-day orders until 12:00".
+    const days = config((s) => {
+      s.methods.shipping.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
+      s.methods.shipping.schedule.lead = { amount: 0, unit: "days", workingDays: false };
+      s.methods.shipping.schedule.cutoff = { time: "14:00", perWeekday: null };
+      s.methods.shipping.schedule.sameDay = { allowed: true, cutoff: "12:00" };
+    });
+    expect(firstAvailableDate(input(days, { now: { date: "2026-10-14", minutes: 11 * 60 + 59 } }))).toBe("2026-10-14");
+    expect(firstAvailableDate(input(days, { now: { date: "2026-10-14", minutes: 12 * 60 + 1 } }))).toBe("2026-10-15");
+    expect(checkSelection(input(days, { now: { date: "2026-10-14", minutes: 12 * 60 + 1 } }), "2026-10-14", null).ok).toBe(false);
+    // Off: today stays open until the general cutoff, as before.
+    const off = config((s) => {
+      s.methods.shipping.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
+      s.methods.shipping.schedule.lead = { amount: 0, unit: "days", workingDays: false };
+      s.methods.shipping.schedule.cutoff = { time: "14:00", perWeekday: null };
+    });
+    expect(firstAvailableDate(input(off, { now: { date: "2026-10-14", minutes: 13 * 60 } }))).toBe("2026-10-14");
+    // Hour-based notice (grocery, 2 hours) with same-day until 16:00.
+    const hours = config((s) => {
+      s.methods.shipping.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
+      s.methods.shipping.schedule.lead = { amount: 2, unit: "hours", workingDays: false };
+      s.methods.shipping.schedule.cutoff = { time: null, perWeekday: null };
+      s.methods.shipping.schedule.sameDay = { allowed: true, cutoff: "16:00" };
+    });
+    expect(firstAvailableDate(input(hours, { now: { date: "2026-10-14", minutes: 15 * 60 } }))).toBe("2026-10-14");
+    expect(firstAvailableDate(input(hours, { now: { date: "2026-10-14", minutes: 16 * 60 } }))).toBe("2026-10-15");
+  });
+
   it("product extra lead time (longest wins) pushes the earliest date", () => {
     const cfg = config((s) => {
       s.productRules.extraLead = [
@@ -412,6 +441,17 @@ describe("same-day express (regression B1)", () => {
 describe("postcodes (regression B6)", () => {
   it("a US ZIP+4 matches its 5-digit ZIP, ranges and prefixes", () => {
     expect(matchesAny(["10115"], "10115-1234")).toBe(true);
+    // UK prefixes follow postcode districts: E1 is not E14, E is not EC, SW1 is not SW10.
+    expect(matchesAny(["E1*"], "E1 6AN", "GB")).toBe(true);
+    expect(matchesAny(["E1*"], "E14 5AB", "GB")).toBe(false);
+    expect(matchesAny(["E*"], "EC1A 1BB", "GB")).toBe(false);
+    expect(matchesAny(["E*"], "E14 5AB", "GB")).toBe(true);
+    expect(matchesAny(["SW1*"], "SW1A 1AA", "GB")).toBe(true);
+    expect(matchesAny(["SW1*"], "SW10 9AA", "GB")).toBe(false);
+    expect(matchesAny(["SW1A 1*"], "SW1A 2AA", "GB")).toBe(false);
+    // Other countries keep plain prefixes.
+    expect(matchesAny(["D0*"], "D02 X285", "IE")).toBe(true);
+    expect(matchesAny(["10*"], "1011 AB", "NL")).toBe(true);
     expect(matchesAny(["10000-10999"], "10115-1234")).toBe(true);
     expect(matchesAny(["101*"], "10115 1234")).toBe(true);
     expect(matchesAny(["10116"], "10115-1234")).toBe(false);

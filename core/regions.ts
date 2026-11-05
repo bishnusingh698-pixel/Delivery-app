@@ -45,3 +45,25 @@ export function regionDefaults(country: string | null | undefined): RegionDefaul
     dateFormat: MDY.has(c) ? "mdy" : YMD.has(c) ? "ymd" : "dmy",
   };
 }
+
+/**
+ * Every country or territory a store can be in: the ISO 3166-1 codes Shopify uses for addresses
+ * and Markets ("Country/region"), plus XK for Kosovo, without the 7 uninhabited ones (Antarctica,
+ * Bouvet Island, Heard & McDonald Islands, French Southern Territories, US Minor Outlying Islands,
+ * South Georgia, British Indian Ocean Territory). That's the 193 UN members, the 2 observer states
+ * and territories with their own postcodes, holidays and shops (Hong Kong, Puerto Rico, Greenland,
+ * Jersey, Réunion…). Not tied to the holiday dataset: a store in Kuwait or Nepal must be able to pick
+ * its country (and get its weekend) even though there is no holiday list for it.
+ */
+export const ALL_COUNTRIES: readonly string[] = `
+  AD AE AF AG AI AL AM AO AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL
+  BM BN BO BQ BR BS BT BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV
+  CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB
+  GD GE GF GG GH GI GL GM GN GP GQ GR GT GU GW GY HK HN HR HT HU ID IE IL IM
+  IN IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK
+  LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV
+  MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM
+  PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN
+  SO SR SS ST SV SX SY SZ TC TD TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG
+  US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW
+`.trim().split(/\s+/);

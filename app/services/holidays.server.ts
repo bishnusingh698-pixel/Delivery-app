@@ -37,7 +37,27 @@ export function hasHolidayData(country: string): boolean {
   }
 }
 
-/** Holidays between `from` and `from + days` (default 12 months). Public + bank holidays only. */
+/**
+ * Known mistakes in the dataset for countries Pickday sells in, by country: rules to drop
+ * (not public holidays any more) and rules to add (official days the dataset misses).
+ * UAE: Isra & Mi'raj stopped being a holiday in 2019 and the first day of Ramadan never was;
+ * Arafat Day and the second National Day are official.
+ */
+const CORRECTIONS: Record<string, { drop: string[]; add: { rule: string; name: Record<string, string> }[] }> = {
+  AE: {
+    drop: ["27 Rajab", "1 Ramadan"],
+    add: [
+      { rule: "9 Dhu al-Hijjah", name: { en: "Arafat Day", ar: "يوم عرفة" } },
+      { rule: "12-03", name: { en: "National Day (second day)", ar: "اليوم الوطني (اليوم الثاني)" } },
+    ],
+  },
+};
+
+/**
+ * Holidays between `from` and `from + days` (default 12 months). Public holidays only: "bank"
+ * days in the dataset (Christmas Eve and New Year's Eve in Germany, Austria and the Nordics,
+ * Midsummer Eve…) are normal, often the busiest, trading days for shops.
+ */
 export function upcomingHolidays(country: string, region: string | null, lang: string, from: string, days = 366): HolidayItem[] {
   let h: Holidays;
   try {
@@ -45,13 +65,16 @@ export function upcomingHolidays(country: string, region: string | null, lang: s
   } catch {
     return [];
   }
+  const fix = CORRECTIONS[country.toUpperCase()];
+  for (const a of fix?.add ?? []) h.setHoliday(a.rule, { name: a.name, type: "public" });
   const to = addDays(from, days);
   const y0 = Number(from.slice(0, 4));
   const y1 = Number(to.slice(0, 4));
   const out: HolidayItem[] = [];
   for (let year = y0; year <= y1; year++) {
     for (const x of (h.getHolidays(year, lang) ?? []) as any[]) {
-      if (!["public", "bank"].includes(x.type)) continue;
+      if (x.type !== "public") continue;
+      if (fix?.drop.includes(String(x.rule))) continue;
       const date = String(x.date).slice(0, 10);
       if (date < from || date > to) continue;
       const spanDays = Math.max(1, Math.round((new Date(x.end).getTime() - new Date(x.start).getTime()) / 86400000));

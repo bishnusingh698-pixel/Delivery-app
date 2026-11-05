@@ -19,19 +19,27 @@ Pickday ("the app") helps Shopify merchants let their customers choose a deliver
 |---|---|---|---|
 | Store domain, name, time zone, language, currency, country, Shopify plan type | Merchant | To run the app in the store's language and time zone | Until uninstall + 48 h |
 | Pickday settings (methods, schedules, locations, areas, texts…) | Merchant | The app's configuration | Until uninstall + 48 h |
-| Name of the staff member who changed something | Merchant staff | Change history ("who moved this order") | 180 days |
+| Name of the staff member who changed something | Merchant staff | Change history ("who moved this order") | With the order (400 days after its date); 180 days in the activity log |
 | Order number, customer first name, Shopify customer ID, items, chosen date, slot, method, pickup location, delivery area or postcode | Customer | Order lists, capacity counting, calendars, printed sheets | 400 days after the delivery date, or until uninstall + 48 h |
 | Customer name, address, phone, order note, delivery instructions | Customer | Printed day and route sheets only | **Not stored** (read live from Shopify when printing) |
 | Shopper's cart choice (date, slot, method, postcode, optional delivery instructions) | Customer | Saved by Shopify as cart attributes so checkout and the order know the choice | Held by Shopify, not by Pickday |
 
-The storefront widget runs in the shopper's browser and talks only to Shopify (the cart). It does not contact Pickday's server or set cookies. It keeps two things in the browser's session storage, which is cleared when the tab closes: the postcode or delivery area the shopper typed (so they aren't asked again on the next page) and a cache of product tags (no personal data).
+The storefront widget runs in the shopper's browser and talks only to Shopify (the cart). It does not contact Pickday's server or set cookies. Two optional links do reach Pickday's server, and only when the customer clicks them: the "Apple or Outlook (.ics)" calendar download on the thank-you page (the date, time and pickup address are in the link; nothing is stored) and the "Change date" button in the customer's account. It keeps two things in the browser's session storage, which is cleared when the tab closes: the postcode or delivery area the shopper typed (so they aren't asked again on the next page) and a cache of product tags (no personal data).
+
+## Who is responsible (GDPR roles)
+
+- **For customer data, the merchant is the controller and Pickday is a processor** acting on the merchant's instructions: Pickday only uses order data to run the date picker, order lists, sheets and calendars for that store. Customers exercise their rights through the merchant (see below). A data processing agreement is available on request.
+- **For the merchant's own account data** (store name, staff names in the change history), Pickday is the controller.
+- **Legal basis:** performing the contract with the merchant (Art. 6(1)(b) GDPR) and, for the customer data processed for the merchant, the merchant's own basis, usually performing their sales contract with the customer.
+
+**Who we are:** [YOUR NAME OR COMPANY NAME], [POSTAL ADDRESS], [SUPPORT EMAIL]. (Fill this in before publishing this page.)
 
 ## Where data is kept
 
 - **Server:** Render (render.com), region Frankfurt, EU.
 - **Database:** Neon (neon.tech), region EU (Frankfurt). Encrypted at rest and in transit.
 
-Each of these acts as a processor under its own data processing terms. No other third parties receive data.
+Each of these acts as a sub-processor under its own data processing terms. Both are US companies, so data may be accessible from the United States even though it is stored in the EU; such transfers rely on the safeguards in their data processing agreements (for example the EU Standard Contractual Clauses). No other third parties receive data. Shopify itself holds the full order, under the merchant's agreement with Shopify.
 
 ## Calendar feed
 
@@ -44,6 +52,8 @@ Customers ask the merchant, who asks Shopify. Shopify then sends Pickday:
 - **Data request:** Pickday records which of its stored orders belong to the customer (order number, first name, schedule) so the merchant can provide them.
 - **Redaction request:** Pickday removes the customer's first name, customer ID, delivery postcode/area and change history from those orders (the orders Shopify lists, and any other order with that customer's ID).
 - **Shop deletion (48 hours after uninstall):** Pickday deletes everything it holds for that store.
+
+Customers and merchants can also complain to their data protection authority (in the EU, the authority of their country; in the UK, the ICO). The same approach covers similar laws elsewhere, such as the UK GDPR, California's CCPA, Saudi Arabia's PDPL and India's DPDP Act: Pickday holds the minimum (first name, customer ID and the schedule), only for the merchant, and deletes it on request.
 
 ## Security
 

@@ -112,7 +112,7 @@ describe("admin pages render", () => {
   it("Home: wizard and dashboard", async () => {
     const mod = await import("../../app/routes/app._index");
     const common = { shop: meta.shop, today: meta.today, plan: "free", themeLink: "https://x", embed: false };
-    const wizard = await render("/app", mod, { ...common, mode: "wizard", ...preview, full: defaultSettings("US"), countries: ["US", "DE"], country: "US", firstLocation: { name: "Shop", address: "1 Main" } });
+    const wizard = await render("/app", mod, { ...common, mode: "wizard", ...preview, full: defaultSettings("US"), countries: ["US", "DE", "KW"], holidayCountries: ["US", "DE"], country: "US", firstLocation: { name: "Shop", address: "1 Main" } });
     expect(wizard).toContain("Step 1 of 3");
     noRawKeys(wizard);
     const chart = Array.from({ length: 14 }, (_, i) => ({ date: `2026-10-${23 + i > 31 ? "0" + (i - 8) : 23 + i}`, orders: i, used: i, max: 10 }));

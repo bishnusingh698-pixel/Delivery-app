@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { alerts, busyDays, checklist, settingsOffOnPlan } from "../core/home";
-import { defaultSettings } from "../core/defaults";
+import { countryHolidaySet, defaultSettings } from "../core/defaults";
 
 describe("home", () => {
   it("checklist reflects setup state", () => {
@@ -23,8 +23,12 @@ describe("home", () => {
     s.holidays = [];
     const a = alerts({ settings: s, today: "2026-10-16", flags: {}, embedChecked: true, busyDays: [{ date: "2026-10-17", pct: 90 }], usagePct: 85, warnings: [] });
     expect(a.map((x) => x.id)).toEqual(["embedOff", "vacation", "busy", "usage", "holidays"]);
-    const quiet = alerts({ settings: defaultSettings("US"), today: "2026-03-01", flags: { embedDetected: true }, embedChecked: true, busyDays: [], usagePct: 10, warnings: [] });
+    // Holidays on: nothing to suggest.
+    const withHolidays = { ...defaultSettings("US"), holidays: [countryHolidaySet("US")] };
+    const quiet = alerts({ settings: withHolidays, today: "2026-03-01", flags: { embedDetected: true }, embedChecked: true, busyDays: [], usagePct: 10, warnings: [] });
     expect(quiet).toEqual([]);
+    // No holiday list for the country (Kuwait): nothing to offer.
+    expect(alerts({ settings: defaultSettings("KW"), today: "2026-03-01", flags: { embedDetected: true }, embedChecked: true, busyDays: [], usagePct: 10, warnings: [], holidayData: false })).toEqual([]);
     expect(alerts({ settings: s, today: "2026-10-16", flags: { holidayYearOffered: 2026 }, embedChecked: false, busyDays: [], usagePct: null, warnings: [] }).map((x) => x.id)).toEqual(["vacation"]);
   });
   it("lists settings a lower plan switches off", () => {

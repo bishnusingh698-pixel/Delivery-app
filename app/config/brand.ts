@@ -15,6 +15,4 @@ export const BRAND = {
   /** Default accent for the storefront widget (merchants can change it). */
   accentColor: "#2c6ecb",
   logoUrl: "/logo.svg",
-  /** "Powered by" link on the Free plan. */
-  poweredByUrl: "https://pickday.app/?utm_source=widget",
 } as const;

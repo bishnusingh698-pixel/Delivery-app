@@ -9,7 +9,7 @@ import { useLoaderData } from "react-router";
 import { applyCountry } from "../../core/defaults";
 import { DATE_FORMATS, formatDate } from "../../core/dateformat";
 import { hasFeature } from "../../core/publish";
-import { regionDefaults } from "../../core/regions";
+import { ALL_COUNTRIES, regionDefaults } from "../../core/regions";
 import type { DateFormat, MethodId, Settings } from "../../core/types";
 import { Button, Checkbox, ChoiceList, Locked, NumberField, Page, Section, Select, Switch, TextField } from "../components/polaris";
 import { SettingsChrome, fieldId, useSettingsForm } from "../components/settings-form";
@@ -23,12 +23,13 @@ type Edited = Pick<Settings, "country" | "dateFormat" | "weekStart" | "holidays"
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const s = ctx.settings;
-  // The holiday dataset's countries (about 200): every country Pickday can load public holidays for.
-  const countries = new Set(holidayCountries("en").map((c) => c.code));
+  // Every country can be chosen; only some have a public-holiday list.
+  const countries = new Set(ALL_COUNTRIES);
   if (s.country) countries.add(s.country);
   return {
     meta: shopMeta(ctx),
     countries: [...countries],
+    holidayCountries: holidayCountries("en").map((c) => c.code),
     shopifyCountry: ctx.row.country,
     initial: {
       country: s.country,
@@ -66,8 +67,10 @@ export default function SettingsPage() {
   const form = useSettingsForm(d.initial);
   const { draft, update, setDraft } = form;
   const [pending, setPending] = useState<string | null>(null);
-  const [alsoDays, setAlsoDays] = useState(true);
-  const [alsoFormat, setAlsoFormat] = useState(true);
+  // Nothing beyond the week start changes unless the merchant ticks it.
+  const [alsoDays, setAlsoDays] = useState(false);
+  const [alsoFormat, setAlsoFormat] = useState(false);
+  const [alsoHolidays, setAlsoHolidays] = useState(false);
 
   const countries = d.countries;
   const dayNames = (wds: number[]) => days.filter((x) => wds.includes(x.value)).map((x) => x.short).join(", ");
@@ -99,8 +102,9 @@ export default function SettingsPage() {
             onChange={(c) => {
               if (c === draft.country) return setPending(null);
               setPending(c);
-              setAlsoDays(true);
-              setAlsoFormat(draft.dateFormat !== "auto");
+              setAlsoDays(false);
+              setAlsoFormat(false);
+              setAlsoHolidays(false);
             }}
           />
           {pending && target ? (
@@ -108,15 +112,17 @@ export default function SettingsPage() {
               <s-stack gap="small-200">
                 <s-unordered-list>
                   <s-list-item>{t("settingsPage.applyWeek", { day: weekStartName(target.weekStart) })}</s-list-item>
-                  <s-list-item>{t("settingsPage.applyHolidays", { country: countryName(pending, locale) })}</s-list-item>
                 </s-unordered-list>
                 <Checkbox label={t("settingsPage.applyDays", { days: dayNames(target.workdays) })} checked={alsoDays} onChange={setAlsoDays} />
                 <Checkbox label={t("settingsPage.applyFormat", { example: formatDate(sample, target.dateFormat, d.meta.primaryLocale) })} checked={alsoFormat} onChange={setAlsoFormat} />
+                {d.holidayCountries.includes(pending) ? (
+                  <Checkbox label={t("settingsPage.applyHolidays", { country: countryName(pending, locale) })} checked={alsoHolidays} onChange={setAlsoHolidays} />
+                ) : null}
                 <s-stack direction="inline" gap="small-200">
                   <Button
                     variant="primary"
                     onClick={() => {
-                      setDraft((x) => applyCountry({ ...(x as Settings) }, pending, { workdays: alsoDays, dateFormat: alsoFormat }) as Edited);
+                      setDraft((x) => applyCountry({ ...(x as Settings) }, pending, { workdays: alsoDays, dateFormat: alsoFormat, holidays: alsoHolidays }) as Edited);
                       setPending(null);
                     }}
                   >

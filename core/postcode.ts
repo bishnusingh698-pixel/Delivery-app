@@ -74,13 +74,33 @@ function forms(postcode: string): string[] {
   return /^\d{9}$/.test(pc) ? [pc, pc.slice(0, 5)] : [pc];
 }
 
-export function matchRule(rule: PostcodeRule, postcode: string): boolean {
+/** UK-style postcodes (also Jersey, Guernsey, Isle of Man): "SW1A 1AA" = outward "SW1A" + inward "1AA". */
+const UK_STYLE = new Set(["GB", "UK", "JE", "GG", "IM"]);
+const UK_FULL = /^([A-Z]{1,2}\d[A-Z\d]?)(\d[A-Z]{2})$/;
+
+/**
+ * UK prefixes follow the postcode's structure, not its letters: "E*" is the E area (E1, E14),
+ * not EC or EN; "SW1*" is the SW1 district (SW1A, SW1P), not SW10–SW19. Longer prefixes that
+ * reach into the inward code ("SW1A 1*") compare letter by letter.
+ */
+function ukPrefixMatches(prefix: string, pc: string): boolean {
+  const outward = UK_FULL.exec(pc)?.[1] ?? pc;
+  if (/^[A-Z]{1,2}$/.test(prefix)) return /^[A-Z]+/.exec(outward)?.[0] === prefix;
+  if (prefix.length > outward.length) return pc.startsWith(prefix);
+  if (!outward.startsWith(prefix)) return false;
+  if (outward === prefix) return true;
+  // "SW1" → "SW1A" (a sub-district letter) yes; "SW1" → "SW10" (another district) no.
+  return /\d$/.test(prefix) && /^[A-Z]$/.test(outward[prefix.length]);
+}
+
+export function matchRule(rule: PostcodeRule, postcode: string, country?: string | null): boolean {
+  const uk = UK_STYLE.has((country ?? "").toUpperCase());
   return forms(postcode).some((pc) => {
     switch (rule.kind) {
       case "exact":
         return pc === rule.value;
       case "prefix":
-        return pc.startsWith(rule.value);
+        return uk ? ukPrefixMatches(rule.value, pc) : pc.startsWith(rule.value);
       case "range": {
         if (!/^\d+$/.test(pc) || pc.length !== rule.len) return false;
         const n = Number(pc);
@@ -90,7 +110,7 @@ export function matchRule(rule: PostcodeRule, postcode: string): boolean {
   });
 }
 
-export function matchesAny(lines: string[], postcode: string): boolean {
+export function matchesAny(lines: string[], postcode: string, country?: string | null): boolean {
   const { rules } = parseRules(lines);
-  return rules.some((r) => matchRule(r, postcode));
+  return rules.some((r) => matchRule(r, postcode, country));
 }

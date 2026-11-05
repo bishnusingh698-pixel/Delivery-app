@@ -7,6 +7,13 @@ import type { Closure, HolidayItem, HolidaySet } from "./types";
 
 export const HOLIDAY_ID_PREFIX = "hol:";
 
+/**
+ * Countries whose holiday dataset has national days only and misses major closing days that follow
+ * regional or lunar calendars announced each year (India: Diwali, Holi, Dussehra, Eid…).
+ * The setup wizard and the Days off page tell the merchant to add those themselves.
+ */
+export const HOLIDAY_GAPS: ReadonlySet<string> = new Set(["IN"]);
+
 export function holidayClosures(set: HolidaySet, items: HolidayItem[]): Closure[] {
   const skip = new Set(set.skip);
   return items

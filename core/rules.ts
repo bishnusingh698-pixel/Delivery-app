@@ -143,7 +143,7 @@ export function regionMatches(list: string[], region: string | null | undefined)
 export function areaCovered(config: Pick<StorefrontConfig, "areas">, input: AreaInput): boolean | null {
   const ac = areaConfig(config, input.country);
   if (!ac || ac.mode === "none") return null;
-  if (ac.mode === "postcode") return input.postcode ? matchesAny(ac.postcodes, input.postcode) : false;
+  if (ac.mode === "postcode") return input.postcode ? matchesAny(ac.postcodes, input.postcode, input.country) : false;
   if (ac.mode === "area") return !!input.areaId && ac.areas.some((a) => a.id === input.areaId);
   if (ac.mode === "region") return regionMatches(ac.regions, input.region);
   return null;
@@ -154,7 +154,7 @@ export function findZone(config: Pick<StorefrontConfig, "zones">, input: AreaInp
   if (!input.country) return null;
   for (const z of config.zones) {
     if (z.country.toUpperCase() !== input.country.toUpperCase()) continue;
-    if (input.postcode && z.postcodes.length && matchesAny(z.postcodes, input.postcode)) return z;
+    if (input.postcode && z.postcodes.length && matchesAny(z.postcodes, input.postcode, z.country)) return z;
     if (input.areaId && z.areas.includes(input.areaId)) return z;
     if (input.region && z.regions.length && regionMatches(z.regions, input.region)) return z;
   }
