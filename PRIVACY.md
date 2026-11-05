@@ -1,6 +1,6 @@
 # Pickday privacy policy
 
-*Last updated: 23 October 2026*
+*Last updated: 5 November 2026*
 
 Pickday ("the app") helps Shopify merchants let their customers choose a delivery, pickup or shipping date. This page explains what data the app handles, why, where it's kept and for how long. It applies to merchants who install the app and to their customers.
 
@@ -50,7 +50,7 @@ If a merchant creates a calendar feed, anyone with its secret address can read t
 Customers ask the merchant, who asks Shopify. Shopify then sends Pickday:
 
 - **Data request:** Pickday records which of its stored orders belong to the customer (order number, first name, schedule) so the merchant can provide them.
-- **Redaction request:** Pickday removes the customer's first name, customer ID, delivery postcode/area and change history from those orders (the orders Shopify lists, and any other order with that customer's ID).
+- **Redaction request:** Pickday removes the customer's first name, customer ID, delivery postcode/area and change history from those orders (the orders Shopify lists, and any other order with that customer's ID), and deletes the record of any earlier data request for them (it listed their first name).
 - **Shop deletion (48 hours after uninstall):** Pickday deletes everything it holds for that store.
 
 Customers and merchants can also complain to their data protection authority (in the EU, the authority of their country; in the UK, the ICO). The same approach covers similar laws elsewhere, such as the UK GDPR, California's CCPA, Saudi Arabia's PDPL and India's DPDP Act: Pickday holds the minimum (first name, customer ID and the schedule), only for the merchant, and deletes it on request.
