@@ -85,22 +85,23 @@ If the deploy fails, open **Logs**. A line starting with `[pickday] setting prob
 
 ### 4. Connect the code to your app and deploy the extensions
 
-On your computer (needs [Node.js 22.15 or newer](https://nodejs.org) and Git):
+**First, in the Partner Dashboard → your app → API access** (Shopify refuses the deploy without these):
+
+1. **Allow network access in checkout and account UI extensions** → **Allow network access** (approved at once). Without it: "Network access must be requested and approved…".
+2. **Protected customer data access** → **Request access**: select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason from step 6. Without it Shopify refuses the order webhooks.
+
+Then, in a terminal with Node.js 22.15 or newer and Git (Google Cloud Shell works: it has `nvm`), one line, with your Client ID in both places:
 
 ```bash
-git clone https://github.com/bishnusingh698-pixel/Delivery-app.git
-cd Delivery-app
-npm ci
+cd ~ && rm -rf Delivery-app && git clone https://github.com/bishnusingh698-pixel/Delivery-app.git && cd Delivery-app && nvm install 22 && npm ci && sed -i 's/^client_id = ""/client_id = "YOUR_CLIENT_ID"/' shopify.app.toml && npx -y @shopify/cli@4.9.5 app deploy --client-id YOUR_CLIENT_ID
 ```
 
-Open `shopify.app.toml` and replace `https://pickday.onrender.com` with your Render URL in `application_url` and `redirect_urls`. Then:
+Log in when asked (link + code), answer **yes** to the release, and wait for "New version released". This uploads the theme extension, both Functions, the thank-you, customer account and admin extensions and the Flow triggers, and registers the URL, scopes and webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks).
 
-```bash
-npx shopify app config link        # choose the app from step 1; keep the existing settings
-npm run deploy                     # uploads the theme extension, both Functions, the thank-you, customer account and admin extensions, Flow triggers
-```
-
-`npm run deploy` first checks `shopify.app.toml` (it stops if `client_id` is empty, the URL is still the example `https://pickday.onrender.com`, or `redirect_urls` don't match `application_url`), then writes your Render URL (from `shopify.app.toml`) into the customer account extension, then asks you to confirm the release: type `y`. This also registers the webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks) and the access scopes.
+- `shopify.app.toml` has `application_url = "https://pickday.onrender.com"`. If your Render URL is different, change it there (and in `redirect_urls`) before deploying.
+- Use `npx -y @shopify/cli@…`, not `npx shopify` (that is a different npm package).
+- `npm run deploy` does the same with a safety check of `shopify.app.toml` (stops on an empty `client_id`, the example URL unless `PICKDAY_URL_CONFIRMED=1`, or mismatched `redirect_urls`); it needs the Shopify CLI installed globally (`npm install -g @shopify/cli@4.9.5`).
+- Shopify checks some rules only at deploy; `tests/deploy-rules.test.ts` and `tests/function-query-cost.test.ts` check the known ones (one admin action per extension, no block next to an action, translations for every `t:` name, bundle sizes, Function input query cost) so CI catches them first.
 
 ### 5. Scheduled jobs and keep-awake (cron-job.org, free)
 
@@ -115,6 +116,8 @@ Sign up at [cron-job.org](https://cron-job.org) and create 3 jobs (**Create cron
 Click **Test run** on each: keep-awake answers `ok`, the others `started` (status 202). A 403 means the secret doesn't match. The hourly job rolls each store's dates and public holidays forward and fires the "Daily schedule" Flow trigger at each store's chosen hour; the daily job prunes old data, re-checks the app embed and syncs the store's time zone.
 
 ### 6. Partner Dashboard settings
+
+(Items 1 and 2 are needed before the deploy in step 4; they're here with the details.)
 
 1. **API access** → **Protected customer data access** → **Request access**. Select **Protected customer data** and the fields **Name**, **Address** and **Phone**, with the reason "Printed delivery day sheets and route sheets. Addresses, phone numbers and delivery instructions are read live when the merchant prints and never stored; only the order number, the customer's first name and the customer ID (to let customers change their own date) are stored." Answer the data protection questions with `PRIVACY.md`. Order webhooks need this approval to reach a live store.
 2. **API access** → **Allow network access in checkout and account UI extensions** → **Allow network access**. The "Change date" button on the customer's order page (extension `pickday-customer-change`) calls your Render URL; without this approval Shopify doesn't let it load.
@@ -165,7 +168,7 @@ GitHub Actions runs all of these on every push (`.github/workflows/ci.yml`), wit
 
 - `core/` — the date engine and all rules, shared by the admin, the storefront widget and the checkout Functions (no `Intl` in Function code paths).
 - `widget/` — the storefront widget; `npm run build:widget` writes it into `extensions/pickday-theme/assets/` (commit the result). The admin's live preview imports the same code.
-- `extensions/` — theme app extension, validation Function, delivery customization Function, thank-you/order status block, admin order page block (`pickday-order-block`) and "Change delivery date" actions (`pickday-admin`; Shopify doesn't allow a block and actions in one extension), Flow triggers.
+- `extensions/` — theme app extension, validation Function, delivery customization Function, thank-you/order status block, admin order page block (`pickday-order-block`), "Change delivery date" actions on orders (`pickday-admin`) and draft orders (`pickday-draft-action`; Shopify allows one admin action per extension and no block next to it), Flow triggers.
 - `app/` — the embedded admin (React Router, Polaris web components, App Bridge), webhooks, scheduled jobs.
 - `locales/storefront/` — 28 shopper languages; `app/i18n/admin/` — 8 admin languages.
 

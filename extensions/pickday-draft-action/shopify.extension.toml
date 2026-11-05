@@ -1,0 +1,12 @@
+api_version = "2026-07"
+
+# "Change delivery date" on draft orders (phone and wholesale orders). Shopify allows one admin
+# action target per extension, so the order action is pickday-admin and this one is separate.
+[[extensions]]
+name = "t:name"
+handle = "pickday-draft-action"
+type = "ui_extension"
+
+[[extensions.targeting]]
+module = "./src/DraftAction.tsx"
+target = "admin.draft-order-details.action.render"
