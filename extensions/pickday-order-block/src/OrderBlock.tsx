@@ -1,7 +1,8 @@
 import "@shopify/ui-extensions/preact";
 import { render } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { load, type ScheduleData } from "./api";
+// Shared with the "Change delivery date" actions (extension pickday-admin).
+import { load, type ScheduleData } from "../../pickday-admin/src/api";
 
 export default async () => {
   render(<OrderBlock />, document.body);

@@ -1,0 +1,17 @@
+{
+  "name": "Pickday",
+  "blockHeading": "Delivery date",
+  "none": "No delivery date chosen for this order.",
+  "notNeeded": "Nothing in this order needs a date.",
+  "change": "Change date",
+  "set": "Set date",
+  "method": "Method",
+  "status": "Status",
+  "statusScheduled": "Scheduled",
+  "statusFulfilled": "Fulfilled",
+  "statusCancelled": "Cancelled",
+  "limited": "Recorded but not tagged: this month's plan limit was reached.",
+  "changed": "Changed {{count}} time(s). Last change: {{from}} → {{to}}",
+  "loading": "Loading…",
+  "error": "Couldn't load the schedule. Please try again."
+}

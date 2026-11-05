@@ -165,7 +165,7 @@ GitHub Actions runs all of these on every push (`.github/workflows/ci.yml`), wit
 
 - `core/` — the date engine and all rules, shared by the admin, the storefront widget and the checkout Functions (no `Intl` in Function code paths).
 - `widget/` — the storefront widget; `npm run build:widget` writes it into `extensions/pickday-theme/assets/` (commit the result). The admin's live preview imports the same code.
-- `extensions/` — theme app extension, validation Function, delivery customization Function, thank-you/order status block, admin order block and actions, Flow triggers.
+- `extensions/` — theme app extension, validation Function, delivery customization Function, thank-you/order status block, admin order page block (`pickday-order-block`) and "Change delivery date" actions (`pickday-admin`; Shopify doesn't allow a block and actions in one extension), Flow triggers.
 - `app/` — the embedded admin (React Router, Polaris web components, App Bridge), webhooks, scheduled jobs.
 - `locales/storefront/` — 28 shopper languages; `app/i18n/admin/` — 8 admin languages.
 

@@ -1,0 +1,17 @@
+{
+  "name": "Pickday",
+  "blockHeading": "お届け日",
+  "none": "この注文にはお届け日が選択されていません。",
+  "notNeeded": "この注文には日付が必要な商品はありません。",
+  "change": "日付を変更",
+  "set": "日付を設定",
+  "method": "方法",
+  "status": "ステータス",
+  "statusScheduled": "予定済み",
+  "statusFulfilled": "発送済み",
+  "statusCancelled": "キャンセル済み",
+  "limited": "記録済みですがタグは付いていません：今月のプランの上限に達しました。",
+  "changed": "変更回数：{{count}}。最終変更：{{from}} → {{to}}",
+  "loading": "読み込み中…",
+  "error": "スケジュールを読み込めませんでした。もう一度お試しください。"
+}

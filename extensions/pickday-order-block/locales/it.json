@@ -1,0 +1,17 @@
+{
+  "name": "Pickday",
+  "blockHeading": "Data di consegna",
+  "none": "Nessuna data di consegna scelta per questo ordine.",
+  "notNeeded": "Nessun articolo di questo ordine richiede una data.",
+  "change": "Cambia data",
+  "set": "Imposta data",
+  "method": "Metodo",
+  "status": "Stato",
+  "statusScheduled": "Programmato",
+  "statusFulfilled": "Evaso",
+  "statusCancelled": "Annullato",
+  "limited": "Registrato ma senza tag: è stato raggiunto il limite del piano per questo mese.",
+  "changed": "Modifiche: {{count}}. Ultima modifica: {{from}} → {{to}}",
+  "loading": "Caricamento…",
+  "error": "Impossibile caricare la programmazione. Riprova."
+}

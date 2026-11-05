@@ -1,0 +1,17 @@
+{
+  "name": "Pickday",
+  "blockHeading": "Lieferdatum",
+  "none": "Für diese Bestellung wurde kein Lieferdatum gewählt.",
+  "notNeeded": "Nichts in dieser Bestellung braucht ein Datum.",
+  "change": "Datum ändern",
+  "set": "Datum festlegen",
+  "method": "Methode",
+  "status": "Status",
+  "statusScheduled": "Geplant",
+  "statusFulfilled": "Ausgeführt",
+  "statusCancelled": "Storniert",
+  "limited": "Erfasst, aber nicht getaggt: Das Tariflimit dieses Monats ist erreicht.",
+  "changed": "Änderungen: {{count}}. Letzte Änderung: {{from}} → {{to}}",
+  "loading": "Wird geladen…",
+  "error": "Der Zeitplan konnte nicht geladen werden. Bitte versuche es noch einmal."
+}
