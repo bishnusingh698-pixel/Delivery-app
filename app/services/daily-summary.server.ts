@@ -8,23 +8,18 @@ import prisma from "../db.server";
 import { addDays } from "../../core/civil";
 import { hasFeature } from "../../core/publish";
 import { nowInZone } from "../../core/tz";
-import { METHOD_IDS, type MethodId, type Settings } from "../../core/types";
+import type { Settings } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
 import { planOf } from "../models/shop.server";
 import { adminT } from "./admin-t.server";
-import { gql, type AdminGraphql } from "./graphql.server";
+import type { AdminGraphql } from "./graphql.server";
+import { DAILY_HANDLE, dailyPayload, type DayOrder } from "./flow-payload";
+import { sendFlowTrigger } from "./flow.server";
 
-export const DAILY_HANDLE = "pickday-flow-daily";
+export { DAILY_HANDLE, dailyPayload, type DayOrder };
+
 /** Sent at most this many hours after the chosen hour (a sleeping server or a missed ping still sends it). */
 const LATE_HOURS = 3;
-const SUMMARY_MAX = 900;
-
-export interface DayOrder {
-  method: string;
-  slotLabel: string | null;
-  locationId: string | null;
-  itemCount: number;
-}
 
 /** Which store-local date to describe now, or null when it isn't time (or it was already sent). */
 export function dueDate(settings: Pick<Settings, "notifications">, row: Pick<Shop, "timeZone" | "dailySummaryFor">, at = new Date()): string | null {
@@ -35,44 +30,6 @@ export function dueDate(settings: Pick<Settings, "notifications">, row: Pick<Sho
   if (hour < ds.hour || hour >= ds.hour + LATE_HOURS) return null;
   if (row.dailySummaryFor === now.date) return null;
   return now.date;
-}
-
-/** The trigger payload. Keys match extensions/pickday-flow-daily (Flow needs every field). */
-export function dailyPayload(
-  date: string,
-  dayLabel: string,
-  orders: DayOrder[],
-  settings: Pick<Settings, "locations">,
-  methodName: (m: MethodId) => string,
-  ordersUrl: string,
-) {
-  const by = (m: MethodId) => orders.filter((o) => o.method === m);
-  const parts: string[] = [];
-  for (const m of METHOD_IDS) {
-    const list = by(m);
-    if (!list.length) continue;
-    // Break down by time slot, or by pickup location when there are no slots.
-    const groups = new Map<string, number>();
-    for (const o of list) {
-      const key = o.slotLabel?.replace("-", "–") ?? (m === "pickup" && o.locationId ? settings.locations.find((l) => l.id === o.locationId)?.name ?? "" : "");
-      if (key) groups.set(key, (groups.get(key) ?? 0) + 1);
-    }
-    const detail = [...groups].sort(([a], [b]) => a.localeCompare(b)).map(([k, n]) => `${k}: ${n}`).join(", ");
-    parts.push(`${methodName(m)} ${list.length}${detail ? ` (${detail})` : ""}`);
-  }
-  let summary = parts.join(" · ") || "0";
-  if (summary.length > SUMMARY_MAX) summary = `${summary.slice(0, SUMMARY_MAX - 1)}…`;
-  return {
-    Date: date,
-    Day: dayLabel,
-    Orders: orders.length,
-    "Local delivery orders": by("delivery").length,
-    "Pickup orders": by("pickup").length,
-    "Shipping orders": by("shipping").length,
-    Items: orders.reduce((n, o) => n + o.itemCount, 0),
-    Summary: summary,
-    "Orders page": ordersUrl,
-  };
 }
 
 /** Orders scheduled on `date` (per-item orders count once if any of their items is on that date). */
@@ -110,13 +67,7 @@ export async function sendDailySummaryIfDue(row: Shop, admin: () => Promise<Admi
     const date = settings.notifications.dailySummary.day === "today" ? today : addDays(today, 1);
     const { t, dateLabel } = await adminT(row);
     const payload = dailyPayload(date, dateLabel(date), await ordersOn(row.shop, date), settings, (m) => t(`method.${m}`), ordersPageUrl(row.shop, date));
-    const res = await gql(
-      await admin(),
-      `mutation($handle: String!, $payload: JSON!) { flowTriggerReceive(handle: $handle, payload: $payload) { userErrors { field message } } }`,
-      { handle: DAILY_HANDLE, payload },
-    );
-    const errors = res.flowTriggerReceive?.userErrors ?? [];
-    if (errors.length) throw new Error(`flowTriggerReceive: ${errors.map((e: { message: string }) => e.message).join("; ")}`);
+    await sendFlowTrigger(await admin(), DAILY_HANDLE, payload);
     return true;
   } catch (e) {
     // Not sent: give the claim back so the next hourly run tries again.

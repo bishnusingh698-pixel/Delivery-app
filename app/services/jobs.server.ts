@@ -10,7 +10,7 @@ import { addDays } from "../../core/civil";
 import { shopToday } from "../models/shop.server";
 import { unauthenticated } from "../shopify.server";
 import { checkEmbed } from "./embed.server";
-import { publishShop, schedulePublish } from "./publish.server";
+import { locationTimeShifts, publishShop, schedulePublish } from "./publish.server";
 import { collectionIdsIn, resolveCollectionProducts } from "./collections.server";
 import { loadSettings, storeSettings } from "../models/settings.server";
 import { syncShopInfo } from "./install.server";
@@ -38,7 +38,8 @@ export async function hourly() {
   for (const s of shops) {
     try {
       const today = shopToday(s);
-      const stale = s.publishedFor !== today || s.countsDirty || !s.publishedAt || Date.now() - s.publishedAt.getTime() > 6 * 3600_000;
+      const stale =
+        s.publishedFor !== today || s.countsDirty || !s.publishedAt || Date.now() - s.publishedAt.getTime() > 6 * 3600_000 || (await zoneShiftChanged(s.shop, s.timeZone, s.publishedAt));
       if (stale) {
         await publishShop(s.shop, undefined, { functions: false });
         published++;
@@ -55,6 +56,19 @@ export async function hourly() {
     }
   }
   return { shops: shops.length, published, summaries, errors };
+}
+
+/**
+ * A pickup location in another time zone gets a fixed offset in the checkout config: when daylight
+ * saving starts or ends in one of the two zones since the last publish, the offset changed, so the
+ * Function would judge that location's cut-off an hour off until the next publish.
+ */
+async function zoneShiftChanged(shop: string, timeZone: string, publishedAt: Date | null): Promise<boolean> {
+  if (!publishedAt) return false;
+  const { settings } = await loadSettings(shop);
+  const c = { tz: timeZone, locations: settings.locations };
+  if (!c.locations.some((l) => l.timeZone && l.timeZone !== timeZone)) return false;
+  return JSON.stringify(locationTimeShifts(c)) !== JSON.stringify(locationTimeShifts(c, publishedAt));
 }
 
 export async function daily() {

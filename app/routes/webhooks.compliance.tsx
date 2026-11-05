@@ -37,10 +37,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       const ids = ((p.orders_to_redact as number[]) ?? []).map(String);
       const customerId = p.customer?.id != null ? String(p.customer.id) : null;
       if (ids.length || customerId) {
-        await db.scheduledOrder.updateMany({
-          where: { shop, OR: [{ orderId: { in: ids } }, ...(customerId ? [{ customerId }] : [])] },
-          data: { customerFirst: null, customerId: null, area: null, history: [] },
-        });
+        const where = { shop, OR: [{ orderId: { in: ids } }, ...(customerId ? [{ customerId }] : [])] };
+        const names = (await db.scheduledOrder.findMany({ where, select: { orderName: true } })).map((r) => r.orderName);
+        await db.scheduledOrder.updateMany({ where, data: { customerFirst: null, customerId: null, area: null, history: [] } });
+        // A data request listed this customer's first name in the activity log ("#1001: Ana, …"): it goes too.
+        if (names.length) await db.activityLog.deleteMany({ where: { shop, kind: "privacy", OR: names.map((n) => ({ summary: { contains: `${n}:` } })) } });
       }
       break;
     }

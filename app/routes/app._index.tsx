@@ -462,6 +462,7 @@ function Alerts({ d }: { d: DashData }) {
     holidays: { href: "/app/days-off", label: t("home.alert.holidaysAction") },
     checkoutMismatch: { href: "/app/settings/checkout", label: t("home.alert.checkoutMismatchAction") },
     configLarge: { href: "/app/delivery/areas", label: t("home.alert.configLargeAction") },
+    checkoutLimited: { href: "/app/days-off", label: t("home.alert.checkoutLimitedAction") },
     functionsMissing: { href: "/app/help", label: t("home.alert.functionsMissingAction") },
   };
   return (

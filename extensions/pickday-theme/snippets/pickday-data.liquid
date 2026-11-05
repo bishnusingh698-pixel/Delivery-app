@@ -12,7 +12,7 @@
   "assetBase": {{ 'pickday.js' | asset_url | split: 'pickday.js' | first | json }},
   "itemCollections": {
     {%- for item in cart.items limit: 100 -%}
-      {{ item.product_id | append: '' | json }}: [{% for c in item.product.collections limit: 50 %}"{{ c.id }}"{% unless forloop.last %},{% endunless %}{% endfor %}]{% unless forloop.last %},{% endunless %}
+      {{ item.product_id | append: '' | json }}: [{% for c in item.product.collections limit: 50 %}{{ c.id | append: '' | json }}{% unless forloop.last %},{% endunless %}{% endfor %}]{% unless forloop.last %},{% endunless %}
     {%- endfor -%}
   },
   "itemTags": {

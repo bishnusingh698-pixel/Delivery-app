@@ -89,6 +89,14 @@ Updated after every phase. "Needs a live store" means the step can only be check
 6. **Appearance**: change the accent colour to a light yellow: in the preview the selected day's number turns dark so it stays readable. Choose **Below the checkout button**, turn on **Let customers add delivery instructions**, save: on the storefront the picker sits under the button and has a notes box; the order shows "Delivery instructions" and the printed day sheet includes them. Choose Deutsch, change "Choose a date" text, save, and open the German storefront: your text is shown.
 7. Change your Shopify admin language (your profile → Language) to Español: Pickday's admin is in Spanish.
 
+## How to test round 7 (needs a live store)
+
+1. Deploy with the README step 4 command. It runs `npm run check:shopify` first: every check passes, then Shopify accepts the version ("New version released") with no "too long", "complexity" or "targeting" errors.
+2. In Shopify Flow, start a new workflow: the **Daily schedule**, **Schedule created**, **Schedule changed** and **Schedule cancelled** triggers are listed under Pickday with their descriptions.
+3. Home shows neither "Your delivery areas are too large for the checkout check" nor "Checkout can't re-check all your rules" for a normal setup.
+4. Plans: upgrade to Starter (test charge), then switch to Pro. After a minute, Plans and Home show Pro. Downgrade to Free: the calendar feed address (Notifications) now answers "Not found"; upgrade to Pro again and it works.
+5. Privacy webhooks, from the Cloud Shell app folder after the deploy: `npx -y @shopify/cli@4.9.5 app webhook trigger --client-id <Client ID> --client-secret <Client secret> --topic customers/redact --api-version 2026-10 --address https://<your-service>.onrender.com/webhooks/compliance`. Render's log shows `POST /webhooks/compliance 200` (the sample customer isn't in your store, so nothing changes). Without `--client-secret` it shows 401: the app refuses messages Shopify didn't sign, which is also correct.
+
 ## Acceptance tests
 
 "Automated" = covered by `npm test` or `npm run test:browser` and passing. "Needs a live store" = the code is in place but it can only be confirmed on a development store (Shopify checkout, webhooks, theme editor and calendars can't run here). Steps for each are in the "How to test" sections above.
@@ -131,6 +139,10 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | 35 | Daily summary trigger: right hour in the store's zone, at most once a day, retried if Flow refused | ✅ Automated (`tests/daily-summary.test.ts`, database test) — confirm the email on a live store |
 | 36 | Customer date change: only the order's own customer, before the deadline, unfulfilled, within the change limit and the cart's rules | ✅ Automated (`tests/customer-change.test.ts`, database test) — confirm in a live customer account |
 | 29 | Translations: keys, placeholders, plurals in 28 locales; no English leftovers; pseudo-loc; review list | ✅ Automated (translation tests, browser overflow test); TRANSLATION_REVIEW.md lists strings for native review |
+| 37 | `shopify app deploy` accepts the app: every deploy rule that can be checked from the code passes first | ✅ Automated (`npm run check:shopify`, each check proven on a broken copy) — the deploy itself needs Shopify (README step 4) |
+| 38 | A store with very large settings still requires a date at checkout (Shopify's 10,000-byte Function limit), and Home says the full check doesn't fit | ✅ Automated (`tests/deploy-rules.test.ts`, `tests/round7-fixes.test.ts`) — confirm a normal store shows no such warning |
+| 39 | Privacy webhooks: data request listed, redaction removes the first name (orders and log), shop deletion removes the store only | ✅ Automated (database test) — confirm with `shopify app webhook trigger` on a live store |
+| 40 | Plan follows Shopify's active subscription even when billing webhooks arrive out of order; calendar feed stops after leaving Pro | ✅ Automated — confirm on a development store (upgrade, switch plan, downgrade) |
 
 ## Automated checks (run `npm test`)
 
@@ -143,6 +155,8 @@ Updated after every phase. "Needs a live store" means the step can only be check
 - Email snippets: right Liquid object per template, balanced tags.
 - Settings pages: postcode rule checking and address test, collection membership paging, Shopify location import, fee product variants (one per amount, never deleted), settings export/import round trip, Home checklist and alerts.
 - Scheduled jobs: only the exact `X-Pickday-Secret` is accepted (missing or short secrets refuse everything); app embed detection in the theme settings.
+- Shopify deploy rules (`npm run check:shopify`): Flow trigger descriptions, field types, keys and payloads; Function query cost, size, validity, exports and build settings; UI extension targets, default exports, names, translations, capabilities and 64 KB bundles; theme extension folders, sizes, blocks, translations, assets and Shopify's theme-check; `shopify.app.toml` URLs, webhooks, compliance topics, API version and scopes; Function metafields under 10,000 bytes. `tests/deploy-rules.mutations.test.ts` breaks a copy of the app once per rule and expects that rule to catch it.
+- Privacy webhooks against Postgres; billing source of truth; calendar feed plan check; webhook de-duplication on a database outage.
 
 ## Browser checks (run `npm run test:browser`)
 

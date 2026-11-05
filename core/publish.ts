@@ -5,7 +5,9 @@
  */
 import { addDays } from "./civil";
 import { closureMatches } from "./engine";
-import type { Closure, PlanId, Settings, StorefrontConfig } from "./types";
+import { targetIsEmpty } from "./rules";
+import type { FunctionConfig } from "./checkout";
+import type { Availability, Closure, PlanId, Settings, StorefrontConfig } from "./types";
 
 export interface PublishMeta {
   version: number;
@@ -142,33 +144,153 @@ export const FUNCTION_TEXT_KEYS = [
   "checkout.renamePickup",
 ];
 
-/** Shrink the config for Function input limits (see DECISIONS D-11). */
-export function toFunctionConfig(c: StorefrontConfig, maxBytes = 20000): StorefrontConfig & { trimmed?: boolean } {
+/**
+ * Shopify gives a Function `null` for any metafield value over 10,000 bytes (Shopify's metafield
+ * limits page), and a checkout check without its settings lets every order through (D-24). Every
+ * metafield a Function reads stays under this budget, counted in UTF-8 bytes (D-70).
+ */
+export const FUNCTION_METAFIELD_MAX_BYTES = 10_000;
+/** What Pickday writes at most: a margin under Shopify's limit. */
+export const FUNCTION_CONFIG_BUDGET = 9_500;
+
+/** Size of a metafield value as Shopify counts it (UTF-8 bytes of the JSON text). */
+export const utf8Bytes = (v: unknown): number => new TextEncoder().encode(typeof v === "string" ? v : JSON.stringify(v)).length;
+
+/** What the validation Function reads: the date engine's fields plus areas and its own texts. Nothing for display. */
+export function toFunctionConfig(c: StorefrontConfig): FunctionConfig {
   const texts: StorefrontConfig["texts"] = {};
   for (const [loc, map] of Object.entries(c.texts)) {
     const picked: Record<string, string> = {};
     for (const k of FUNCTION_TEXT_KEYS) if (map[k]) picked[k] = map[k];
     if (Object.keys(picked).length) texts[loc] = picked;
   }
-  const out: StorefrontConfig & { trimmed?: boolean } = {
-    ...c,
-    texts,
-    widget: { ...c.widget, customCss: "", drawerSelector: "" },
-    locations: c.locations.map((l) => ({ ...l, address: "", mapUrl: "", instructions: {} })),
+  return {
+    tz: c.tz,
+    dateMode: c.dateMode,
+    methods: c.methods,
+    locations: c.locations.map((l) => ({ ...l, name: "", address: "", mapUrl: "", instructions: {} })),
+    closures: c.closures.map((x) => ({ ...x, label: "" })),
+    specialDays: c.specialDays.map((x) => ({ ...x, label: "" })),
+    vacation: { ...c.vacation, message: {} },
+    zones: c.zones,
     areas: c.areas.map((a) => ({ ...a, areas: a.areas.map((x) => ({ id: x.id, names: {} })) })),
     // Product names are not needed for validation; collection lists are replaced by inCollections().
     productRules: { ...c.productRules, collectionProducts: {} },
+    surcharges: c.surcharges,
+    texts,
   };
-  if (JSON.stringify(out).length > maxBytes) {
-    out.trimmed = true;
-    out.areas = out.areas.map((a) => ({ ...a, postcodes: [], mode: "none" as const }));
-    out.zones = [];
+}
+
+/** How much of the checkout check fits in Shopify's limit, best first (D-70). */
+export const FUNCTION_LEVELS = ["full", "noCounts", "noAreas", "noTexts", "dateOnly", "off"] as const;
+export type FunctionLevel = (typeof FUNCTION_LEVELS)[number];
+
+export interface FunctionExtras {
+  avail?: Availability | null;
+  tzShift?: Record<string, number>;
+  timeChecks?: number[];
+  embedOff?: boolean;
+}
+
+/**
+ * The validation Function's config, as complete as fits in `budget` bytes. Each step drops the part
+ * whose loss is safest: the capacity counts (the Function then skips the "full" check, D-11), postcode
+ * areas and zones (`trimmed`), the merchant's own message wording (Shopify's defaults are used), then
+ * everything but "is a date chosen?" (`dateOnly`). "off" (nothing fits) lets checkout through, as before.
+ */
+export function fitFunctionConfig(c: StorefrontConfig, extras: FunctionExtras = {}, budget = FUNCTION_CONFIG_BUDGET): { config: FunctionConfig | { off: true }; level: FunctionLevel; bytes: number } {
+  const base = toFunctionConfig(c);
+  const add = (cfg: FunctionConfig): FunctionConfig => ({
+    ...cfg,
+    ...(extras.tzShift && Object.keys(extras.tzShift).length ? { tzShift: extras.tzShift } : {}),
+    ...(extras.timeChecks ? { timeChecks: extras.timeChecks } : {}),
+    ...(extras.embedOff ? { embedOff: true } : {}),
+  });
+  const noAreas: FunctionConfig = { ...base, trimmed: true, areas: base.areas.map((a) => ({ ...a, postcodes: [], areas: [], mode: "none" as const })), zones: [] };
+  const noTexts: FunctionConfig = { ...noAreas, texts: {} };
+  const dateOnly: FunctionConfig = {
+    ...noTexts,
+    dateOnly: true,
+    methods: base.methods.map((m) => ({ ...m, names: {}, capacity: { ...m.capacity, slots: [], overrides: [], maxPerWeekday: null } })),
+    locations: [],
+    closures: [],
+    specialDays: [],
+    // Which products need a date stays: without it a product that needs none could be asked for one.
+    productRules: { ...base.productRules, extraLead: [], restrictions: [], limits: [] },
+    surcharges: [],
+  };
+  const steps: [FunctionLevel, FunctionConfig][] = [
+    ["noCounts", add(base)],
+    ["noAreas", add(noAreas)],
+    ["noTexts", add(noTexts)],
+    ["dateOnly", add(dateOnly)],
+  ];
+  if (extras.avail) steps.unshift(["full", { ...add(base), avail: extras.avail }]);
+  for (const [level, config] of steps) {
+    const bytes = utf8Bytes(config);
+    if (bytes <= budget) return { config, level: level === "noCounts" && !extras.avail ? "full" : level, bytes };
   }
-  return out;
+  const off = { off: true as const };
+  return { config: off, level: "off", bytes: utf8Bytes(off) };
 }
 
 /** Is a closure active on any of the next `days` days? (used for warnings) */
 export function closureHitsWindow(c: Settings["closures"][number], today: string, days: number): boolean {
   for (let i = 0; i <= days; i++) if (closureMatches(c, addDays(today, i))) return true;
   return false;
+}
+
+/** Shopify's limit for a list in a Function input query (field arguments and variables). */
+export const FUNCTION_LIST_MAX = 100;
+
+/**
+ * Every tag and collection id used by product rules: the validation Function's input query
+ * variables (hasTags / inCollections). At most 100 of each (Shopify's list limit) and, together,
+ * within the Function metafield budget (D-70). Rules on tags or collections past that are only
+ * applied by the cart widget.
+ */
+export function ruleVariables(cfg: Pick<StorefrontConfig, "productRules">, budget = FUNCTION_CONFIG_BUDGET - 200) {
+  const tags = new Set<string>();
+  const cols = new Set<string>();
+  const pr = cfg.productRules;
+  const targets = [pr.exclude, ...pr.extraLead.map((r) => r.target), ...pr.restrictions.map((r) => r.target), ...pr.limits.map((r) => r.target), ...pr.methodOnly.map((r) => r.target)];
+  for (const t of targets) {
+    if (targetIsEmpty(t)) continue;
+    t.tags.forEach((g) => tags.add(g));
+    t.collections.forEach((c) => cols.add(`gid://shopify/Collection/${c}`));
+  }
+  const out = { ruleTags: [...tags].slice(0, FUNCTION_LIST_MAX), ruleCollections: [...cols].slice(0, FUNCTION_LIST_MAX) };
+  while (utf8Bytes(out) > budget && (out.ruleTags.length || out.ruleCollections.length)) {
+    if (out.ruleTags.length >= out.ruleCollections.length) out.ruleTags.pop();
+    else out.ruleCollections.pop();
+  }
+  return out;
+}
+
+/** Delivery customization Function config: only what it needs. */
+export function deliveryConfig(config: StorefrontConfig, settings: Settings) {
+  return {
+    enabled: config.checkoutMatching.enabled,
+    rename: config.checkoutMatching.renameWithDate,
+    renameShipping: settings.checkoutMatching.renameShipping,
+    rateMap: settings.checkoutMatching.rateMap.map((r) => ({ title: r.title.trim().toLowerCase(), method: r.method })),
+    locations: config.locations.map((l) => ({ id: l.id, name: l.name })),
+    names: Object.fromEntries(config.methods.map((m) => [m.id, m.names])),
+    texts: Object.fromEntries(
+      Object.entries(config.texts).map(([loc, map]) => [
+        loc,
+        Object.fromEntries(Object.entries(map).filter(([k]) => k.startsWith("checkout."))),
+      ]),
+    ),
+  };
+}
+
+/**
+ * The delivery customization config under Shopify's 10,000-byte Function metafield limit (D-70):
+ * the merchant's own checkout wording goes first, then method names (Shopify's rate names stay).
+ * If even the rate map doesn't fit, checkout matching is switched off rather than half-applied.
+ */
+export function fitDeliveryConfig(cfg: ReturnType<typeof deliveryConfig>, budget = FUNCTION_CONFIG_BUDGET): ReturnType<typeof deliveryConfig> {
+  for (const c of [cfg, { ...cfg, texts: {} }, { ...cfg, texts: {}, names: {} }]) if (utf8Bytes(c) <= budget) return c;
+  return { ...cfg, enabled: false, rateMap: [], locations: [], texts: {}, names: {} };
 }

@@ -25,7 +25,7 @@ export function checklist(s: Settings, flags: HomeFlags, checkoutAllowed: boolea
   return items.filter((i) => i.id !== "checkout" || checkoutAllowed);
 }
 
-export type AlertId = "busy" | "vacation" | "embedOff" | "usage" | "holidays" | "checkoutMismatch" | "configLarge" | "functionsMissing" | "planOff";
+export type AlertId = "busy" | "vacation" | "embedOff" | "usage" | "holidays" | "checkoutMismatch" | "configLarge" | "checkoutLimited" | "functionsMissing" | "planOff";
 
 export interface Alert {
   id: AlertId;
@@ -49,7 +49,8 @@ export function alerts(input: {
   const { settings: s, today } = input;
   if (input.embedChecked && !input.flags.embedDetected) out.push({ id: "embedOff", tone: "critical" });
   for (const w of input.warnings) {
-    if (w.code === "functionsMissing" || w.code === "configLarge" || w.code === "checkoutMismatch") out.push({ id: w.code, tone: w.code === "functionsMissing" ? "critical" : "warning", params: { detail: w.detail ?? "" } });
+    if (w.code === "functionsMissing" || w.code === "configLarge" || w.code === "checkoutLimited" || w.code === "checkoutMismatch")
+      out.push({ id: w.code, tone: w.code === "functionsMissing" ? "critical" : "warning", params: { detail: w.detail ?? "" } });
   }
   const off = input.plan ? settingsOffOnPlan(s, input.plan) : [];
   if (off.length) out.push({ id: "planOff", tone: "warning", params: { keys: off.join(",") } });

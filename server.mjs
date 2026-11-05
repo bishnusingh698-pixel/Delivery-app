@@ -17,8 +17,9 @@ import morgan from "morgan";
 function checkEnv() {
   const env = process.env;
   if (env.SHOPIFY_APP_URL) env.SHOPIFY_APP_URL = env.SHOPIFY_APP_URL.trim().replace(/\/+$/, "");
-  const missing = ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_APP_URL", "SHOPIFY_APP_HANDLE", "SCOPES", "DATABASE_URL"].filter((k) => !env[k]?.trim());
+  const missing = ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_APP_URL", "SHOPIFY_APP_HANDLE", "SCOPES", "DATABASE_URL", "DIRECT_URL"].filter((k) => !env[k]?.trim());
   const problems = missing.map((k) => `${k} is not set`);
+  for (const k of ["DATABASE_URL", "DIRECT_URL"]) if (env[k]?.trim() && !/^postgres(ql)?:\/\//.test(env[k].trim())) problems.push(`${k} must be a Neon connection string starting with postgresql://`);
   if (env.SHOPIFY_APP_URL && !/^https:\/\/[^/\s]+$/.test(env.SHOPIFY_APP_URL)) problems.push(`SHOPIFY_APP_URL must look like https://your-service.onrender.com (got "${env.SHOPIFY_APP_URL}")`);
   if (problems.length) {
     for (const p of problems) console.error(`[pickday] setting problem: ${p}`);

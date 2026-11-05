@@ -17,8 +17,13 @@ export type Messages = Record<string, Record<string, string>>;
 
 /** tzShift: minutes to add to the shop's local time to get each pickup location's own local time (set at publish, refreshed hourly). */
 /** embedOff: the app embed was found switched off in the live theme, so shoppers can't pick a date (never block for a missing one). */
-export type FunctionConfig = StorefrontConfig & {
+/** dateOnly: the full rules didn't fit Shopify's 10,000-byte metafield limit, so only "is a date chosen?" is checked (D-70). */
+export type FunctionConfig = Pick<
+  StorefrontConfig,
+  "methods" | "locations" | "closures" | "specialDays" | "vacation" | "zones" | "areas" | "productRules" | "surcharges" | "tz" | "dateMode" | "texts"
+> & {
   trimmed?: boolean;
+  dateOnly?: boolean;
   avail?: Availability | null;
   tzShift?: Record<string, number>;
   embedOff?: boolean;
@@ -216,6 +221,8 @@ export function validate(input: ValidationInput, messages: Messages): Validation
     const required = methods.some((id) => cfg.methods.find((m) => m.id === id)?.dateRequired);
     return required ? err(cfg.dateMode === "item" ? "validation.missingItemDate" : "validation.missingDate") : [];
   }
+  // Only the "date chosen?" check fit in Shopify's limit; the cart widget applied the rest (D-70).
+  if (cfg.dateOnly) return [];
   if (!methods.includes(sel.m)) return err("validation.methodUnavailable");
   const method = cfg.methods.find((m) => m.id === sel.m)!;
   if (sel.m === "pickup" && (sel.l || cfg.locations.some((l) => l.enabled))) {

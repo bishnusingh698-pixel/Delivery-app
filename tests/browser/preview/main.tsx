@@ -4,7 +4,7 @@ import { useState } from "react";
 import { LiveWidget } from "../../../app/components/live-preview";
 import { I18nProvider } from "../../../app/i18n/react";
 import en from "../../../app/i18n/admin/en.json";
-import { defaultSettings } from "../../../core/defaults";
+import { countryHolidaySet, defaultSettings } from "../../../core/defaults";
 import { nowInZone } from "../../../core/tz";
 
 const tz = "America/New_York";
@@ -15,6 +15,8 @@ s.methods.delivery.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
 s.methods.delivery.slotsEnabled = true;
 s.methods.delivery.capacity.slots = [{ id: "am", start: "09:00", end: "12:00", weekdays: [], max: null }];
 s.notes = { enabled: true, methods: "all", maxLength: 100 };
+// Holidays are off until the merchant turns them on (D-68): turn on the US set, as the wizard would.
+s.holidays = [countryHolidaySet("US")];
 const setId = s.holidays[0].id;
 // Pretend tomorrow is a public holiday: the preview must show it closed.
 const [y, m, d] = today.split("-").map(Number);

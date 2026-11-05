@@ -93,15 +93,15 @@ If the deploy fails, open **Logs**. A line starting with `[pickday] setting prob
 Then, in a terminal with Node.js 22.15 or newer and Git (Google Cloud Shell works: it has `nvm`), one line, with your Client ID in both places:
 
 ```bash
-cd ~ && rm -rf Delivery-app && git clone https://github.com/bishnusingh698-pixel/Delivery-app.git && cd Delivery-app && nvm install 22 && npm ci && sed -i 's/^client_id = ""/client_id = "YOUR_CLIENT_ID"/' shopify.app.toml && npx -y @shopify/cli@4.9.5 app deploy --client-id YOUR_CLIENT_ID
+cd ~ && rm -rf Delivery-app && git clone https://github.com/bishnusingh698-pixel/Delivery-app.git && cd Delivery-app && nvm install 22 && npm ci && npm run check:shopify && sed -i 's/^client_id = ""/client_id = "YOUR_CLIENT_ID"/' shopify.app.toml && npx -y @shopify/cli@4.9.5 app deploy --client-id YOUR_CLIENT_ID
 ```
 
-Log in when asked (link + code), answer **yes** to the release, and wait for "New version released". This uploads the theme extension, both Functions, the thank-you, customer account and admin extensions and the Flow triggers, and registers the URL, scopes and webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks).
+`npm run check:shopify` first checks every Shopify deploy rule (a few seconds, no database); if one fails it names the file and the rule and nothing is uploaded. Then log in when asked (link + code), answer **yes** to the release, and wait for "New version released". This uploads the theme extension, both Functions, the thank-you, customer account and admin extensions and the Flow triggers, and registers the URL, scopes and webhooks (orders, uninstall, shop update, billing and the three mandatory privacy webhooks).
 
 - `shopify.app.toml` has `application_url = "https://pickday.onrender.com"`. If your Render URL is different, change it there (and in `redirect_urls`) before deploying.
 - Use `npx -y @shopify/cli@…`, not `npx shopify` (that is a different npm package).
 - `npm run deploy` does the same with a safety check of `shopify.app.toml` (stops on an empty `client_id`, the example URL unless `PICKDAY_URL_CONFIRMED=1`, or mismatched `redirect_urls`); it needs the Shopify CLI installed globally (`npm install -g @shopify/cli@4.9.5`).
-- Shopify checks some rules only at deploy; `tests/deploy-rules.test.ts` and `tests/function-query-cost.test.ts` check the known ones (one admin action per extension, no block next to an action, translations for every `t:` name, bundle sizes, Function input query cost) so CI catches them first.
+- Shopify checks many rules only at deploy. `npm run check:shopify` checks every one that can be checked from the code (Flow trigger fields and description length, Function query cost, size and exports, UI extension targets, names, translations and 64 KB bundles, theme extension files, block names and Shopify's theme-check, `shopify.app.toml` URLs, webhooks and scopes, and that Function settings stay under Shopify's 10,000-byte limit), and proves each check by breaking a copy of the app. The full list with sources is in `AUDIT.md`, round 7. CI runs it on every push.
 
 ### 5. Scheduled jobs and keep-awake (cron-job.org, free)
 
@@ -158,6 +158,7 @@ A local Postgres works too: `DATABASE_URL=postgresql://user:pass@localhost:5432/
 npm run typecheck                  # TypeScript: app, core, widget and extensions
 npm run lint
 npm test                           # unit, render and (with DATABASE_URL) database tests
+npm run check:shopify              # only Shopify's deploy rules (no database needed)
 npm run build                      # builds the widget (fails over 35 KB gzipped) and the app
 npm run test:browser               # headless Chromium: widget fixes, 28 languages, RTL, 320 px, admin live preview
 ```

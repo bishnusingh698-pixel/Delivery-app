@@ -1,4 +1,4 @@
-# Pickday audit (October 2026, round 2)
+# Pickday audit (October 2026, round 2; rounds 3–7 below)
 
 Source of truth for this round of work. Updated as items land (✅ done, ⏳ in progress, ⬜ to do).
 
@@ -103,6 +103,78 @@ Checked and correct: Friday–Saturday (Gulf, Israel), Thursday–Friday (Iran) 
 | B56 | C | `extensions/pickday-admin` | Deploy refused: "admin.order-details.block.render cannot be configured in the same extension as" the order and draft order actions. | The block moved to its own extension `pickday-order-block` (sharing `pickday-admin/src/api.ts`); its button still opens the actions with `navigate("extension:pickday-admin")`. | ✅ |
 | B57 | C | `extensions/pickday-admin` | Deploy refused again: "Extension targeting config should have just one of the following targets" (order and draft order actions together). | Draft order action moved to `pickday-draft-action` (same screen, re-exported). `tests/deploy-rules.test.ts` now checks Shopify's deploy-time rules (one admin action per extension, no block next to an action, `t:` translations, 64 KB bundles, 25-character theme block names); it fails on the configuration Shopify rejected. README step 4: Partner Dashboard prerequisites (network access, protected customer data) moved before the deploy, and the deploy command fixed (`npx shopify` fetched the wrong package). | ✅ |
 | B55 | M | build / deploy | Render: Node 22.12 too old for a dependency (EBADENGINE); a placeholder `SHOPIFY_APP_URL` gave "Invalid URL". | Node 22.23.4; clear build error (pull requests #7, #8). | ✅ |
+
+### Round 7: every Shopify deploy rule, checked before the deploy (November 2026)
+
+The last four deploys each failed on one rule nobody had checked. This round collected Shopify's deploy-time rules for every extension type the app uses, turned every one that can be checked from the repository into a test (`tests/deploy/rules.ts`, run by `tests/deploy-rules.test.ts`), proved each test by breaking a copy of the app (`tests/deploy-rules.mutations.test.ts`, one case per rule, including the four real deploy errors), and audited the app code again.
+
+Final checks after round 7 (clean `npm ci`): `npm run typecheck` ✅ (app + all 5 UI extensions), `npm run lint` ✅ (0 errors, 20 warnings, as before), `npm test` ✅ (471 tests in 32 files, database tests against Postgres included; 96 of them are `npm run check:shopify`), `npm run build` ✅ (widget 22.4 KB gzipped of 35 KB), `npm run test:browser` ✅ (38 widget checks + admin live preview), `prisma migrate diff` schema = migrations ✅, both Functions built with Shopify CLI 4.9.5 up to "Running javy" (javy's plugin comes from cdn.shopify.com, which the sandbox can't reach).
+
+**Deploy history** (each found only by Shopify at deploy time): 1. validation Function "complexity of 50, max 30" (B54); 2. "admin.order-details.block.render cannot be configured in the same extension as … action.render" (B56); 3. "Extension targeting config should have just one of the following targets" (B57); 4. "pickday-flow-daily: description: is too long (maximum is 140 characters)" (B58).
+
+**Sources.** shopify.dev and the Shopify community forums are blocked from the build sandbox, so rules were taken from: **[CLI]** the Shopify CLI 4.9.5 source code (github.com/Shopify/cli, tag `4.9.5`: `packages/app/src/cli/models/extensions/schemas.ts`, `specifications/flow_trigger.ts`, `function.ts`, `ui_extension.ts`, `theme.ts`, `app_config_branding.ts`, `app_config_app_home.ts`, `app_config_app_access.ts`, `validation/app_config_webhook.ts`, `validation/common.ts`, `services/function/build.ts`, `services/function/binaries.ts`, `services/build/bundle-size.ts`, `utilities/extensions/locales-configuration.ts`, `utilities/extensions/theme.ts`, `services/app-security-engine/rules/catalog.ts`); **[TPL]** Shopify's extension templates (github.com/Shopify/extensions-templates); **[TC]** Shopify theme-check (github.com/Shopify/theme-tools, `theme-app-extension` profile), run on the theme extension; **[DOCS]** shopify.dev pages as quoted in search results (Flow trigger reference, Function input/output limits, metafield limits, UI extension bundle size and the 2026-01 deadline, admin extension configuration, theme limits, app block changelog, protected customer data, customer account capabilities); **[DEPLOY]** the deploy errors above.
+
+| Area | Rule | Source | Checked by |
+|---|---|---|---|
+| Flow trigger | `name` and `description` required; description at most 140 characters | [CLI], [DOCS], [DEPLOY] 4 | test |
+| Flow trigger | Field types: `single_line_text_field`, `number_decimal`, `url`, `boolean`, `email` (and `schema.*`); not `number_integer` or `multi_line_text_field` | [CLI] | test |
+| Flow trigger | Keys only letters and spaces, required on non-reference fields, unique; reference fields (`order_reference` …) take no key | [CLI] | test |
+| Flow trigger | Payload has every field, keys exactly as declared, `order_id` (number) for the order reference, right value types; under 50 KB | [DOCS] | test (built payloads vs each trigger's TOML) |
+| Function | Input query cost at most 30; at most 3,000 bytes without comments | [DOCS], [DEPLOY] 1 | test (cost model matches Shopify's figure) |
+| Function | Input query valid against the Function API schema | [DOCS] | test (graphql `validate` on `schema.graphql`) |
+| Function | Lists in the query (variables) at most 100 entries | [DOCS] | test |
+| Function | Metafield values over 10,000 bytes reach the Function as `null` | [DOCS] metafield limits | test (worst-case store) + code (D-70) |
+| Function | Export kebab-case, mapped to the camelCase export of `src/index.ts`; entry `src/index.ts`; `build.command = ""`, `build.path` the `.wasm` | [CLI], [TPL] | test |
+| Function | Input variables on the extension or on targets, not both; `@shopify/shopify_function` major 0–2 | [CLI] | test |
+| Function | Compiled `.wasm` under 256 KB | [DOCS] | test: bundled JS under 128 KB (CLI bundle 77 KB / 51 KB) |
+| Function | 11 million instructions, 10 MB memory, 128 kB input, 20 kB output at run time | [DOCS] | not checkable here (needs Shopify's runner); outputs are one error or a few operations |
+| Function | Targets `cart.validations.generate.run`, `cart.delivery-options.transform.run` at API 2026-07 | [TPL] | test |
+| UI extension | One admin action target per extension; no admin block next to an action | [DEPLOY] 2, 3 | test |
+| UI extension | Targets unique, modules exist, each module has a default export (API 2025-10+) | [CLI] | test |
+| UI extension | Customer account order action modal comes with its menu item target | [DOCS] | test |
+| UI extension | Name 5–30 characters (every language) | [DOCS] | test |
+| UI extension | 64 KB compressed per extension: one Brotli-compressed bundle of all its targets | [DOCS], [CLI] | test (same bundling and compression as the CLI) |
+| UI extension | From 1 October 2026 every UI extension must use API 2026-01 or later; versions supported 12 months | [DOCS] | test |
+| UI extension | Known capabilities; `fetch` from checkout or customer accounts needs `network_access` (and its approval in the Dashboard) | [CLI], [DOCS] | test (approval: README step 4) |
+| UI extension | Every `t:` name and every `i18n.translate` key exists in `en.default.json`; locale files: exactly one default, none empty, UTF-8 JSON | [CLI] | test |
+| UI extension | `@shopify/ui-extensions` version matches `api_version` | [CLI] type generation | test |
+| Theme extension | Only `assets/`, `blocks/`, `locales/`, `snippets/`, with their file types; 10 MB total, 500 KB of Liquid | [CLI] | test |
+| Theme extension | At most 30 blocks; block names at most 25 characters; known `target`; valid schema JSON | [DOCS] | test |
+| Theme extension | Translation keys and `asset_url` files exist; Liquid syntax; app block JS ≤ 10 KB and CSS ≤ 100 KB when declared in the schema | [TC] | test (theme-check, 0 errors) |
+| Theme extension | One theme app extension per app | [DOCS] | test |
+| `shopify.app.toml` | `name` at most 30 characters; `application_url` and `redirect_urls` https; `embedded`; config deployed with the extensions | [CLI] | test |
+| `shopify.app.toml` | Webhook URIs relative or https, no duplicate topic+URI, the three compliance topics each once, topic names valid, each URI has a route | [CLI], App Store | test |
+| `shopify.app.toml` | Webhook API version supported (12 months) and the same as the server's | [CLI] security check | test |
+| `shopify.app.toml` | Scopes valid, no `write_script_tags`, same list in `render.yaml` | [CLI] security check | test |
+| `shopify.app.toml` | Order webhooks need the protected customer data request first; network access approved before the extension can be published | [DOCS] | README step 4 (Dashboard, not checkable) |
+| Handles | 1–50 characters, letters, digits, hyphens, unique | [CLI] | test |
+| App Store | Expiring offline tokens (new public apps since April 2026), Billing API, session tokens, compliance webhooks, theme app extension only | [DOCS], [CLI] security check | code (`expiringOfflineAccessTokens: true`, refresh token stored) |
+| App Store | Shopify's own security check (`shopify app security check`, CLI 4.9.5) | [CLI] | run once: 7 "unauthenticated endpoint" reports are false positives (each route calls `adminContext`, which awaits `authenticate.admin`); the Liquid escaping report was fixed (B73); no Dependabot config (low, not added: it opens pull requests on its own) |
+
+Not found written down anywhere (so not tested): length limits for Flow trigger names and field keys, Function names and descriptions. All of Pickday's are short.
+
+| # | Sev | Where | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| B58 | C | `extensions/pickday-flow-daily` | Deploy refused: Flow trigger description 149 characters (limit 140). | 131 characters; every trigger's name, description, field types and keys tested. | ✅ |
+| B59 | C | `core/publish.ts`, `publish.server.ts` | The validation Function's config could exceed 10,000 bytes: Shopify then gives the Function `null` and checkout stops checking dates, silently. A bakery with 3 methods, slots, 3 locations and 12 closed days was at 9,084 bytes before capacity counts (allowed up to 24,000); the old limit counted characters, not bytes. | Only what the engine reads, measured in UTF-8 bytes, under 9,500; safest parts dropped first, down to "a date must be chosen"; Home warning (D-70). | ✅ |
+| B60 | M | delivery customization | The checkout matching config had no size limit (silently off when too big). | Wording, then names dropped; off rather than half-applied (D-70). | ✅ |
+| B61 | M | Function input variables | Up to 100 tags of up to 255 characters could pass 10,000 bytes. | Capped by count and bytes. | ✅ |
+| B62 | M | `orders.server.ts` `firstDelivery` | Any database error (Neon unreachable) counted as "already processed": the order webhook was answered 200 and lost. | Only a unique-key clash is a duplicate; other errors return 500 so Shopify retries. | ✅ |
+| B63 | M | `webhooks.billing.tsx` | The plan was taken from the webhook message: a late or retried message could set an old plan. | The current active subscription is read from Shopify (D-72). | ✅ |
+| B64 | M | `webhooks.compliance.tsx` | A customer redaction cleared the orders but left the customer's first name in the data-request activity log entry. | That entry is deleted too; database test for all three privacy webhooks. | ✅ |
+| B65 | m | `feed.server.ts` | The calendar feed (Pro) kept working after a downgrade. | Answers "not found" until the store is on Pro again (D-73). | ✅ |
+| B66 | m | `flow.server.ts` | Flow `userErrors` were ignored: a refused trigger left no trace. | Logged; the order change still never fails because of Flow. | ✅ |
+| B67 | m | daily summary | A location name with a line break would make "Summary" multi-line (a single-line field). | Flattened to one line. | ✅ |
+| B68 | m | `reschedule.server.ts` | Two date changes at once (staff, or customers in their accounts) could both take the last place in a slot. | Date changes take the same per-store lock as order webhooks. | ✅ |
+| B69 | m | `jobs.server.ts` | A pickup location in another time zone keeps a fixed offset in the checkout config; after a DST change it could be an hour off for up to 6 hours. | The hourly job republishes as soon as an offset changes. | ✅ |
+| B70 | m | `server.mjs` | `DIRECT_URL` missing or a URL not starting with `postgresql://` gave a Prisma error instead of the clear "setting problem" line. | Checked at start-up. | ✅ |
+| B71 | m | `package.json` | `npm run typecheck` skipped `pickday-draft-action` (which then failed: it reuses `pickday-admin`'s screen). | Included, with `pickday-admin`'s generated types. | ✅ |
+| B72 | m | `tests/deploy-rules.test.ts` | The 64 KB check measured each module alone with gzip; Shopify measures one bundle per extension with Brotli. | Same bundling and compression as the CLI. | ✅ |
+| B73 | m | `snippets/pickday-data.liquid` | Collection ids printed into JSON without `json` (Shopify's security check: unsafe output). | Printed with the `json` filter. | ✅ |
+| B74 | m | `pickday-admin/shopify.d.ts` | Still typed for the draft order target that moved out. | Regenerated by the CLI. | ✅ |
+| B75 | m | `tests/browser/preview` | The admin live preview browser test failed since D-68 (holidays opt-in: empty holiday list). | The harness turns the US holidays on itself. | ✅ |
+
+Open, for the owner to decide (not changed): plan trials start again after an uninstall and reinstall (Shopify's billing gives a new 14-day trial to each new subscription; limiting it is a pricing choice); the `.ics` files name the time zone without a `VTIMEZONE` block, which Google and Apple Calendar accept and some Outlook versions don't; `npm audit` lists advisories in dependencies (Prisma, `date-holidays`, Shopify's codegen tools), only fixable by `npm audit fix --force`, which would install breaking versions.
 
 ## 2. UX problems
 
