@@ -691,7 +691,7 @@
   "planOff.products": "règles produits",
   "planOff.surcharges": "frais de livraison",
   "plans.current": "Forfait actuel",
-  "plans.devStore": "Ceci est une boutique de développement : toutes les fonctionnalités Pro y sont gratuites. Les forfaits s'appliquent une fois l'application installée sur une vraie boutique.",
+  "plans.devStore": "Ceci est une boutique de développement : tous les frais de forfait y sont des frais de test. Choisissez n'importe quel forfait pour l'essayer, rien n'est facturé.",
   "plans.downgrade": "Passer à Free",
   "plans.downgradeConfirm": "Passer à Free ? Les fonctionnalités payantes sont désactivées immédiatement (vos paramètres sont conservés et reviennent si vous mettez à niveau).",
   "plans.feature.allMethods": "Livraison, retrait et expédition ensemble",

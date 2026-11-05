@@ -16,7 +16,7 @@ export interface Usage {
 }
 
 /** Usage for the current calendar month in the store's time zone. */
-export async function monthlyUsage(shop: string, row: Pick<Shop, "plan" | "isDevStore" | "timeZone">): Promise<Usage> {
+export async function monthlyUsage(shop: string, row: Pick<Shop, "plan" | "timeZone">): Promise<Usage> {
   const today = shopToday(row);
   const monthStart = today.slice(0, 8) + "01";
   const limit = PLAN_ORDER_LIMIT[planOf(row)];

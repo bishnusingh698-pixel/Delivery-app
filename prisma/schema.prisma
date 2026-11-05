@@ -81,6 +81,8 @@ model ScheduledOrder {
   orderId         String // numeric Shopify id as string
   orderName       String
   customerFirst   String?
+  /// Numeric Shopify customer id (from the order webhook): who may change the date from their account.
+  customerId      String?
   method          String
   date            String? // YYYY-MM-DD (null in per-item mode when lines differ)
   slotId          String?
@@ -102,6 +104,7 @@ model ScheduledOrder {
   @@unique([shop, orderId])
   @@index([shop, date])
   @@index([shop, createdAt])
+  @@index([shop, customerId])
 }
 
 model ScheduledItem {

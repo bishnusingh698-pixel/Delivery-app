@@ -1,6 +1,6 @@
 /**
  * Turns an orders/* webhook payload into what Pickday stores. Pure (tested).
- * Personal data kept: order number and customer first name only.
+ * Personal data kept: order number, customer first name and the customer's Shopify id only.
  */
 import { datedLines } from "../../core/rules";
 import { ATTR_KEY, decodeItemSelection, decodeSelection } from "../../core/selection";
@@ -15,7 +15,7 @@ export interface OrderPayload {
   cancelled_at?: string | null;
   fulfillment_status?: string | null;
   note_attributes?: { name: string; value: string }[];
-  customer?: { first_name?: string | null } | null;
+  customer?: { id?: number | string | null; first_name?: string | null } | null;
   shipping_lines?: { title?: string; code?: string; source?: string }[];
   line_items: {
     id: number | string;
@@ -35,6 +35,8 @@ export interface ParsedOrder {
   orderId: string;
   orderName: string;
   customerFirst: string | null;
+  /** Numeric Shopify customer id; null for guest orders. */
+  customerId: string | null;
   selection: Selection | null;
   method: MethodId;
   date: string | null;
@@ -50,6 +52,12 @@ export interface ParsedOrder {
   perItem: { lineId: string; productId: string; variantId: string; title: string; qty: number; date: string; slotId: string | null }[];
   updatedAt: Date | null;
   shippingTitle: string | null;
+}
+
+/** "123" or "gid://shopify/Customer/123" → "123"; anything else → null. */
+function customerIdOf(id: number | string | null | undefined): string | null {
+  const n = String(id ?? "").replace(/^gid:\/\/shopify\/Customer\//, "");
+  return /^\d+$/.test(n) ? n : null;
 }
 
 const attr = (list: { name: string; value: string }[] | undefined, key: string) => list?.find((a) => a.name === key)?.value ?? null;
@@ -96,6 +104,7 @@ export function parseOrder(p: OrderPayload, settings: Pick<Settings, "productRul
     orderId: String(p.id),
     orderName: p.name,
     customerFirst: p.customer?.first_name?.trim() || null,
+    customerId: customerIdOf(p.customer?.id),
     selection: sel,
     method: sel?.m ?? "shipping",
     date: sel?.d ?? (perItem.length && sameDate ? firstItemDate : null),

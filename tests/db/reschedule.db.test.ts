@@ -11,7 +11,7 @@ const admin = {
   graphql: async (query: string, opts?: { variables?: any }) => {
     calls.push({ query, variables: opts?.variables });
     const data: any = {};
-    if (query.includes("order(id")) data.order = { name: "#2001", customer: { firstName: "Bo" }, customAttributes: [{ key: "Gift note", value: "Hi" }], lineItems: { nodes: [{ id: "gid://shopify/LineItem/1", title: "Cake", variantTitle: null, quantity: 1, requiresShipping: true, isGiftCard: false, product: { id: "gid://shopify/Product/1" }, variant: { id: "gid://shopify/ProductVariant/11" } }] } };
+    if (query.includes("order(id")) data.order = { name: "#2001", shippingAddress: { firstName: "Bo" }, billingAddress: { firstName: "Robert" }, customAttributes: [{ key: "Gift note", value: "Hi" }], lineItems: { nodes: [{ id: "gid://shopify/LineItem/1", title: "Cake", variantTitle: null, quantity: 1, requiresShipping: true, isGiftCard: false, product: { id: "gid://shopify/Product/1" }, variant: { id: "gid://shopify/ProductVariant/11" } }] } };
     for (const m of ["orderUpdate", "tagsAdd", "tagsRemove", "metafieldsSet"]) if (query.includes(m)) data[m] = { userErrors: [] };
     return new Response(JSON.stringify({ data }));
   },
@@ -42,6 +42,9 @@ describe.skipIf(!process.env.DATABASE_URL)("admin reschedule", async () => {
     expect(r).toMatchObject({ ok: false, reason: "full" });
     const forced = await setOrderSchedule(SHOP, admin, "2001", { method: "shipping", date: "2027-03-10", slotId: null, locationId: null }, { force: true, actor: "Sam" });
     expect(forced.ok).toBe(true);
+    // First name from the order's shipping address (the customer object needs read_customers).
+    const row = await prisma.scheduledOrder.findFirstOrThrow({ where: { shop: SHOP, orderId: "2001" } });
+    expect(row.customerFirst).toBe("Bo");
   });
 
   it("moves the order, keeps other attributes, tags it and records history", async () => {

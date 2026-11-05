@@ -691,7 +691,7 @@
   "planOff.products": "regole dei prodotti",
   "planOff.surcharges": "costi di consegna",
   "plans.current": "Piano attuale",
-  "plans.devStore": "Questo è un negozio di sviluppo, quindi qui tutte le funzionalità Pro sono gratuite. I piani si applicano quando l'app è installata su un negozio reale.",
+  "plans.devStore": "Questo è un negozio di sviluppo, quindi qui tutti gli addebiti dei piani sono di prova: scegli un piano qualsiasi per provarlo, non viene addebitato nulla.",
   "plans.downgrade": "Passa a Gratuito",
   "plans.downgradeConfirm": "Passare a Gratuito? Le funzionalità a pagamento si disattivano subito (le impostazioni vengono conservate e tornano se esegui di nuovo l'upgrade).",
   "plans.feature.allMethods": "Consegna, ritiro e spedizione insieme",

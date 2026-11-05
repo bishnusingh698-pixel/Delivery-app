@@ -27,4 +27,11 @@ export async function applySubscription(shop: string, sub: { id: string; name: s
   return { from: row.plan as PlanId, to: plan };
 }
 
-export const billingTest = () => process.env.BILLING_TEST === "true" || process.env.NODE_ENV !== "production";
+/**
+ * Whether plan charges are test charges (no money moves).
+ * Development stores can only accept test charges, so they always get them: that is how the
+ * merchant (and Shopify's App Store reviewers) try the real upgrade and downgrade flow for free.
+ * BILLING_TEST=true makes every store use test charges (never in production).
+ */
+export const billingTest = (row?: { isDevStore?: boolean | null } | null) =>
+  process.env.BILLING_TEST === "true" || process.env.NODE_ENV !== "production" || !!row?.isDevStore;

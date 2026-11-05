@@ -7,7 +7,8 @@ export const BRAND = {
   name: "Pickday",
   appStoreName: "Pickday: Delivery Date Picker",
   tagline: "Let customers pick the day. Set daily limits and stop most overbooking.",
-  supportEmail: process.env.SUPPORT_EMAIL || "support@pickday.app",
+  /** From the SUPPORT_EMAIL setting. Empty = no contact links are shown (never a made-up address). */
+  supportEmail: (process.env.SUPPORT_EMAIL ?? "").trim(),
   website: "https://pickday.app",
   /** Primary colour used in admin illustrations and emails. */
   primaryColor: "#2c6ecb",

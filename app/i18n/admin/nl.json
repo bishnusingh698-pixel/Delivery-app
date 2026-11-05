@@ -691,7 +691,7 @@
   "planOff.products": "productregels",
   "planOff.surcharges": "bezorgkosten",
   "plans.current": "Huidig abonnement",
-  "plans.devStore": "Dit is een ontwikkelwinkel, dus elke Pro-functie is hier gratis. Abonnementen gelden zodra de app in een echte winkel is geïnstalleerd.",
+  "plans.devStore": "Dit is een ontwikkelwinkel, dus alle abonnementskosten zijn hier testkosten: kies een abonnement om het uit te proberen, er wordt niets in rekening gebracht.",
   "plans.downgrade": "Overstappen naar Gratis",
   "plans.downgradeConfirm": "Overstappen naar Gratis? Betaalde functies gaan meteen uit (je instellingen blijven bewaard en komen terug als je weer upgradet).",
   "plans.feature.allMethods": "Bezorging, ophalen en verzending samen",

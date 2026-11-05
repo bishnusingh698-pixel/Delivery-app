@@ -6,8 +6,8 @@ import { logActivity } from "../models/settings.server";
 /**
  * Mandatory privacy webhooks (one endpoint, three topics).
  *
- * What Pickday stores about customers: order number, customer first name and
- * the chosen date/slot/location/area per scheduled order. No addresses, emails
+ * What Pickday stores about customers: order number, customer first name, the
+ * customer's Shopify id and the chosen date/slot/location/area per scheduled order. No addresses, emails
  * or phone numbers (those are fetched live from Shopify when printing).
  */
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -17,8 +17,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   switch (topic) {
     case "CUSTOMERS_DATA_REQUEST": {
       const ids = ((p.orders_requested as number[]) ?? []).map(String);
+      const customerId = p.customer?.id != null ? String(p.customer.id) : null;
       const rows = await db.scheduledOrder.findMany({
-        where: { shop, orderId: { in: ids } },
+        where: { shop, OR: [{ orderId: { in: ids } }, ...(customerId ? [{ customerId }] : [])] },
         select: { orderName: true, customerFirst: true, method: true, date: true, slotLabel: true },
       });
       // The merchant answers the customer; this entry lists exactly what Pickday holds for them.
@@ -34,8 +35,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
     case "CUSTOMERS_REDACT": {
       const ids = ((p.orders_to_redact as number[]) ?? []).map(String);
-      if (ids.length) {
-        await db.scheduledOrder.updateMany({ where: { shop, orderId: { in: ids } }, data: { customerFirst: null, area: null, history: [] } });
+      const customerId = p.customer?.id != null ? String(p.customer.id) : null;
+      if (ids.length || customerId) {
+        await db.scheduledOrder.updateMany({
+          where: { shop, OR: [{ orderId: { in: ids } }, ...(customerId ? [{ customerId }] : [])] },
+          data: { customerFirst: null, customerId: null, area: null, history: [] },
+        });
       }
       break;
     }

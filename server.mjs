@@ -9,6 +9,28 @@ import compression from "compression";
 import express from "express";
 import morgan from "morgan";
 
+/**
+ * Check the settings before anything else, so a missing or mistyped Render variable shows up as
+ * one clear line in the logs instead of a half-working app (failed installs, broken plan
+ * approvals, a Home checklist that never turns green).
+ */
+function checkEnv() {
+  const env = process.env;
+  if (env.SHOPIFY_APP_URL) env.SHOPIFY_APP_URL = env.SHOPIFY_APP_URL.trim().replace(/\/+$/, "");
+  const missing = ["SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_APP_URL", "SHOPIFY_APP_HANDLE", "SCOPES", "DATABASE_URL"].filter((k) => !env[k]?.trim());
+  const problems = missing.map((k) => `${k} is not set`);
+  if (env.SHOPIFY_APP_URL && !/^https:\/\/[^/\s]+$/.test(env.SHOPIFY_APP_URL)) problems.push(`SHOPIFY_APP_URL must look like https://your-service.onrender.com (got "${env.SHOPIFY_APP_URL}")`);
+  if (problems.length) {
+    for (const p of problems) console.error(`[pickday] setting problem: ${p}`);
+    console.error("[pickday] fix these in Render > your service > Environment, then redeploy.");
+    process.exit(1);
+  }
+  if (!env.JOBS_SECRET || env.JOBS_SECRET.length < 16) console.warn("[pickday] JOBS_SECRET is missing or shorter than 16 characters: the hourly and daily jobs will refuse every call.");
+  if (!env.SUPPORT_EMAIL) console.warn("[pickday] SUPPORT_EMAIL is not set: the Help page has no contact button.");
+  if (env.BILLING_TEST === "true") console.warn("[pickday] BILLING_TEST is true: every store gets test charges and pays nothing. Set it to false before launch.");
+}
+if (process.env.NODE_ENV === "production") checkEnv();
+
 const build = await import("./build/server/index.js");
 const port = Number(process.env.PORT) || 3000;
 
@@ -38,4 +60,21 @@ app.use(morgan(":method :safe-url :status :res[content-length] - :response-time 
 app.use(["/feeds", "/ics"], rateLimit(30));
 app.all("*", createRequestHandler({ build, mode: process.env.NODE_ENV }));
 
-app.listen(port, () => console.log(`[pickday] listening on ${port}`));
+const server = app.listen(port, () => console.log(`[pickday] listening on ${port}`));
+
+// One failed background task (a publish, a job step) must never take the whole app down:
+// Node stops the process on an unhandled promise rejection by default.
+process.on("unhandledRejection", (reason) => console.error("[pickday] unhandled rejection", reason));
+
+// Render sends SIGTERM on every deploy and restart: stop taking new requests, let the ones
+// in flight (webhooks, plan approvals) finish, then exit before Render's 30-second limit.
+let stopping = false;
+for (const signal of ["SIGTERM", "SIGINT"]) {
+  process.on(signal, () => {
+    if (stopping) return;
+    stopping = true;
+    console.log(`[pickday] ${signal}: finishing open requests`);
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 20_000).unref();
+  });
+}

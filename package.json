@@ -6,7 +6,7 @@
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",
-    "deploy": "npm run build:widget && shopify app deploy",
+    "deploy": "node scripts/check-deploy-config.mjs && npm run build:widget && shopify app deploy",
     "config:use": "shopify app config use",
     "env": "shopify app env",
     "start": "node server.mjs",

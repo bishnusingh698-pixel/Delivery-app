@@ -691,7 +691,7 @@
   "planOff.products": "reglas de productos",
   "planOff.surcharges": "cargos de entrega",
   "plans.current": "Plan actual",
-  "plans.devStore": "Esta es una tienda de desarrollo, así que todas las funciones Pro son gratis aquí. Los planes se aplican cuando la aplicación se instala en una tienda real.",
+  "plans.devStore": "Esta es una tienda de desarrollo, así que todos los cobros de planes aquí son de prueba: elige cualquier plan para probarlo, no se cobra nada.",
   "plans.downgrade": "Cambiar a Free",
   "plans.downgradeConfirm": "¿Cambiar a Free? Las funciones de pago se desactivan de inmediato (tus ajustes se conservan y vuelven si mejoras de nuevo).",
   "plans.feature.allMethods": "Entrega local, retiro y envío a la vez",

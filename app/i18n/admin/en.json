@@ -691,7 +691,7 @@
   "planOff.products": "product rules",
   "planOff.surcharges": "delivery fees",
   "plans.current": "Current plan",
-  "plans.devStore": "This is a development store, so every Pro feature is free here. Plans apply once the app is installed on a real store.",
+  "plans.devStore": "This is a development store, so every plan charge here is a test charge: choose any plan to try it, nothing is billed.",
   "plans.downgrade": "Switch to Free",
   "plans.downgradeConfirm": "Switch to Free? Paid features turn off right away (your settings are kept and come back if you upgrade again).",
   "plans.feature.allMethods": "Delivery, pickup and shipping together",
