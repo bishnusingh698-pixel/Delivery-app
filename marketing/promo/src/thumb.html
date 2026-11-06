@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pickday thumbnail</title>
+<link rel="stylesheet" href="../node_modules/@fontsource-variable/archivo/standard.css">
+<link rel="stylesheet" href="../node_modules/@fontsource-variable/fraunces/full-italic.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/600.css">
+<link rel="stylesheet" href="stage.css">
+<style>
+  /* YouTube thumbnail, drawn at 1920x1080 and scaled to 1280x720: same paper, inks and furniture as the film */
+  .sheet { position: absolute; }
+  .big14 { left: 70px; top: 128px; font-size: 820px; letter-spacing: -.01em; }
+  .tk { position: absolute; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <filter id="rough" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/></filter>
+  <filter id="roughLine" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.5" xChannelSelector="R" yChannelSelector="G"/></filter>
+</defs></svg>
+<div id="cam">
+  <section class="sheet" id="t">
+    <div class="perf"></div>
+    <div class="abs m inkc" style="left:96px;top:96px;font-size:30px;letter-spacing:.3em">Sat · November</div>
+    <div class="abs d blue mul tex nowrap big14">14</div>
+    <div class="ticket" style="left:520px;top:700px;transform:rotate(-9deg);width:300px"><div class="no">#1044</div><div class="day">Sat 14 Nov</div><hr><div>2 × Sourdough loaf</div><div style="margin-top:6px">Delivery · 9–12</div></div>
+    <div class="abs d inkc mul nowrap" style="left:870px;top:168px;font-size:170px">Let customers</div>
+    <div class="abs s orange mul nowrap" style="left:856px;top:316px;font-size:250px">pick the</div>
+    <div class="abs s orange mul nowrap" style="left:1120px;top:530px;font-size:250px">day.</div>
+    <svg class="ink" viewBox="0 0 1920 1080"><path id="ring" d="" style="stroke:var(--orange);stroke-width:13;mix-blend-mode:multiply" filter="url(#roughLine)"/></svg>
+    <div class="sticker" style="left:1480px;top:740px;width:270px;height:270px;padding:12px;transform:rotate(8deg)"><img src="../../src/logo.svg" alt=""></div>
+    <div class="abs m inkc" style="left:880px;top:900px;font-size:30px;letter-spacing:.2em">Pickday · for Shopify</div>
+  </section>
+  <div id="binding"><span>Pickday &nbsp;✳&nbsp; tear-off day sheets</span><span>Delivery date picker</span></div>
+</div>
+<div id="grain"></div>
+<script>
+  // a loose ink loop around "day."
+  const pts = [], N = 52, cx = 1300, cy = 680, rx = 250, ry = 140;
+  for (let k = 0; k <= N; k++) { const a = -2.6 + (k / N) * 1.16 * Math.PI * 2, w = 1 + 0.04 * Math.sin(a * 2 + 1) + 0.05 * k / N; pts.push([cx + Math.cos(a) * rx * w, cy + Math.sin(a) * ry * w]); }
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) { const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    d += ` C${p1[0] + (p2[0] - p0[0]) / 6} ${p1[1] + (p2[1] - p0[1]) / 6} ${p2[0] - (p3[0] - p1[0]) / 6} ${p2[1] - (p3[1] - p1[1]) / 6} ${p2[0]} ${p2[1]}`; }
+  document.getElementById("ring").setAttribute("d", d);
+  document.fonts.ready.then(() => (window.READY = true));
+</script>
+</body>
+</html>

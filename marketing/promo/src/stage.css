@@ -1,0 +1,114 @@
+/* Pickday promo: "tear-off day sheets". Two riso-style inks (blue, fluorescent orange) on cream stock. */
+:root {
+  --paper: #f1eadb;
+  --paper-dark: #d9ccb2;
+  --white: #fbf8f1;
+  --blue: #2546b3;
+  --orange: #ff5a2c;
+  --ink: #231f27;
+  --over: #3b2040;
+  --bind: 32px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #cfc3aa; }
+body { font-family: "IBM Plex Mono", monospace; color: var(--ink); -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+
+#cam { position: absolute; inset: 0; }
+#pad { position: absolute; inset: 0; }
+.sheet {
+  position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden;
+  background: var(--paper) url(../build/tex/paper.jpg) 0 0 / 1920px 1080px;
+  transform-origin: 0 0;
+}
+.sheet > .perf { position: absolute; left: 0; right: 0; top: calc(var(--bind) + 6px); height: 6px;
+  background: radial-gradient(circle at 4px 3px, rgba(120, 100, 70, .35) 2px, transparent 2.5px) 0 0 / 14px 6px repeat-x; }
+
+/* the pad's glued binding: stays while sheets tear away beneath it */
+#binding { position: absolute; left: 0; top: 0; width: 1920px; height: var(--bind); background: var(--blue);
+  color: var(--paper); font: 600 13px/var(--bind) "IBM Plex Mono", monospace; letter-spacing: .32em; text-transform: uppercase;
+  display: flex; justify-content: space-between; padding: 0 56px; z-index: 50; }
+#binding::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 5px; background: linear-gradient(rgba(35, 31, 39, .28), rgba(35, 31, 39, 0)); }
+#binding .tex, .tex { -webkit-mask-image: url(../build/tex/ink.png); -webkit-mask-size: 1024px 1024px; }
+
+#grain { position: absolute; inset: 0; z-index: 90; pointer-events: none; background: url(../build/tex/grain.png) 0 0 / 1024px 1024px; opacity: .3; }
+
+/* furniture printed on every sheet */
+.reg { position: absolute; width: 30px; height: 30px; opacity: .55; }
+.label { position: absolute; left: 120px; top: 74px; font: 500 17px/1 "IBM Plex Mono", monospace; letter-spacing: .22em; text-transform: uppercase; color: var(--ink); opacity: .8; }
+.label b { font-weight: 600; color: var(--blue); }
+.swatch { position: absolute; right: 120px; bottom: 54px; display: flex; gap: 6px; }
+.swatch i { width: 16px; height: 16px; display: block; mix-blend-mode: multiply; }
+.foot { position: absolute; left: 120px; bottom: 52px; font: 500 14px/1 "IBM Plex Mono", monospace; letter-spacing: .3em; text-transform: uppercase; opacity: .55; }
+
+/* type */
+.d { font-family: "Archivo Variable", sans-serif; font-weight: 900; font-stretch: 62%; line-height: .84; letter-spacing: -.005em; text-transform: uppercase; }
+.dw { font-family: "Archivo Variable", sans-serif; font-weight: 850; font-stretch: 112%; line-height: .9; letter-spacing: -.02em; }
+.s { font-family: "Fraunces Variable", serif; font-style: italic; font-weight: 560; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144; letter-spacing: -.025em; line-height: .92; }
+.m { font-family: "IBM Plex Mono", monospace; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
+.blue { color: var(--blue); } .orange { color: var(--orange); } .inkc { color: var(--ink); } .cream { color: var(--paper); }
+.mul { mix-blend-mode: multiply; }
+.abs { position: absolute; }
+.nowrap { white-space: nowrap; }
+
+/* objects */
+.ticket { position: absolute; width: 300px; padding: 20px 22px 28px; background: var(--white); color: var(--ink);
+  font: 500 17px/1.45 "IBM Plex Mono", monospace; letter-spacing: .04em; text-transform: uppercase;
+  filter: drop-shadow(5px 6px 0 rgba(90, 70, 40, .22));
+  -webkit-mask: linear-gradient(#000 0 0) top / 100% calc(100% - 10px) no-repeat, conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / 20px 10px repeat-x; }
+.ticket .no { font-weight: 600; font-size: 22px; letter-spacing: .06em; }
+.ticket .day { color: var(--blue); font-weight: 600; }
+.ticket hr { border: 0; border-top: 2px dashed rgba(35, 31, 39, .35); margin: 8px 0; }
+
+.stamp { position: absolute; display: inline-block; border: 9px solid currentColor; border-radius: 18px; padding: 14px 30px 8px;
+  font-family: "Archivo Variable", sans-serif; font-weight: 900; font-stretch: 75%; text-transform: uppercase; line-height: .9; letter-spacing: .02em;
+  -webkit-mask-image: url(../build/tex/rubber.png); -webkit-mask-size: 700px 700px; filter: url(#rough); mix-blend-mode: multiply; white-space: nowrap; }
+
+.fig { position: absolute; }
+.fig img { position: absolute; left: 0; top: 0; mix-blend-mode: multiply; }
+.cap { font: 500 16px/1.3 "IBM Plex Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--ink); }
+
+svg.ink { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; pointer-events: none; }
+svg.ink path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+.flood { position: absolute; background: var(--orange); mix-blend-mode: multiply; transform-origin: 0 50%; }
+.hatch { position: absolute; background: repeating-linear-gradient(-45deg, var(--blue) 0 7px, transparent 7px 26px); mix-blend-mode: multiply; }
+.paperCard { position: absolute; background: var(--white); filter: drop-shadow(6px 7px 0 rgba(90, 70, 40, .22)); }
+.mask { overflow: hidden; display: inline-block; vertical-align: top; }
+/* SplitText line masks clip to the line box, which cuts italic overhangs and descenders (the y of "day");
+   widen the clip for the italic face without moving any text */
+.s .ln-mask { overflow: visible !important; clip-path: inset(-.15em -.4em -.3em -.3em); }
+
+/* the app icon as a die-cut sticker: white border, rounded like the App Store shows it */
+.sticker { position: absolute; padding: 11px; background: var(--white); border-radius: 23%; filter: drop-shadow(7px 9px 0 rgba(70, 50, 25, .24)); }
+.sticker img { display: block; width: 100%; height: 100%; border-radius: 21%; }
+
+/* label-maker tape: raised white letters on coloured plastic */
+.dymo { position: absolute; filter: drop-shadow(4px 5px 0 rgba(70, 50, 25, .25)); }
+.dymo .tape { padding: .3em .75em .24em; line-height: 1; white-space: nowrap; color: rgba(255, 255, 255, .94);
+  font-family: "Archivo Variable", sans-serif; font-weight: 760; font-stretch: 84%; letter-spacing: .12em; text-transform: uppercase;
+  background-image: linear-gradient(rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, .1)) !important;
+  clip-path: polygon(0 6%, 100% 0, 99.4% 100%, .5% 94%);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .22), 0 -1px 0 rgba(255, 255, 255, .35); }
+.dymo .tape { background-blend-mode: normal; }
+.dymo i { font-style: normal; display: inline-block; }
+
+/* white paper slips and cards */
+.slip { position: absolute; background: var(--white); filter: drop-shadow(6px 8px 0 rgba(70, 50, 25, .2)); }
+.slip.orangeSlip { background: var(--orange); }
+.cell { position: absolute; border-top: 3px solid var(--ink); padding-top: 12px; }
+.hole { position: absolute; width: 50px; height: 50px; border-radius: 50%; border: 2.5px solid var(--blue); mix-blend-mode: multiply;
+  font: 600 15px/45px "IBM Plex Mono", monospace; text-align: center; color: var(--blue); }
+.punched { position: absolute; width: 50px; height: 50px; border-radius: 50%; background: #b9ab8e;
+  box-shadow: inset 3px 4px 0 rgba(60, 45, 25, .35); }
+.chad { position: absolute; width: 50px; height: 50px; border-radius: 50%; background: var(--white); box-shadow: 2px 3px 0 rgba(70, 50, 25, .25); }
+.slot { position: absolute; height: 18px; background: var(--ink); border-radius: 9px; box-shadow: inset 0 5px 0 #000; }
+.feed { position: absolute; overflow: hidden; }
+.sheetOut { position: absolute; left: 0; top: 0; background: var(--white); filter: drop-shadow(5px 7px 0 rgba(70, 50, 25, .2)); }
+.sheetOut img { display: block; mix-blend-mode: multiply; }
+.airmail { position: absolute; background: var(--white); filter: drop-shadow(7px 9px 0 rgba(70, 50, 25, .22)); }
+.airmail::before { content: ""; position: absolute; inset: 0; padding: 16px;
+  background: repeating-linear-gradient(-45deg, var(--blue) 0 26px, transparent 26px 40px, var(--orange) 40px 66px, transparent 66px 80px);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); mask-composite: exclude; }
+.box { position: absolute; border: 5px solid var(--blue); mix-blend-mode: multiply; }
+.code { font: 500 30px/1.4 "IBM Plex Mono", monospace; color: var(--ink); letter-spacing: 0; text-transform: none; }
+.spec .lc { font: 600 15px/1 "IBM Plex Mono", monospace; letter-spacing: .14em; text-transform: lowercase; color: var(--ink); opacity: .7; vertical-align: top; margin-left: 6px; }

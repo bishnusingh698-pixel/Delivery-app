@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pickday promo stage</title>
+<link rel="stylesheet" href="../node_modules/@fontsource-variable/archivo/standard.css">
+<link rel="stylesheet" href="../node_modules/@fontsource-variable/fraunces/full-italic.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/500.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/600.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-jp/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-kr/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-sc/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-kufi-arabic/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-hebrew/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans-devanagari/900.css">
+<link rel="stylesheet" href="../node_modules/@fontsource/noto-sans/900.css">
+<link rel="stylesheet" href="stage.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- uneven ink edges: printed type and rubber stamps are never razor sharp -->
+    <filter id="rough" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="roughLine" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.5" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="roughType" x="-2%" y="-5%" width="104%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="1" seed="2" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+<div id="cam">
+  <div id="pad"></div>
+  <div id="binding"><span>Pickday &nbsp;✳&nbsp; tear-off day sheets</span><span id="bindNo"></span></div>
+</div>
+<div id="grain"></div>
+<script src="../node_modules/gsap/dist/gsap.min.js"></script>
+<script src="../node_modules/gsap/dist/SplitText.min.js"></script>
+<script src="../node_modules/gsap/dist/DrawSVGPlugin.min.js"></script>
+<script src="../node_modules/gsap/dist/MotionPathPlugin.min.js"></script>
+<script src="../node_modules/gsap/dist/CustomEase.min.js"></script>
+<script src="../build/timeline.js"></script>
+<script src="engine.js"></script>
+<script src="scenes/s01-saturday.js"></script>
+<script src="scenes/s02-pickday.js"></script>
+<script src="scenes/s03-picker.js"></script>
+<script src="scenes/s04-limits.js"></script>
+<script src="scenes/s05-rules.js"></script>
+<script src="scenes/s06-checkout.js"></script>
+<script src="scenes/s07-orders.js"></script>
+<script src="scenes/s08-print.js"></script>
+<script src="scenes/s09-language.js"></script>
+<script src="scenes/s10-plans.js"></script>
+<script src="scenes/s11-cta.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "pickday-promo",
+  "private": true,
+  "description": "Promo video for Pickday: animated scenes rendered frame by frame with Playwright + GSAP",
+  "dependencies": {
+    "@fontsource-variable/archivo": "5.2.6",
+    "@fontsource-variable/fraunces": "5.2.8",
+    "@fontsource/ibm-plex-mono": "5.2.7",
+    "@fontsource/noto-kufi-arabic": "5.2.8",
+    "@fontsource/noto-sans": "5.2.10",
+    "@fontsource/noto-sans-arabic": "5.2.8",
+    "@fontsource/noto-sans-devanagari": "5.2.8",
+    "@fontsource/noto-sans-hebrew": "5.2.8",
+    "@fontsource/noto-sans-jp": "5.2.8",
+    "@fontsource/noto-sans-kr": "5.2.8",
+    "@fontsource/noto-sans-sc": "5.2.8",
+    "gsap": "3.13.0"
+  }
+}

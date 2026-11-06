@@ -1,0 +1,122 @@
+{
+  "voice": "af_heart",
+  "speed": 1.0,
+  "bpm": 100,
+  "scenes": [
+    {
+      "id": "s01-saturday",
+      "lead": 0.5,
+      "gap": 0.5,
+      "tail": 1.9,
+      "lines": [
+        "Everyone wants their order on Saturday.",
+        "But your kitchen only has room for twenty."
+      ]
+    },
+    {
+      "id": "s02-pickday",
+      "lead": 0.7,
+      "gap": 0.45,
+      "tail": 1.7,
+      "lines": [
+        "So let customers pick the day,",
+        "and let Pickday keep count."
+      ]
+    },
+    {
+      "id": "s03-picker",
+      "lead": 0.7,
+      "gap": 0.4,
+      "tail": 1.0,
+      "lines": [
+        "Shoppers choose a day and a time slot, right in your cart, cart drawer or product page.",
+        "Local delivery, store pickup or shipping.",
+        "Only the days you're open can be picked."
+      ]
+    },
+    {
+      "id": "s04-limits",
+      "lead": 0.7,
+      "gap": 0.45,
+      "tail": 1.5,
+      "lines": [
+        "You decide how many orders fit in a day, or in each time slot.",
+        "When it's full, it closes. By itself."
+      ]
+    },
+    {
+      "id": "s05-rules",
+      "lead": 0.6,
+      "gap": 0.3,
+      "tail": 1.0,
+      "lines": [
+        "Add cut-off times.",
+        "Preparation time.",
+        "Delivery areas.",
+        "Public holidays that come back every year.",
+        "Even a vacation mode."
+      ]
+    },
+    {
+      "id": "s06-checkout",
+      "lead": 0.7,
+      "gap": 0.5,
+      "tail": 1.3,
+      "lines": [
+        "At checkout, customers only see the option they picked, with their date.",
+        "No date? No order."
+      ]
+    },
+    {
+      "id": "s07-orders",
+      "lead": 0.7,
+      "gap": 0.45,
+      "tail": 1.1,
+      "lines": [
+        "Behind the counter, every order lands on its day.",
+        "Move orders in a few clicks, or let customers change their own date, up to a deadline you set."
+      ]
+    },
+    {
+      "id": "s08-print",
+      "lead": 0.7,
+      "gap": 0.45,
+      "tail": 1.1,
+      "lines": [
+        "Every morning, print a day sheet, a route sheet or a production list.",
+        "And get tomorrow's orders by email, free, with Shopify Flow."
+      ]
+    },
+    {
+      "id": "s09-language",
+      "lead": 0.9,
+      "gap": 0.5,
+      "tail": 3.8,
+      "lines": [
+        "Pickday speaks your customers' language.",
+        "Right to left, too."
+      ]
+    },
+    {
+      "id": "s10-plans",
+      "lead": 0.6,
+      "gap": 0.35,
+      "tail": 1.0,
+      "lines": [
+        "It works on every Shopify plan, with no theme code to touch.",
+        "Set up in minutes."
+      ]
+    },
+    {
+      "id": "s11-cta",
+      "lead": 0.7,
+      "gap": 0.5,
+      "tail": 3.2,
+      "lines": [
+        "Pickday.",
+        "Let customers pick the day.",
+        "Find it on the Shopify App Store."
+      ]
+    }
+  ]
+}

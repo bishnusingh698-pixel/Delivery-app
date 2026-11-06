@@ -1,121 +1,148 @@
 1
-00:00:00,550 --> 00:00:03,862
-Running a bakery, a flower
-shop, or a meal-prep kitchen?
+00:00:00,500 --> 00:00:02,890
+Everyone wants their order on Saturday.
 
 2
-00:00:03,992 --> 00:00:05,450
-Then you know the feeling.
+00:00:03,043 --> 00:00:05,851
+But your kitchen only
+has room for twenty.
 
 3
-00:00:05,580 --> 00:00:09,867
-Too many orders on one day, and
-customers asking: when will mine arrive?
+00:00:08,500 --> 00:00:10,408
+So let customers pick the day,
 
 4
-00:00:10,650 --> 00:00:11,773
-Meet Pickday.
+00:00:10,508 --> 00:00:12,288
+and let Pickday keep count.
 
 5
-00:00:11,903 --> 00:00:13,678
-Let customers pick the day.
+00:00:14,500 --> 00:00:16,720
+Shoppers choose a day and a time slot,
 
 6
-00:00:14,883 --> 00:00:19,084
-Pickday adds a date picker to your
-cart, cart drawer and product pages.
+00:00:16,740 --> 00:00:19,900
+right in your cart, cart
+drawer or product page.
 
 7
-00:00:19,214 --> 00:00:24,662
-Customers choose local delivery, store pickup
-or shipping, then a day and a time slot.
+00:00:19,950 --> 00:00:20,950
+Local delivery,
 
 8
-00:00:24,792 --> 00:00:26,985
-Only the days you're open can be picked.
+00:00:20,970 --> 00:00:22,738
+store pickup or shipping.
 
 9
-00:00:28,050 --> 00:00:32,013
-Set how many orders you can handle
-each day, or in each time slot.
+00:00:22,788 --> 00:00:25,087
+Only the days you're open can be picked.
 
 10
-00:00:32,143 --> 00:00:34,980
-When a slot fills up, it closes by itself.
+00:00:26,500 --> 00:00:28,650
+You decide how many orders fit in a day,
 
 11
-00:00:35,110 --> 00:00:40,021
-Add cut-off times, preparation time, and
-different limits for your busiest days.
+00:00:28,670 --> 00:00:30,370
+or in each time slot.
 
 12
-00:00:41,083 --> 00:00:44,976
-At checkout, customers only see the
-method they picked, with their date.
+00:00:30,475 --> 00:00:33,022
+When it's full, it closes. By itself.
 
 13
-00:00:45,106 --> 00:00:50,375
-And if the date is missing or no longer
-available, the order stops before it reaches you.
+00:00:34,800 --> 00:00:36,334
+Add cut-off times.
 
 14
-00:00:51,417 --> 00:00:55,303
-In your admin, see every order
-by day, and how full each day is.
+00:00:36,354 --> 00:00:37,783
+Preparation time.
 
 15
-00:00:55,433 --> 00:00:58,017
-Move orders to another
-date in a few clicks.
+00:00:37,803 --> 00:00:39,145
+Delivery areas.
 
 16
-00:00:58,147 --> 00:01:02,244
-Customers can even change their
-own date, up to a deadline you set.
+00:00:39,165 --> 00:00:41,810
+Public holidays that
+come back every year.
 
 17
-00:01:03,283 --> 00:01:07,381
-Start each day with a printed day
-sheet, route sheet or production list.
+00:00:41,830 --> 00:00:43,530
+Even a vacation mode.
 
 18
-00:01:07,511 --> 00:01:12,381
-And get tomorrow's orders by email
-every day, free, with Shopify Flow.
+00:00:45,100 --> 00:00:48,020
+At checkout, customers only
+see the option they picked,
 
 19
-00:01:13,417 --> 00:01:16,288
-Public holidays come back
-every year on their own.
+00:00:48,040 --> 00:00:49,120
+with their date.
 
 20
-00:01:16,418 --> 00:01:19,348
-Add closed days, or
-switch on vacation mode.
+00:00:49,274 --> 00:00:51,012
+No date? No order.
 
 21
-00:01:19,478 --> 00:01:23,327
-And the picker speaks your customers'
-language, right-to-left included.
+00:00:52,900 --> 00:00:55,996
+Behind the counter, every
+order lands on its day.
 
 22
-00:01:24,383 --> 00:01:28,654
-Pickday works on every Shopify
-plan, with no theme code to edit.
+00:00:56,096 --> 00:00:57,876
+Move orders in a few clicks,
 
 23
-00:01:28,784 --> 00:01:31,409
-A short setup wizard gets
-you ready in minutes.
+00:00:57,896 --> 00:01:00,146
+or let customers change their own date,
 
 24
-00:01:32,450 --> 00:01:33,314
-Pickday.
+00:01:00,166 --> 00:01:01,935
+up to a deadline you set.
 
 25
-00:01:33,444 --> 00:01:35,218
-Let customers pick the day.
+00:01:03,700 --> 00:01:05,590
+Every morning, print a day sheet,
 
 26
-00:01:35,348 --> 00:01:37,505
+00:01:05,610 --> 00:01:07,790
+a route sheet or a production list.
+
+27
+00:01:07,894 --> 00:01:09,694
+And get tomorrow's orders by email,
+
+28
+00:01:09,714 --> 00:01:11,970
+free, with Shopify Flow.
+
+29
+00:01:14,100 --> 00:01:16,430
+Pickday speaks your customers' language.
+
+30
+00:01:16,583 --> 00:01:18,013
+Right to left, too.
+
+31
+00:01:22,200 --> 00:01:24,260
+It works on every Shopify plan,
+
+32
+00:01:24,280 --> 00:01:26,181
+with no theme code to touch.
+
+33
+00:01:26,201 --> 00:01:27,560
+Set up in minutes.
+
+34
+00:01:29,500 --> 00:01:30,410
+Pickday.
+
+35
+00:01:30,619 --> 00:01:32,499
+Let customers pick the day.
+
+36
+00:01:32,652 --> 00:01:34,922
 Find it on the Shopify App Store.
