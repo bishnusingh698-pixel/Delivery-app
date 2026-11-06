@@ -42,15 +42,35 @@ export function icsText(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
+/** UTF-8 length of one character (code point). No TextEncoder: this file also runs in checkout extensions. */
+const utf8Len = (cp: number) => (cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4);
+
+/** Fold a content line at 75 bytes (RFC 5545 counts octets), never inside a character. */
 function fold(line: string): string {
   const out: string[] = [];
-  let rest = line;
-  while (rest.length > 74) {
-    out.push(rest.slice(0, 74));
-    rest = " " + rest.slice(74);
+  let cur = "";
+  let bytes = 0;
+  for (const ch of line) {
+    const n = utf8Len(ch.codePointAt(0)!);
+    if (bytes + n > 75) {
+      out.push(cur);
+      cur = " ";
+      bytes = 1;
+    }
+    cur += ch;
+    bytes += n;
   }
-  out.push(rest);
+  out.push(cur);
   return out.join("\r\n");
+}
+
+/**
+ * The time zone a chosen slot's times are in: a pickup location's own zone when it has one (its
+ * hours are local to it), otherwise the store's. Calendar links and feeds must use it (B81).
+ */
+export function eventZone(cfg: { tz?: string | null; lz?: Record<string, string> | null }, sel: { m: string; l?: string | null }): string | null {
+  if (sel.m === "pickup" && sel.l && cfg.lz?.[sel.l]) return cfg.lz[sel.l];
+  return cfg.tz ?? null;
 }
 
 export interface IcsEvent extends CalendarEvent {

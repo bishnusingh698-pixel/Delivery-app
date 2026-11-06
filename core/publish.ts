@@ -23,6 +23,17 @@ export interface PublishMeta {
   holidayClosures?: Closure[];
 }
 
+/**
+ * Days whose public holidays and capacity counts are published: from yesterday to a week past the
+ * longest booking window. The shopper's "today" moves on by itself every midnight, so a publish that
+ * is late (server asleep, a missed hourly job) must not leave the last days of the window without
+ * their holidays (B85).
+ */
+export const PUBLISH_MARGIN_DAYS = 8;
+export function publishRange(today: string, windowDays: number): { from: string; to: string } {
+  return { from: addDays(today, -1), to: addDays(today, windowDays + PUBLISH_MARGIN_DAYS) };
+}
+
 /** Features each plan unlocks (also used by the admin for lock badges). */
 const BASICS = ["allMethods", "slots", "closures", "holidays", "notes", "dailySummary"];
 const STARTER = [...BASICS, "capacity", "checkoutMatching", "customerChanges"];

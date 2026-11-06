@@ -56,7 +56,7 @@ function methodName(settings: Settings, m: MethodId, lang: string, t: T) {
 }
 
 /** Day sheet: grouped method → slot → order, with items and notes; address for local delivery. */
-export function daySheet(t: T, lang: string, settings: Settings, date: string, dateLabel: string, orders: ScheduledOrder[], live: Map<string, LiveOrder>) {
+export function daySheet(t: T, lang: string, settings: Settings, date: string, dateLabel: string, orders: ScheduledOrder[], live: Map<string, LiveOrder>, range?: { from: string | null; to: string | null }) {
   const byMethod = new Map<MethodId, ScheduledOrder[]>();
   for (const o of orders) byMethod.set(o.method as MethodId, [...(byMethod.get(o.method as MethodId) ?? []), o]);
   let body = `<h1>${esc(t("print.dayTitle", { date: dateLabel }))}</h1><p class="muted">${esc(t("print.orderCount", { count: orders.length }))}</p>`;
@@ -68,7 +68,7 @@ export function daySheet(t: T, lang: string, settings: Settings, date: string, d
       if (slot) body += `<h3>${esc(slot.replace("-", "–"))}</h3>`;
       body += `<table><thead><tr><th style="width:24px"></th><th>${esc(t("orders.colOrder"))}</th><th>${esc(t("orders.colCustomer"))}</th><th>${esc(t("print.items"))}</th>${m === "delivery" ? `<th>${esc(t("print.address"))}</th>` : m === "pickup" ? `<th>${esc(t("orders.colPlace"))}</th>` : ""}<th>${esc(t("print.note"))}</th></tr></thead><tbody>`;
       for (const o of group) {
-        const r = orderRow(o, settings);
+        const r = orderRow(o, settings, range);
         const l = live.get(o.orderId);
         const addr = l?.address ? [l.address.name, l.address.address1, l.address.address2, [l.address.zip, l.address.city].filter(Boolean).join(" "), l.phone].filter(Boolean).map(esc).join("<br>") : "";
         body += `<tr><td><span class="box"></span></td><td>${esc(r.name)}</td><td>${esc(r.customer ?? "")}</td><td>${r.lines.map((i) => `${i.qty} × ${esc(i.title)}${i.variant ? ` <span class="muted">(${esc(i.variant)})</span>` : ""}`).join("<br>")}</td>${m === "delivery" ? `<td>${addr}</td>` : m === "pickup" ? `<td>${esc(r.place ?? "")}</td>` : ""}<td>${esc(l?.note ?? "")}</td></tr>`;
@@ -81,7 +81,7 @@ export function daySheet(t: T, lang: string, settings: Settings, date: string, d
 }
 
 /** Route sheet: local delivery orders sorted by zone, then postcode. */
-export function routeSheet(t: T, lang: string, settings: Settings, dateLabel: string, orders: ScheduledOrder[], live: Map<string, LiveOrder>) {
+export function routeSheet(t: T, lang: string, settings: Settings, dateLabel: string, orders: ScheduledOrder[], live: Map<string, LiveOrder>, range?: { from: string | null; to: string | null }) {
   const zoneName = (id: string | null) => settings.zones.find((z) => z.id === id)?.name ?? "";
   // Zones are routed in the order the merchant listed them; orders without a zone go last.
   const zoneRank = (id: string | null) => {
@@ -97,7 +97,7 @@ export function routeSheet(t: T, lang: string, settings: Settings, dateLabel: st
   sorted.forEach(({ o, zone }, i) => {
     const l = live.get(o.orderId);
     const a = l?.address;
-    const r = orderRow(o, settings);
+    const r = orderRow(o, settings, range);
     body += `<tr><td>${i + 1}</td><td>${esc(zone)}</td><td>${esc((o.slotLabel ?? "").replace("-", "–"))}</td><td>${esc(o.orderName)}<br>${esc(o.customerFirst ?? "")}</td><td>${a ? [a.name, a.address1, a.address2, [a.zip, a.city].filter(Boolean).join(" ")].filter(Boolean).map(esc).join("<br>") : `<span class="muted">${esc(o.area ?? "")}</span>`}</td><td>${esc(l?.phone ?? "")}</td><td>${r.items}</td><td>${esc(l?.note ?? "")}</td></tr>`;
   });
   body += `</tbody></table>`;

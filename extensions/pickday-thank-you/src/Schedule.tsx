@@ -8,7 +8,7 @@ import { render } from "preact";
 import { format } from "../../../core/i18n/format";
 import { matchLocale } from "../../../core/i18n/locales";
 import { ATTR_KEY, READABLE_KEYS, decodeSelection } from "../../../core/selection";
-import { calendarLinks } from "../../../core/calendar";
+import { calendarLinks, eventZone } from "../../../core/calendar";
 import messages from "./messages.generated.json";
 
 export default async () => {
@@ -29,7 +29,7 @@ function Schedule() {
   const t = (key: string, values: Record<string, string> = {}) => format(table[key] ?? (messages as any).en[key] ?? key, values, { plural: () => "other" });
 
   const cfgRaw = (api.appMetafields?.value ?? []).find((m: any) => m.metafield?.key === "checkout")?.metafield?.value;
-  let cfg: { u?: string; dispatch?: boolean; tz?: string; ins?: Record<string, Record<string, string>> } = {};
+  let cfg: { u?: string; dispatch?: boolean; tz?: string; lz?: Record<string, string>; ins?: Record<string, Record<string, string>> } = {};
   try {
     cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
   } catch {
@@ -57,7 +57,8 @@ function Schedule() {
     date: sel.d,
     start: sel.t?.slice(0, 5) ?? null,
     end: sel.t?.slice(6, 11) ?? null,
-    timeZone: cfg.tz ?? null,
+    // A pickup location's own zone when it has one (its hours are local to it).
+    timeZone: eventZone(cfg, sel),
     location,
     icsBase: cfg.u ? `${cfg.u}/ics/event` : null,
   });

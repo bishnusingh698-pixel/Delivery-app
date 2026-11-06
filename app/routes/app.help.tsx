@@ -4,7 +4,8 @@ import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { Button, Page, Section, Stack, TextField } from "../components/polaris";
 import { BRAND } from "../config/brand";
-import { useT } from "../i18n/react";
+import { useI18n, useT } from "../i18n/react";
+import { formatStamp } from "../../core/dateformat";
 import prisma from "../db.server";
 import { logActivity } from "../models/settings.server";
 import { flagsOf, warningsOf } from "../models/shop.server";
@@ -36,7 +37,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       embed: flagsOf(r).embedDetected ?? null,
       validation: !!r.validationId,
       delivery: !!r.deliveryCustomizationId,
-      lastOrder: lastOrder ? `${lastOrder.orderName} (${lastOrder.createdAt.toISOString()})` : null,
+      lastOrder: lastOrder ? { name: lastOrder.orderName, at: lastOrder.createdAt.toISOString() } : null,
       warnings: warningsOf(r).map((w) => w.code),
       debugUntil: r.debugUntil && r.debugUntil > new Date() ? r.debugUntil.toISOString() : null,
     },
@@ -66,6 +67,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function HelpPage() {
   const { support, themeLink, diag } = useLoaderData<typeof loader>();
+  const { locale } = useI18n();
   const t = useT();
   const shopify = useAppBridge();
   const fetcher = useFetcher<typeof action>();
@@ -121,8 +123,8 @@ export default function HelpPage() {
               <s-table-row><s-table-cell>{t("help.diag.embed")}</s-table-cell><s-table-cell>{yes(diag.embed)}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.validation")}</s-table-cell><s-table-cell>{yes(diag.validation)}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.delivery")}</s-table-cell><s-table-cell>{yes(diag.delivery)}</s-table-cell></s-table-row>
-              <s-table-row><s-table-cell>{t("help.diag.published")}</s-table-cell><s-table-cell>{diag.publishedAt ? new Date(diag.publishedAt).toLocaleString() : t("help.never")}</s-table-cell></s-table-row>
-              <s-table-row><s-table-cell>{t("help.diag.lastOrder")}</s-table-cell><s-table-cell>{diag.lastOrder ?? t("help.never")}</s-table-cell></s-table-row>
+              <s-table-row><s-table-cell>{t("help.diag.published")}</s-table-cell><s-table-cell>{diag.publishedAt ? formatStamp(diag.publishedAt, locale, diag.timeZone) : t("help.never")}</s-table-cell></s-table-row>
+              <s-table-row><s-table-cell>{t("help.diag.lastOrder")}</s-table-cell><s-table-cell>{diag.lastOrder ? `${diag.lastOrder.name} (${formatStamp(diag.lastOrder.at, locale, diag.timeZone)})` : t("help.never")}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.timeZone")}</s-table-cell><s-table-cell>{diag.timeZone}</s-table-cell></s-table-row>
             </s-table-body>
           </s-table>
@@ -151,7 +153,7 @@ export default function HelpPage() {
           <s-text color="subdued">{t("help.debugHelp")}</s-text>
           {diag.debugUntil ? (
             <>
-              <s-text>{t("help.debugOnUntil", { time: new Date(diag.debugUntil).toLocaleString() })}</s-text>
+              <s-text>{t("help.debugOnUntil", { time: formatStamp(diag.debugUntil, locale, diag.timeZone) })}</s-text>
               <Button loading={busy === "debugOff"} onClick={() => post("debugOff")}>{t("help.debugOff")}</Button>
             </>
           ) : (

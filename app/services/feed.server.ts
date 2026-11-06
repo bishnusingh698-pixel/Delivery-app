@@ -2,7 +2,7 @@
 import { randomBytes } from "node:crypto";
 import prisma from "../db.server";
 import { addDays } from "../../core/civil";
-import { icsCalendar, icsEvent } from "../../core/calendar";
+import { eventZone, icsCalendar, icsEvent } from "../../core/calendar";
 import type { MethodId } from "../../core/types";
 import { loadSettings } from "../models/settings.server";
 import { planOf, shopToday } from "../models/shop.server";
@@ -32,6 +32,8 @@ export async function feedFor(token: string): Promise<string | null> {
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const name = (m: string) => settings.methods[m as MethodId]?.names[row.adminLocale] || t(`method.${m}`);
   const cfg = settings.notifications.calendarFeed;
+  // Slot times of a pickup location with its own time zone are local to it (B81).
+  const zones = { tz: row.timeZone, lz: Object.fromEntries(settings.locations.filter((l) => l.timeZone).map((l) => [l.id, l.timeZone as string])) };
   const events: string[] = [];
   if (cfg.mode === "day") {
     const byDay = new Map<string, Map<string, number>>();
@@ -57,7 +59,7 @@ export async function feedFor(token: string): Promise<string | null> {
           date: o.date!,
           start: start ?? null,
           end: end ?? null,
-          timeZone: row.timeZone,
+          timeZone: eventZone(zones, { m: o.method, l: o.locationId }),
           location: loc,
           description: items,
         }),
