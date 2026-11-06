@@ -20,13 +20,12 @@ import { useI18n, useT } from "../i18n/react";
 import { flagsOf, requireShop, setFlags, warningsOf } from "../models/shop.server";
 import { checkEmbed, themeEditorLink } from "../services/embed.server";
 import { hasHolidayData, holidayCountries } from "../services/holidays.server";
-import { fetchShopifyLocations } from "../services/locations.server";
+import { fetchShopifyLocations, shopifyPickupLocations } from "../services/locations.server";
 import { dayCounts } from "../services/orders-query.server";
 import { storefrontConfigFor } from "../services/publish.server";
 import { adminContext, previewData, saveSettings } from "../services/settings.server";
 import { monthlyUsage } from "../services/usage.server";
 import { planStatus } from "../services/plan-status.server";
-import { shopifyPickupLocations } from "../services/locations.server";
 import { pickupCheck } from "../../core/pickup-check";
 import { UsageBar } from "../components/usage";
 
