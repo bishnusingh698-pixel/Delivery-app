@@ -58,5 +58,14 @@ node src/thumb.cjs              # build/thumbnail-1280x720.png
 python3 src/mix.py              # out/: 1080p mp4, captioned mp4, .srt, thumbnail
 ```
 
+App Store listing images use the same pad of sheets: a feature image and six 1600 × 900 screenshots,
+each built around real UI (the widget shots in `out/parts/` from `widget-shots.ts`, the admin and checkout
+markup from `src/scenes.py`, and the promo's print pages):
+
+```bash
+cd marketing/promo
+python3 src/listing-parts.py && node src/listing.cjs   # -> out/listing/listing-0[0-6]-*.png
+```
+
 `python3 src/voice.py --captions` rewrites the captions alone. The story dates are fixed (today is
 Thursday 5 November 2026, the shopper picks Saturday 14), so rebuilds are identical.
