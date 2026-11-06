@@ -5,6 +5,24 @@
 {%- if app.metafields.pickday.config.value -%}
   {% render 'pickday-data', block: block %}
   {{ 'pickday.css' | asset_url | stylesheet_tag: preload: false }}
+  {%- liquid
+    # The texts load next to the widget, not after it: one wait less before the picker shows.
+    # (The widget still loads them itself when this guess misses, e.g. "pt" or "zh-HK".)
+    assign pd_files = 'es,fr,de,it,pt-BR,pt-PT,nl,sv,da,nb,fi,pl,cs,tr,el,ro,ja,ko,zh-CN,zh-TW,th,vi,id,ms,hi,ar,he' | split: ','
+    assign pd_iso = request.locale.iso_code
+    assign pd_lang = pd_iso | split: '-' | first
+    assign pd_file = ''
+    if pd_files contains pd_iso
+      assign pd_file = pd_iso
+    elsif pd_files contains pd_lang
+      assign pd_file = pd_lang
+    endif
+  -%}
+  <script src="{{ 'pickday-i18n-en.js' | asset_url }}" defer></script>
+  {%- if pd_file != '' -%}
+    {%- assign pd_src = 'pickday-i18n-' | append: pd_file | append: '.js' -%}
+    <script src="{{ pd_src | asset_url }}" defer></script>
+  {%- endif %}
   <script src="{{ 'pickday.js' | asset_url }}" defer></script>
 {%- endif -%}
 

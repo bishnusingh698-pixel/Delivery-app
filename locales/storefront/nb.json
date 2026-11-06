@@ -113,5 +113,7 @@
   "change.none": "Det finnes ingen andre ledige datoer akkurat nå. Ta kontakt med butikken.",
   "change.saved": "Ny dato lagret",
   "change.taken": "Den datoen eller det tidspunktet ble akkurat fullt. Velg et annet.",
-  "change.error": "Datoen kan ikke endres akkurat nå. Ta kontakt med butikken."
+  "change.error": "Datoen kan ikke endres akkurat nå. Ta kontakt med butikken.",
+  "buyNow.continue": "Fortsett til kassen",
+  "buyNow.close": "Lukk"
 }

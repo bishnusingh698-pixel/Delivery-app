@@ -113,5 +113,7 @@
   "change.none": "Şu anda başka uygun tarih yok. Lütfen mağazayla iletişime geçin.",
   "change.saved": "Yeni tarih kaydedildi",
   "change.taken": "Bu tarih veya saat az önce doldu. Lütfen başka birini seçin.",
-  "change.error": "Bu tarih şu anda değiştirilemiyor. Lütfen mağazayla iletişime geçin."
+  "change.error": "Bu tarih şu anda değiştirilemiyor. Lütfen mağazayla iletişime geçin.",
+  "buyNow.continue": "Ödemeye devam et",
+  "buyNow.close": "Kapat"
 }

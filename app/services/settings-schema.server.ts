@@ -236,6 +236,7 @@ export const settingsSchema = z
       productPageMode: z.enum(["message", "picker"]),
       position: z.enum(["before", "after"]),
       drawer: z.boolean(),
+      buyNow: z.enum(["ask", "hide", "off"]),
     }),
     texts: z.record(z.string().max(20), z.record(z.string().max(80), z.string().max(600))),
     notifications: z.object({

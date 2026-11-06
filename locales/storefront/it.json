@@ -113,5 +113,7 @@
   "change.none": "Al momento non ci sono altre date disponibili. Contatta il negozio.",
   "change.saved": "Nuova data salvata",
   "change.taken": "Quella data o quell'orario si è appena esaurito. Scegline un altro.",
-  "change.error": "Questa data non può essere cambiata ora. Contatta il negozio."
+  "change.error": "Questa data non può essere cambiata ora. Contatta il negozio.",
+  "buyNow.continue": "Procedi al pagamento",
+  "buyNow.close": "Chiudi"
 }

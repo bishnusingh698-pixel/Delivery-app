@@ -1,4 +1,4 @@
-# Pickday audit (October 2026, round 2; rounds 3–7 below)
+# Pickday audit (October 2026, round 2; rounds 3–8 below)
 
 Source of truth for this round of work. Updated as items land (✅ done, ⏳ in progress, ⬜ to do).
 
@@ -175,6 +175,16 @@ Not found written down anywhere (so not tested): length limits for Flow trigger 
 | B75 | m | `tests/browser/preview` | The admin live preview browser test failed since D-68 (holidays opt-in: empty holiday list). | The harness turns the US holidays on itself. | ✅ |
 
 Open, for the owner to decide (not changed): plan trials start again after an uninstall and reinstall (Shopify's billing gives a new 14-day trial to each new subscription; limiting it is a pricing choice); the `.ics` files name the time zone without a `VTIMEZONE` block, which Google and Apple Calendar accept and some Outlook versions don't; `npm audit` lists advisories in dependencies (Prisma, `date-holidays`, Shopify's codegen tools), only fixable by `npm audit fix --force`, which would install breaking versions.
+
+### Round 8: owner feedback after the first live deploy (speed, look, "Buy it now")
+
+| # | Sev | Where | Problem | Fix | Status |
+|---|---|---|---|---|---|
+| B76 | M | product pages | "Buy it now" skipped the cart, so there was no date picker and checkout sent the shopper back to the cart. | The click adds the product, asks for the date in a window, then goes to checkout; Appearance setting ask / hide / off (D-74). Browser tests for all three. | ✅ |
+| B77 | M | app embed, widget | The picker waited for three requests in a row (widget, then its texts, then the cart) before showing. | Texts load next to the widget; the page prints the cart (D-75). Measured: 0.69 s instead of 0.94–1.4 s on a slowed phone. | ✅ |
+| B78 | m | widget | Three methods wrapped onto two rows (one button alone); weekday headers were single letters (S M T W T F S, two S and two T); whole past weeks took rows in the current month. | One row of equal buttons with the icon above the name; short weekday names where they fit (single letters otherwise); the calendar starts at the current week. | ✅ |
+
+Measured with the built widget in headless Chromium (4× CPU slow-down, 150 ms per request, a 300-product page with a cart drawer): Pickday adds about 45 ms of script time and about 190 DOM nodes; the rest of the page's cost is the theme's.
 
 ## 2. UX problems
 

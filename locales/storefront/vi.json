@@ -113,5 +113,7 @@
   "change.none": "Hiện không còn ngày nào khác. Vui lòng liên hệ cửa hàng.",
   "change.saved": "Đã lưu ngày mới",
   "change.taken": "Ngày hoặc giờ đó vừa kín chỗ. Vui lòng chọn lựa chọn khác.",
-  "change.error": "Hiện không thể đổi ngày này. Vui lòng liên hệ cửa hàng."
+  "change.error": "Hiện không thể đổi ngày này. Vui lòng liên hệ cửa hàng.",
+  "buyNow.continue": "Tiếp tục thanh toán",
+  "buyNow.close": "Đóng"
 }

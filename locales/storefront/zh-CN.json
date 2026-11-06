@@ -113,5 +113,7 @@
   "change.none": "目前没有其他可选日期。请联系商店。",
   "change.saved": "新日期已保存",
   "change.taken": "该日期或时间刚刚约满，请另选。",
-  "change.error": "目前无法更改此日期。请联系商店。"
+  "change.error": "目前无法更改此日期。请联系商店。",
+  "buyNow.continue": "继续结账",
+  "buyNow.close": "关闭"
 }

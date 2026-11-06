@@ -113,5 +113,7 @@
   "change.none": "Momentan nu sunt alte date disponibile. Te rugăm să contactezi magazinul.",
   "change.saved": "Data nouă a fost salvată",
   "change.taken": "Data sau ora respectivă tocmai s-a ocupat. Te rugăm să alegi alta.",
-  "change.error": "Această dată nu poate fi schimbată acum. Te rugăm să contactezi magazinul."
+  "change.error": "Această dată nu poate fi schimbată acum. Te rugăm să contactezi magazinul.",
+  "buyNow.continue": "Continuă spre plată",
+  "buyNow.close": "Închide"
 }

@@ -453,5 +453,13 @@
   },
   "change.error": {
     "where": "Change-date dialog: generic failure (too late, already shipped, etc.)."
+  },
+  "buyNow.continue": {
+    "where": "Button in the date window that opens when a shopper clicks \"Buy it now\" on a product that needs a date: goes on to checkout.",
+    "max": 32
+  },
+  "buyNow.close": {
+    "where": "Accessible label of the X button that closes the \"Buy it now\" date window.",
+    "max": 20
   }
 }

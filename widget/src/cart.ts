@@ -25,7 +25,7 @@ export interface CartItem {
 }
 
 export interface Cart {
-  token: string;
+  token?: string;
   item_count: number;
   items: CartItem[];
   attributes: Record<string, string>;
@@ -61,6 +61,17 @@ export const changeLine = (key: string, change: { quantity?: number; properties?
   call<Cart>("cart/change.js", { id: key, ...change });
 export const addVariant = (id: string, quantity = 1, properties?: Record<string, string>) =>
   call<unknown>("cart/add.js", { items: [{ id: Number(id), quantity, properties }] });
+
+/** Add what a product form holds (variant, quantity, selling plan, properties), as the theme's own "Add to cart" would. */
+export async function addForm(form: HTMLFormElement): Promise<void> {
+  ownRequest++;
+  try {
+    const res = await fetch(`${root()}cart/add.js`, { method: "POST", headers: { Accept: "application/json" }, body: new FormData(form), credentials: "same-origin" });
+    if (!res.ok) throw new Error(`cart/add.js ${res.status}`);
+  } finally {
+    ownRequest--;
+  }
+}
 
 /** Fetch a product's tags (cached for the session). */
 export async function productTags(handle: string): Promise<string[]> {

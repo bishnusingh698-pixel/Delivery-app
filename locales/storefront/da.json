@@ -113,5 +113,7 @@
   "change.none": "Der er ingen andre ledige datoer lige nu. Kontakt venligst butikken.",
   "change.saved": "Ny dato gemt",
   "change.taken": "Den dato eller det tidspunkt er netop blevet fuldt. Vælg venligst en anden.",
-  "change.error": "Datoen kan ikke ændres lige nu. Kontakt venligst butikken."
+  "change.error": "Datoen kan ikke ændres lige nu. Kontakt venligst butikken.",
+  "buyNow.continue": "Fortsæt til betaling",
+  "buyNow.close": "Luk"
 }

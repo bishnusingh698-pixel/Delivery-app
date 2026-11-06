@@ -113,5 +113,7 @@
   "change.none": "Ahora mismo no hay otras fechas disponibles. Ponte en contacto con la tienda.",
   "change.saved": "Nueva fecha guardada",
   "change.taken": "Esa fecha u hora acaba de completarse. Elige otra.",
-  "change.error": "Esta fecha no se puede cambiar ahora. Ponte en contacto con la tienda."
+  "change.error": "Esta fecha no se puede cambiar ahora. Ponte en contacto con la tienda.",
+  "buyNow.continue": "Continuar al pago",
+  "buyNow.close": "Cerrar"
 }

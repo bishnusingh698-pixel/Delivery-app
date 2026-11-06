@@ -25,6 +25,8 @@ export interface Texts {
   num: (n: number) => string;
   monthTitle: (iso: string) => string;
   weekdayNarrow: (wd: number) => string;
+  /** Column header: "Mon" where the language's short names fit a phone-width calendar, else "M". */
+  weekdayHeader: (wd: number) => string;
   weekdayLong: (wd: number) => string;
 }
 
@@ -55,6 +57,11 @@ export function makeTexts(requestLocale: string, overrides: Record<string, Recor
   const mFmt = safeFormatter(locale, { month: "long", year: "numeric" });
   const wNarrow = safeFormatter(locale, { weekday: "narrow" });
   const wLong = safeFormatter(locale, { weekday: "long" });
+  const wShort = safeFormatter(locale, { weekday: "short" });
+  // 2023-01-01 was a Sunday.
+  const shortNames = Array.from({ length: 7 }, (_, wd) => wShort.format(new Date(Date.UTC(2023, 0, 1 + wd))).replace(/\.$/, ""));
+  // Single letters repeat (S, T) and confuse shoppers; short names only where all seven are short.
+  const useShort = shortNames.every((n) => [...n].length <= 3);
   let nf: Intl.NumberFormat;
   try {
     nf = new Intl.NumberFormat(locale, { numberingSystem: "latn" });
@@ -87,6 +94,7 @@ export function makeTexts(requestLocale: string, overrides: Record<string, Recor
     // 2023-01-01 was a Sunday.
     weekdayNarrow: (wd) => wNarrow.format(new Date(Date.UTC(2023, 0, 1 + wd))),
     weekdayLong: (wd) => wLong.format(new Date(Date.UTC(2023, 0, 1 + wd))),
+    weekdayHeader: (wd) => (useShort ? shortNames[wd] : wNarrow.format(new Date(Date.UTC(2023, 0, 1 + wd)))),
   };
 }
 
