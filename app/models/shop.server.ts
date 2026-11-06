@@ -19,6 +19,8 @@ export type ShopFlags = {
   usageWarnedMonth?: string;
   /** "Day almost full" Flow trigger: the days it was sent for, with the share they had reached (Pro). */
   dayFullSent?: Record<string, number>;
+  /** Language of the Pickday admin chosen in Settings, for everyone in the store; absent = Automatic (D-82). */
+  adminLang?: string;
 };
 
 export type ShopWarning = { code: string; at: string; detail?: string };

@@ -20,7 +20,7 @@ Pickday ("the app") helps Shopify merchants let their customers choose a deliver
 | Data | Whose | Why | Kept for |
 |---|---|---|---|
 | Store domain, name, time zone, language, currency, country, Shopify plan type | Merchant | To run the app in the store's language and time zone | Until uninstall + 48 h |
-| Pickday settings (methods, schedules, locations, areas, texts…) | Merchant | The app's configuration | Until uninstall + 48 h |
+| Pickday settings (methods, schedules, locations, areas, texts, the admin language…) | Merchant | The app's configuration | Until uninstall + 48 h |
 | Name of the staff member who changed something | Merchant staff | Change history ("who moved this order") | With the order (400 days after its date); 180 days in the activity log |
 | Order number, customer first name, Shopify customer ID, items, chosen date, slot, method, pickup location, delivery area or postcode | Customer | Order lists, capacity counting, calendars, printed sheets | 400 days after the delivery date, or until uninstall + 48 h |
 | Customer name, address, phone, order note, delivery instructions | Customer | Printed day and route sheets only | **Not stored** (read live from Shopify when printing) |

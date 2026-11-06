@@ -24,6 +24,33 @@ const loaders: Record<AdminLang, () => Promise<{ default: Messages }>> = {
   ja: () => import("./admin/ja.json"),
 };
 
+/** Each language in its own words, so anyone can find theirs whatever the admin is showing now. */
+export const ADMIN_LANGUAGE_NAMES: Record<AdminLang, string> = {
+  en: "English",
+  es: "Español",
+  fr: "Français",
+  de: "Deutsch",
+  pt: "Português (Brasil)",
+  it: "Italiano",
+  nl: "Nederlands",
+  ja: "日本語",
+};
+
+/** The language chosen in Pickday (Settings), or null for "Automatic". Anything unknown is Automatic. */
+export function chosenAdminLang(stored: unknown): AdminLang | null {
+  return typeof stored === "string" && (ADMIN_LANGS as readonly string[]).includes(stored) ? (stored as AdminLang) : null;
+}
+
+/**
+ * The admin language for a request (D-82): the language chosen in Pickday for the whole store; or,
+ * on Automatic, the person's Shopify admin language (`locale`), then the last one used in the store.
+ */
+export function effectiveAdminLang(chosen: AdminLang | null, shopifyLocale: string | null | undefined, lastUsed: string | null | undefined): AdminLang {
+  if (chosen) return chosen;
+  if (shopifyLocale) return resolveAdminLang(shopifyLocale);
+  return resolveAdminLang(lastUsed);
+}
+
 export function resolveAdminLang(raw: string | null | undefined): AdminLang {
   const lang = (raw ?? "en").toLowerCase().split(/[-_]/)[0];
   return (ADMIN_LANGS as readonly string[]).includes(lang) ? (lang as AdminLang) : "en";

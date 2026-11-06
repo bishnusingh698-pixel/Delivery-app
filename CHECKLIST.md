@@ -138,6 +138,9 @@ Deploy first (README step 4). The deploy now also uploads two Flow triggers: **R
 13. (B84) Only for a store in India or Nepal: with a different cut-off per weekday, check Render's log a minute after the store's midnight: `[publish]` runs for that store (or Help → diagnostics "Last published" shows a time just after midnight).
 14. (B87) Switch your Shopify admin language to Español, print a day sheet: it's in Spanish even if a colleague last used the app in English.
 
+**Admin language (D-82)**
+15. Settings → "Language of the Pickday admin": **Automatic** is selected and says which language you see now. Click **🇩🇪 Deutsch**: a message confirms and every Pickday page, the menu and a printed day sheet are in German, also for a colleague whose Shopify is in English. Customers' storefront and checkout don't change. Click **Automatic** again: each person gets their own Shopify language back. On Windows the flags show as small images (not letters). With the keyboard: Tab to the list and use the arrow keys.
+
 ## Acceptance tests
 
 "Automated" = covered by `npm test` or `npm run test:browser` and passing. "Needs a live store" = the code is in place but it can only be confirmed on a development store (Shopify checkout, webhooks, theme editor and calendars can't run here). Steps for each are in the "How to test" sections above.
@@ -192,6 +195,7 @@ Deploy first (README step 4). The deploy now also uploads two Flow triggers: **R
 | 46 | Reminder before the date sent once per open order at the store's hour; Day almost full sent once per day | ✅ Automated (`tests/db/reminders.db.test.ts`, payload tests) — confirm in Shopify Flow |
 | 47 | Orders with a date per item appear on each of their days; renewals and copied dates aren't booked | ✅ Automated (`tests/db/round9.db.test.ts`) — confirm with a subscription renewal |
 | 48 | Each store republished at its own midnight; Function never blocks a valid order in between | ✅ Automated (`tests/round9.test.ts`) — confirm in Render's log for an India or Nepal store |
+| 49 | Admin language: Automatic by default, or one language for the whole store, also in printouts and the daily summary | ✅ Automated (`tests/admin-language.test.ts`, render test) — confirm by switching on a development store |
 
 ## Automated checks (run `npm test`)
 

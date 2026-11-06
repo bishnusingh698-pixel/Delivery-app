@@ -139,7 +139,10 @@ describe("B87: printouts and CSV are in the language of the staff member who pri
     const ja = await adminT({ adminLocale: "en" }, "ja");
     expect(ja.lang).toBe("ja");
     expect(ja.t("print.items")).not.toBe((await adminT({ adminLocale: "en" })).t("print.items"));
-    expect((await adminT({ adminLocale: "de" }, "xx")).lang).toBe("de");
+    // A language Pickday doesn't have (Korean): English, the same as that person sees on screen (D-82).
+    expect((await adminT({ adminLocale: "de" }, "ko")).lang).toBe("en");
+    // Nothing asked (calendar feed, daily summary): the store's last-used admin language.
+    expect((await adminT({ adminLocale: "de" })).lang).toBe("de");
   });
   it("the admin adds its own language to print and download links", () => {
     expect(withLang("/app/print?kind=day&range=today", "?host=abc&locale=ja-JP")).toBe("/app/print?kind=day&range=today&lang=ja-JP");

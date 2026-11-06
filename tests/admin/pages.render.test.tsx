@@ -127,10 +127,18 @@ describe("admin pages render", () => {
 
   it("Settings", async () => {
     const html = await render("/app/settings", await import("../../app/routes/app.settings._index"), {
-      meta, countries: ["US", "DE", "SA"], shopifyCountry: "US",
+      meta, countries: ["US", "DE", "SA"], shopifyCountry: "US", adminLang: "auto", automatic: "de",
       initial: { country: "US", dateFormat: "auto", weekStart: 0, holidays: settings.holidays, methods: settings.methods, locations: settings.locations, methodOrder: settings.methodOrder, defaultMethod: null, dateMode: "order", tagging: settings.tagging, customerChanges: { ...settings.customerChanges, enabled: true } },
     });
     expect(html).toContain("Store and region");
+    // Admin language (D-82): Automatic first, then each language in its own name with a flag.
+    expect(html).toContain("Language of the Pickday admin");
+    expect(html).toContain("Each person sees their own Shopify admin language (now: Deutsch)");
+    for (const name of ["English", "Español", "Français", "Deutsch", "Português (Brasil)", "Italiano", "Nederlands", "日本語"]) expect(html).toContain(name);
+    expect((html.match(/<svg[^>]*aria-hidden="true"/g) ?? []).length).toBeGreaterThanOrEqual(8);
+    // Automatic is the selected choice, and only it.
+    const radios = html.match(/<input type="radio"[^>]*>/g) ?? [];
+    expect(radios.filter((r) => r.includes("checked")).map((r) => /value="(\w+)"/.exec(r)?.[1])).toEqual(["auto"]);
     expect(html).toContain("Let customers change their date");
     expect(html).toContain("Changes per order");
     noRawKeys(html);
