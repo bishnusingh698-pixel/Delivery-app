@@ -1191,6 +1191,8 @@
   "home.check.wizardAction": "Change answers",
   "home.check.wizardHelp": "Your country, how customers get their order, your days, notice and cut-off time.",
   "home.checklistIntro": "Follow these steps in order. Each one opens the right page.",
+  "home.closeDayDone": "{date} is closed. Customers can't pick it any more.",
+  "home.closeDayFailed": "That day couldn't be closed. Choose today or a later date and try again.",
   "home.comparePlans": "Compare plans",
   "home.planHeading": "Your plan",
   "nav.reports": "Reports",

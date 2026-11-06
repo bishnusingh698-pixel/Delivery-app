@@ -1,6 +1,14 @@
+/** Add the admin's own language (Shopify's `locale`) so a sheet prints in the viewer's language (B87). */
+export function withLang(url: string, search: string): string {
+  const locale = new URLSearchParams(search).get("locale");
+  return locale ? `${url}${url.includes("?") ? "&" : "?"}lang=${encodeURIComponent(locale)}` : url;
+}
+
+const here = () => (typeof location === "undefined" ? "" : location.search);
+
 /** Print or download a page that needs the admin session (App Bridge adds the token to fetch). */
 export async function printUrl(url: string) {
-  const res = await fetch(url);
+  const res = await fetch(withLang(url, here()));
   if (!res.ok) throw new Error(String(res.status));
   const html = await res.text();
   const frame = document.createElement("iframe");
@@ -19,7 +27,7 @@ export async function printUrl(url: string) {
 }
 
 export async function downloadUrl(url: string, fallbackName: string) {
-  const res = await fetch(url);
+  const res = await fetch(withLang(url, here()));
   if (!res.ok) throw new Error(String(res.status));
   const blob = await res.blob();
   const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? fallbackName;

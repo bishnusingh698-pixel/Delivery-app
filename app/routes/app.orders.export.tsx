@@ -10,7 +10,7 @@ import { orderRow, ordersWhere, parseFilters, production, toCsv } from "../servi
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const url = new URL(request.url);
-  const { t } = await adminT(ctx.row);
+  const { t } = await adminT(ctx.row, new URL(request.url).searchParams.get("lang"));
   const csv = (name: string, body: string) =>
     new Response(body, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "no-store" } });
 

@@ -130,3 +130,19 @@ describe("B84: the checkout Function between a store's midnight and its next pub
     expect(order("2026-11-11", tuesday, [true, false])).toEqual([]);
   });
 });
+
+describe("B87: printouts and CSV are in the language of the staff member who prints them", async () => {
+  const { adminT } = await import("../app/services/admin-t.server");
+  const { withLang } = await import("../app/components/print");
+  it("the request's language wins over the store's last-used admin language", async () => {
+    // The store's stored admin language is whoever opened the app last (here English).
+    const ja = await adminT({ adminLocale: "en" }, "ja");
+    expect(ja.lang).toBe("ja");
+    expect(ja.t("print.items")).not.toBe((await adminT({ adminLocale: "en" })).t("print.items"));
+    expect((await adminT({ adminLocale: "de" }, "xx")).lang).toBe("de");
+  });
+  it("the admin adds its own language to print and download links", () => {
+    expect(withLang("/app/print?kind=day&range=today", "?host=abc&locale=ja-JP")).toBe("/app/print?kind=day&range=today&lang=ja-JP");
+    expect(withLang("/app/print?kind=day", "?host=abc")).toBe("/app/print?kind=day");
+  });
+});

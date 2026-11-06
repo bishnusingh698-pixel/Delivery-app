@@ -1191,6 +1191,8 @@
   "home.check.wizardAction": "Antworten ändern",
   "home.check.wizardHelp": "Dein Land, wie Kunden ihre Bestellung erhalten, deine Tage, Vorlaufzeit und Bestellschluss.",
   "home.checklistIntro": "Folge diesen Schritten der Reihe nach. Jeder öffnet die passende Seite.",
+  "home.closeDayDone": "{date} ist geschlossen. Kunden können ihn nicht mehr wählen.",
+  "home.closeDayFailed": "Der Tag konnte nicht geschlossen werden. Wähle heute oder ein späteres Datum und versuche es erneut.",
   "home.comparePlans": "Tarife vergleichen",
   "home.planHeading": "Dein Tarif",
   "nav.reports": "Berichte",

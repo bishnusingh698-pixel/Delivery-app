@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useFetcher, useLoaderData } from "react-router";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { addDays, isValidDate, isValidTime } from "../../core/civil";
 import { BUSINESS_TYPES, applyWizard, countryHolidaySet, wizardSuggestion, type BusinessType, type WizardChoices } from "../../core/defaults";
 import { HOLIDAY_GAPS } from "../../core/holidays";
@@ -416,7 +417,15 @@ function CloseDayModal({ d }: { d: DashData }) {
   const t = useT();
   const fmt = useFormatDate();
   const fetcher = useFetcher<{ ok: boolean; closed?: string }>();
+  const shopify = useAppBridge();
   const [date, setDate] = useState<string | null>(d.today);
+  // Say what happened: the day is closed on the storefront within seconds, or what to do if it failed.
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) return;
+    if (fetcher.data.ok && fetcher.data.closed) shopify.toast.show(t("home.closeDayDone", { date: fmt(fetcher.data.closed) }));
+    else if (!fetcher.data.ok) shopify.toast.show(t("home.closeDayFailed"), { isError: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.state, fetcher.data]);
   const [why, setWhy] = useState("");
   const orders = d.chart.find((c) => c.date === date)?.orders ?? 0;
   return (

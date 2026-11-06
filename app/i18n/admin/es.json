@@ -1191,6 +1191,8 @@
   "home.check.wizardAction": "Cambiar respuestas",
   "home.check.wizardHelp": "Tu país, cómo reciben el pedido tus clientes, tus días, antelación y hora límite.",
   "home.checklistIntro": "Sigue estos pasos en orden. Cada uno abre la página adecuada.",
+  "home.closeDayDone": "El {date} está cerrado. Los clientes ya no pueden elegirlo.",
+  "home.closeDayFailed": "No se ha podido cerrar ese día. Elige hoy o una fecha posterior e inténtalo de nuevo.",
   "home.comparePlans": "Comparar planes",
   "home.planHeading": "Tu plan",
   "nav.reports": "Informes",

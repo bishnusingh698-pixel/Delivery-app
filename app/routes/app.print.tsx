@@ -14,7 +14,7 @@ import { hasFeature } from "../../core/publish";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const url = new URL(request.url);
-  const { t, lang, dateLabel } = await adminT(ctx.row);
+  const { t, lang, dateLabel } = await adminT(ctx.row, new URL(request.url).searchParams.get("lang"));
   const kind = url.searchParams.get("kind");
   const html = (s: string) => new Response(s, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 

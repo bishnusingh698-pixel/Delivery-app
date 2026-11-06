@@ -1191,6 +1191,8 @@
   "home.check.wizardAction": "Antwoorden wijzigen",
   "home.check.wizardHelp": "Je land, hoe klanten hun bestelling krijgen, je dagen, voorbereidingstijd en besteltijd.",
   "home.checklistIntro": "Volg deze stappen op volgorde. Elke stap opent de juiste pagina.",
+  "home.closeDayDone": "{date} is gesloten. Klanten kunnen hem niet meer kiezen.",
+  "home.closeDayFailed": "Die dag kon niet worden gesloten. Kies vandaag of een latere datum en probeer het opnieuw.",
   "home.comparePlans": "Abonnementen vergelijken",
   "home.planHeading": "Je abonnement",
   "nav.reports": "Rapporten",

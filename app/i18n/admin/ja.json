@@ -1191,6 +1191,8 @@
   "home.check.wizardAction": "回答を変更",
   "home.check.wizardHelp": "国、お客様の受け取り方法、営業日、準備期間、締め切り時刻。",
   "home.checklistIntro": "順番に進めてください。各ステップから該当ページが開きます。",
+  "home.closeDayDone": "{date}を休業日にしました。お客様は選べなくなります。",
+  "home.closeDayFailed": "その日を休業日にできませんでした。今日以降の日付を選んで、もう一度お試しください。",
   "home.comparePlans": "プランを比較",
   "home.planHeading": "ご利用中のプラン",
   "nav.reports": "レポート",
