@@ -144,19 +144,17 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
  * for "today".
  */
 export function copiedDate(o: Pick<ParsedOrder, "date" | "perItem" | "method" | "locationId">, createdAt: string | undefined, settings: Pick<Settings, "locations">, storeZone: string, source?: string | null): string | null {
-  const dates0 = o.date ? [o.date] : o.perItem.map((i) => i.date);
+  const dates = o.date ? [o.date] : o.perItem.map((i) => i.date);
+  if (!dates.length) return null;
+  const latest = dates.reduce((a, b) => (a > b ? a : b));
   // A subscription renewal carries the first order's attributes (Shopify copies them from the
   // contract): its date was chosen for the first delivery, never for this one, even when still ahead.
-  if (dates0.length && /^subscription_contract/.test(source ?? "")) return dates0.reduce((a, b) => (a > b ? a : b));
+  if (/^subscription_contract/.test(source ?? "")) return latest;
   if (!createdAt) return null;
   const at = new Date(createdAt);
   if (Number.isNaN(at.getTime())) return null;
-  const dates = o.date ? [o.date] : o.perItem.map((i) => i.date);
-  if (!dates.length) return null;
   const zone = (o.method === "pickup" && settings.locations.find((l) => l.id === o.locationId)?.timeZone) || storeZone || "UTC";
-  const placed = nowInZone(zone, at).date;
-  const latest = dates.reduce((a, b) => (a > b ? a : b));
-  return latest < addDays(placed, -1) ? latest : null;
+  return latest < addDays(nowInZone(zone, at).date, -1) ? latest : null;
 }
 
 /** JSON with sorted keys (jsonb reorders keys and drops undefined). */
