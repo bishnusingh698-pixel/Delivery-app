@@ -1,4 +1,4 @@
-# Pickday audit (October 2026, round 2; rounds 3–8 below)
+# Pickday audit (October 2026, round 2; rounds 3–9 below)
 
 Source of truth for this round of work. Updated as items land (✅ done, ⏳ in progress, ⬜ to do).
 
@@ -185,6 +185,59 @@ Open, for the owner to decide (not changed): plan trials start again after an un
 | B78 | m | widget | Three methods wrapped onto two rows (one button alone); weekday headers were single letters (S M T W T F S, two S and two T); whole past weeks took rows in the current month. | One row of equal buttons with the icon above the name; short weekday names where they fit (single letters otherwise); the calendar starts at the current week. | ✅ |
 
 Measured with the built widget in headless Chromium (4× CPU slow-down, 150 ms per request, a 300-product page with a cart drawer): Pickday adds about 45 ms of script time and about 190 DOM nodes; the rest of the page's cost is the theme's.
+
+### Round 9: final round (November 2026): bugs, time zones, plans, pickup
+
+Walked through the app as the people who use it (shoppers in other time zones, on old iPhones, buying a subscription or with Buy it now; merchants with pickup in another zone, date per item, staff in another language), traced each path through the code (widget → cart attributes → Functions → order webhook → database → admin, printouts, Flow, customer account) and wrote a failing test before each fix (`tests/round9.test.ts`, `tests/db/round9.db.test.ts`, `tests/browser/widget.browser.ts`).
+
+Baseline before this round: typecheck ✅, lint ✅ (0 errors), 471 tests ✅ (database tests against Postgres 16 included), `npm run check:shopify` ✅. `npm run test:browser` failed on main after 14:00 New York time (see B88).
+
+| # | Sev | Where | Problem | Who would hit it | Fix | Status |
+|---|---|---|---|---|---|---|
+| B79 | M | `orders-query.server.ts`, print, export, Home | An order with a date per item on **different** days is stored without a single date, so it was missing from Orders "Today/Tomorrow", the calendar, Home's counts and chart, the printed day and route sheets and the CSV for those days. | Pro stores using "a date per item": the order wasn't on the day sheet, so it could be left behind. | Orders are also found through their items' dates (`ordersWhere`), counted once per day, and a day's sheet lists only that day's items. | ✅ |
+| B80 | M | `orders.server.ts` | A **subscription renewal** carries the first order's `_pickday` (Shopify copies the contract's attributes), and a duplicated order keeps its old one: each was booked as new, on a past day or on the same day as the original order (capacity counted twice), tagged with that date, sent to Flow and counted against the Free/Starter monthly orders. | Stores selling subscriptions (weekly bread, flowers): every renewal used up the plan's 50 or 500 orders. | Renewals (`source_name` subscription_contract…) and orders whose dates are all more than a day before they were placed aren't booked; the activity log says so once (D-80). | ✅ |
+| B81 | M | thank-you block, calendar feed | "Add to calendar" and the calendar feed used the **store's** time zone for a pickup location with its own zone: a 10:00 pickup in New York, from a Berlin store, landed at 10:00 Berlin time (04:00 in New York). | Shoppers and staff of stores with pickup locations in another zone. | The location's own zone is published (`lz`) and used for links and feed events (`eventZone`). | ✅ |
+| B82 | m | `core/calendar.ts` | `.ics` lines were folded at 75 characters instead of 75 bytes: Japanese, Arabic or Hebrew titles produced lines over the limit, which strict calendar apps reject or garble. | Stores whose texts are in non-Latin scripts. | Folded by UTF-8 bytes, never inside a character. | ✅ |
+| B83 | m | order page history, Help, Import/Export | Times ("changed at…", last publish, code expiry, activity) were shown in the **server's** zone (UTC on Render) when the page was built, then in each staff member's browser zone. | Every store not in UTC: a 09:00 change in Kolkata read 03:30. | Shown in the store's zone with the zone named (`formatStamp`). | ✅ |
+| B84 | m | `jobs.server.ts` | After a store's midnight, checkout kept asking about the previous day's cut-off times until the next hourly job: 32 minutes later for India, Adelaide or Newfoundland, 47 for Nepal or Chatham, longer when Render missed a ping. | +5:30/+5:45/+12:45 stores with a different cut-off per weekday. | Never blocked a valid order (the answers stay true; tested), but could miss a cut-off: each store is now republished within a minute of its own midnight while the server is awake (D-81). | ✅ |
+| B85 | m | `publish.server.ts` | Public holidays and counts were published only one day past the booking window, while the shopper's window moves on every day: a day with no publish (server down, cron missed) left the last day of the window without its holiday. | Stores whose server or cron had an outage. | Published a week past the window (`publishRange`). | ✅ |
+| B86 | m | `widget/src/main.ts` | A theme whose checkout is a plain form submit, clicked while the date was still saving: the widget re-submitted with `form.requestSubmit`, which Safari before 16 (older iPhones) doesn't have, so nothing happened. | Shoppers on iOS 15 in such themes. | Falls back to clicking the same button (which keeps its `name`), else `form.submit()`. Browser test with `requestSubmit` removed. | ✅ |
+| B87 | m | print, CSV | Printouts and CSV headers were in the store's last-used admin language, not the language of the person printing. | Stores whose staff use different admin languages. | Print and download links carry the viewer's language. | ✅ |
+| B88 | m | `tests/browser/preview` | The admin live preview browser test expected "tomorrow" to be bookable, which it isn't after 14:00 New York time (1 day notice, 14:00 cut-off): the test failed on main in the afternoon. | Developers (CI in the afternoon). | The harness uses no notice and no cut-off, so it no longer depends on the clock. | ✅ |
+
+**The after-midnight window (the owner's suspect), in detail.** The validation Function reads the live date from Shopify (`shop.localTime.date`) and asks "is it past HH:MM?" for the two cut-off times published for the day before. Those answers are true statements about now, so "now" is still a correct window; the Function checks the order at both ends and lets it through if either passes (D-24). Everything else it reads is date-proof: closures and special days are kept from yesterday, holidays and counts start yesterday, the booking window is counted from the live date. So in that window it can't block a valid order (tested in `tests/round9.test.ts`), and the widget always uses the shopper's clock in the store's (or location's) zone. What it could do is let a closed same-day order through when the new weekday's cut-off is earlier than the old one and the window lasts past it (only if the server stayed asleep for hours). The midnight timer closes that window to about a minute while the server is awake (B84), and the hourly job remains the fallback.
+
+**Also walked through and found correct:** the New York shopper at 23:50 ordering from Berlin (store zone, zone note, "Today/Tomorrow" in store time); Sydney on the DST day (wall-clock minutes; a 02:00 slot on the spring-forward day is simply past once the clock jumps); Kolkata, Kathmandu, Chatham and Santiago (existing tests, plus the midnight timer); Buy it now with variant and quantity inputs outside the form (`form="…"`, new browser test), selling plans (the form's `selling_plan` goes to `/cart/add.js` with the rest), a cart with other items (they go to checkout too, D-74); Markets subfolders (`Shopify.routes.root` everywhere); minimum order in another currency (`presentmentCurrencyRate` and `Shopify.currency.rate`); refunds and restocks (`current_quantity`, counts rebuilt, D-8), cancellation (capacity back once), duplicate and out-of-order webhooks, the missing session after uninstall (order recorded, tags skipped); uninstall resets the plan and a reinstall starts on Free; customer date changes re-check the deadline (location zone), fulfilment and cancellation live on save; Free at 50 orders (recorded, not tagged; released on upgrade); the Liquid-printed cart (special characters through `json`, empty properties, re-read after back/forward).
+
+**Known limits kept** (not bugs, now documented): a quick-view "Buy it now" on a collection page isn't intercepted (the page has no product data; the checkout Function stops a missing date with "go back to your cart"); renewal orders get no date automatically (D-80); D-9 (two shoppers taking the last slot in the same second) and D-41 (date per item and capacity) stand.
+
+#### Competitors (November 2026, from the Shopify App Store listings and the apps' own pricing pages via web search; third-party figures conflict, so check the live listings before quoting them)
+
+| App | Free plan | Paid plans | Notes |
+|---|---|---|---|
+| **Pickday** | 50 orders/month, every method, time slots, holidays, closed days, notes, daily summary, 1 location | Starter $7.99 (500 orders, limits, checkout matching, customer date changes, 3 locations); Pro $14.99 (unlimited, reports, reminders, areas, rules, fees, every tool) | Works on every Shopify plan |
+| Zapiet – Pickup + Delivery | None (14-day trial) | From $29.99/month (Essential: about 250 orders, 1–3 locations); up to about $179.99 (many locations) | Not on Shopify's Starter plan; rate features need higher Shopify plans |
+| Stellar Delivery Date & Pickup (Identixweb, formerly "Order Delivery Date") | Yes (features vary by listing; free for development stores) | Listed between $14.99 and $29.99/month, unlimited orders | Add-on for custom shipping at checkout on Plus |
+| Bird Pickup Delivery Date | 15 orders/month, 1 location (some listings say 10) | Essential $16.99 (250 orders, 2 locations); up to $59.99; $0.05 per extra order | |
+| Pickeasy (Pickup Delivery Date) | 10 orders/month, 1 location, slots with limits, postcode check | Starter $7.99–9.99, Smart $10.99–16.99, Premium $24.99 | Distance rates via Google Maps on paid plans |
+| Flare: Delivery Date Picker | None | From $39–49/month (150 orders) up to $249 (1,500 orders) | |
+
+What this means for Pickday (D-76): Free is already the most generous free plan in the group, and Starter and Pro are at or below the cheapest comparable plans, so prices stay. Pro now adds what the higher-priced apps sell: reports, customer reminders and busy-day alerts.
+
+Sources: [Zapiet pricing](https://zapiet.com/pricing), [Zapiet on the App Store](https://apps.shopify.com/click-and-collect), [Stellar on the App Store](https://apps.shopify.com/order-delivery-date-by-identixweb), [Bird pricing](https://birdchime.com/pricing), [Bird on the App Store](https://apps.shopify.com/store-pickup-and-delivery-date), [Pickeasy on the App Store](https://apps.shopify.com/order-delivery-date-time), [Flare on the App Store](https://apps.shopify.com/delivery-date-picker); renewal attributes: [Shopify changelog, custom attributes on subscription contracts](https://shopify.dev/changelog/new-fields-for-custom-attributes-added-to-subscription-contracts.md), [community thread on `source_name` for renewals](https://community.shopify.dev/t/order-paid-webhook-sourcename-property-changed-for-subscription/23868).
+
+#### Added in round 9
+
+| Change | Why | Status |
+|---|---|---|
+| Plans page built from the code's feature list, downgrade confirmations, trial end date; usage bar on Home for every plan | D-76 | ✅ |
+| Reports page (Pro) | D-77 | ✅ |
+| "Reminder before the date" and "Day almost full" Flow triggers (Pro), with their settings on Notifications | D-77 | ✅ |
+| Pickup page: how pickup works in four steps, live check against Shopify's Local pickup with one-click fixes; same check in Help → diagnostics and as a Home setup step; Help answer rewritten | D-78 | ✅ |
+| Home setup path in order, with progress and a link to each step | D-79 | ✅ |
+| "Close a day" says it worked (or how to fix it) | Every action gets feedback | ✅ |
+| New deploy rule: every Flow trigger has its payload in `flow-payload.ts` (with a mutation case) | Flow refuses a wrong payload only at run time | ✅ |
+| 132 new or changed admin texts in 8 languages; German kept informal like the rest of it; each language's own words for checkout and pickup | Consistent wording | ✅ |
 
 ## 2. UX problems
 

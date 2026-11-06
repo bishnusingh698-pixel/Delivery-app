@@ -21,7 +21,7 @@ It works on **every Shopify plan** (no Shopify Plus features: a theme app extens
 ## What merchants get
 
 - **Setup wizard** (under 2 minutes): country, business type, how customers get their order, pickup address, days, notice, cut-off time, booking window, public holidays (off unless chosen), then turn on the app embed. The business type only suggests values; every one is shown and can be changed, and nothing is decided out of sight. A live preview shows the real picker while they answer.
-- **Icon navigation** on every page: Home, Orders, Delivery, Pickup, Days off, Appearance, Settings, Help.
+- **Icon navigation** on every page: Home, Orders (with Production and Reports), Delivery, Pickup, Days off, Appearance, Settings, Help.
 - **Delivery**: local delivery and shipping, each with working days, notice (hours or working days), cut-off (one time or per weekday), same-day option, booking window, time slots, daily and per-slot limits, countries, minimum order, delivery areas by postcode / area / region, and zones with their own days and limits.
 - **Pickup**: any number of pickup locations, each with its own hours, slots, limits, time zone and days off; or pickup at the store with no location set up.
 - **Days off**: public holidays for ~200 countries, off until the merchant turns them on; then each chosen holiday recurs every year (any single holiday can be kept open), closed days and yearly dates, vacation mode, special opening days, a year calendar, per-location days off.
@@ -31,9 +31,23 @@ It works on **every Shopify plan** (no Shopify Plus features: a theme app extens
 - **Orders**: list and calendar with filters, CSV export, day and route sheets, production list, bulk date changes, date changes from the Shopify order page, a next-14-days chart and "Close a day" on Home.
 - **Daily summary email**, free: Pickday fires a "Daily schedule" Shopify Flow trigger at the hour you choose, and Flow's free **Send internal email** action mails tomorrow's (or today's) orders to you and your staff. No email service or API key.
 - **Customers change their own date** from their order in Shopify's customer accounts, until a deadline you set (for example 24 hours before), only to dates the cart would offer, with the same limits.
+- **Setup steps on Home**, in order, with progress: the setup questions, the app embed, Local pickup in Shopify (when pickup is on), a test order, the date in order emails, checkout matching. Each step opens the page where it's done. Home also shows the plan, its trial end date and "23 of 50 scheduled orders this month" with the day the count resets.
+- **Pickup made checkable**: the Pickup page explains in four steps how pickup works, and compares Pickday's pickup locations with the Shopify locations where Local pickup is on, naming each mismatch with a one-click fix (use Shopify's name, add the location) or a link to Shopify's setting. Help → diagnostics shows the same check.
+- **Reports** (Pro): busiest days, weekdays and time slots, orders by method and pickup location, how far ahead customers book, date changes and cancellations, this month against last month.
+- **Reminders before the date and "day almost full" alerts** (Pro): Shopify Flow triggers; the merchant's own email or SMS app sends the message from Flow. Pickday sends no email.
 - **Product rules**, **delivery fees**, **checkout matching**, **notifications** (date snippets for Shopify's order emails, calendar feed, Shopify Flow) and **import/export**.
 
-Plans: **Free** (every method, time slots, holidays, closed days, notes, daily summary, 1 pickup location, 50 scheduled orders a month), **Starter $7.99** (daily and per-slot limits, checkout matching, customer date changes, 3 locations, 500 orders), **Pro $14.99** (everything, unlimited). On development stores every plan charge is a test charge, so any plan can be tried (and reviewed) for free.
+Plans (D-76):
+
+| | Free | Starter $7.99 | Pro $14.99 |
+|---|---|---|---|
+| Scheduled orders a month | 50 | 500 | Unlimited |
+| Pickup locations | 1 | 3 | Unlimited |
+| Delivery, pickup and shipping, time slots, public holidays, closed days and vacation, notes box, daily summary email | ✓ | ✓ | ✓ |
+| Daily and per-slot limits, checkout shows only the chosen method, customers change their own date | | ✓ | ✓ |
+| Reports, reminders before the date, "day almost full" alerts, delivery areas and zones, product rules, date per item, delivery fees, production list, route sheets, bulk date changes, calendar feed, Shopify Flow triggers, import/export, custom CSS | | | ✓ |
+
+Paid plans have a 14-day free trial. Changing plan never deletes anything: a feature the new plan doesn't have is switched off and comes back after an upgrade. On development stores every plan charge is a test charge, so any plan can be tried (and reviewed) for free.
 
 ---
 
@@ -114,7 +128,7 @@ Sign up at [cron-job.org](https://cron-job.org) and create 3 jobs (**Create cron
 | Pickday hourly | `https://<your-service>.onrender.com/jobs/hourly` | Every hour at minute 2 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
 | Pickday daily | `https://<your-service>.onrender.com/jobs/daily` | Every day at 03:10 | Method **POST**, header `X-Pickday-Secret` = your `JOBS_SECRET` |
 
-Click **Test run** on each: keep-awake answers `ok`, the others `started` (status 202). A 403 means the secret doesn't match. The hourly job rolls each store's dates and public holidays forward and fires the "Daily schedule" Flow trigger at each store's chosen hour; the daily job prunes old data, re-checks the app embed and syncs the store's time zone.
+Click **Test run** on each: keep-awake answers `ok`, the others `started` (status 202). A 403 means the secret doesn't match. The hourly job rolls each store's dates and public holidays forward and fires the "Daily schedule" Flow trigger and the Pro reminders at each store's chosen hour; the daily job prunes old data, re-checks the app embed and syncs the store's time zone. While the server is awake (the keep-awake ping), it also republishes each store within a minute of its own midnight, so stores at +5:30 or +5:45 don't wait for the next hourly job (no database use for that check).
 
 ### 6. Partner Dashboard settings
 

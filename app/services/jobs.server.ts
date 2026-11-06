@@ -45,7 +45,7 @@ export function dueAtMidnight(list: Watched[], at = new Date()): string[] {
 
 /**
  * The hourly job runs at minute 2 (UTC). A store at +5:30 or +5:45 (India, Nepal, Chatham's +12:45/+13:45)
- * reaches midnight 13–58 minutes before it, and until then checkout still asks about yesterday's
+ * reaches midnight 32–47 minutes before it, and until then checkout still asks about yesterday's
  * cut-off times. While the server is awake, a one-minute timer compares each store's date with the day
  * it was published for (in memory, no database) and republishes it within a minute of its midnight (B84).
  */

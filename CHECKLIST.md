@@ -105,6 +105,39 @@ Updated after every phase. "Needs a live store" means the step can only be check
 4. A gift card or a product excluded from dates: Buy it now works as usual (no window).
 5. On a phone, with three methods on: the method buttons sit in one row; the calendar starts at the current week.
 
+## How to test round 9 (needs a live store)
+
+Deploy first (README step 4). The deploy now also uploads two Flow triggers: **Reminder before the date** and **Day almost full**.
+
+**Setup path and plan (Home)**
+1. Open Home. "Get ready for your first order" lists the steps in order with "x of y done" and a bar: setup questions (done; **Change answers** reopens the wizard), app embed, (with pickup on) Local pickup in Shopify, test order, order emails, checkout matching (paid plans). Each **Open** button goes to the right page.
+2. "Your plan" shows "Free plan" and "N of 50 scheduled orders this month", a bar and "The count starts again on 1 December" (your store's next month). Place test orders until 40: the text says you're close and an **Upgrade your plan** button appears. On Pro it reads "N orders this month, unlimited". During a trial a blue badge says "Free trial until …".
+
+**Plans**
+3. Settings → Plans: three cards. Free lists the picker basics, Starter "Daily and per-slot limits", "Checkout shows only the chosen method", "Customers change their own date", Pro starts with "Reports…" and "Reminders before each order's date…". Switch from Pro to Starter: a confirmation says features turn off and settings are kept. After the switch, Home shows "Some of your settings are switched off on your plan" naming them (for example "a date per item", "reminders and busy-day alerts").
+
+**Pickup made checkable**
+4. Pickup: "How pickup works" lists four steps. Under "Check with Shopify":
+   - In Shopify (Settings → Shipping and delivery → Local pickup) turn Local pickup **off** for your location; reload Pickup: "'<name>' isn't offered for pickup in Shopify" with **Open Shipping and delivery settings**. Turn it back on, reload: "All good".
+   - Rename the Pickday location (for example "City"), keep it linked: "'City' is called '<Shopify name>' in Shopify" with **Use '<Shopify name>'**. Click it, then **Save**: "All good".
+   - Turn Local pickup on for a second Shopify location: "Shopify offers pickup at '<name>', which isn't in Pickday" with **Add '<name>' to Pickday** (on Free the button is disabled at the 1-location limit).
+5. Help → diagnostics shows "Pickup places in Shopify: Match" or "N things to fix" with **Open Pickup**. Home lists "Turn on Local pickup in Shopify for your pickup places" while something doesn't match.
+
+**Reports (Pro)**
+6. Orders → **Reports** (also in Shopify's left menu): this month against last month, orders, cancellations, date changes (by customers / by your team), average days booked ahead, orders by method and location, weekdays, busiest days and time slots, "How far ahead customers book". Change the period to "In the next 30 days". On Free or Starter the page explains what Reports show, with an upgrade link.
+
+**Reminders and day almost full (Pro)**
+7. Notifications → "Reminders and busy-day alerts": turn on **Remind customers before their date**, 1 day before, at the next full hour; save. In Shopify Flow create a workflow with the Pickday trigger **Reminder before the date** and an action (for a test, **Send internal email** to yourself with `{{order.name}} {{day}} {{timeSlot}}`). Place an order for tomorrow. After the next hourly job past that hour, the email arrives once (not again at the next hourly run). Cancelled, fulfilled and over-the-limit orders get none.
+8. Turn on **Tell me when a day is almost full** at 80%, with a daily limit of 5 on a method. Create a Flow workflow with **Day almost full** and Send internal email. Place the 4th order for one day: one email (Booked 4, Limit 5, Percent 80). The 5th order doesn't send another.
+
+**Bugs fixed in this round**
+9. (B79, Pro) Settings → "A date per item". Order two products with two different dates. Orders → each of the two days lists the order; the day sheet for each day shows only that day's product; Home's counts include it on both days.
+10. (B80) With a subscription app, let a renewal order be created (or duplicate an old order from the Shopify admin and complete the draft a few days later): Pickday doesn't book it (no "Date:" tag, no count, Home's monthly count doesn't change) and Settings → Import and export → Recent changes says it carried a copied date. Set its date from the order page if needed.
+11. (B81) A pickup location with its own time zone (Pickup → location → Time zone): order a 10:00 slot there; on the thank-you page **Google Calendar** opens at 10:00 in that location's zone.
+12. (B83) Change an order's date; the order page's history shows the time in your store's zone, with the zone named.
+13. (B84) Only for a store in India or Nepal: with a different cut-off per weekday, check Render's log a minute after the store's midnight: `[publish]` runs for that store (or Help → diagnostics "Last published" shows a time just after midnight).
+14. (B87) Switch your Shopify admin language to Español, print a day sheet: it's in Spanish even if a colleague last used the app in English.
+
 ## Acceptance tests
 
 "Automated" = covered by `npm test` or `npm run test:browser` and passing. "Needs a live store" = the code is in place but it can only be confirmed on a development store (Shopify checkout, webhooks, theme editor and calendars can't run here). Steps for each are in the "How to test" sections above.
@@ -153,6 +186,12 @@ Updated after every phase. "Needs a live store" means the step can only be check
 | 40 | Plan follows Shopify's active subscription even when billing webhooks arrive out of order; calendar feed stops after leaving Pro | ✅ Automated — confirm on a development store (upgrade, switch plan, downgrade) |
 | 41 | "Buy it now" on a product that needs a date asks for the date, then checks out with it; "hide" hides it; products without a date are left alone | ✅ Automated (browser) — confirm with real Buy it now and wallet buttons on a live store |
 | 42 | The picker shows without waiting for its texts and the cart one after another | ✅ Measured (D-75) — check the product and cart pages feel quick on a phone |
+| 43 | Plans page lists exactly what each plan unlocks; Home shows plan, trial end and monthly usage with the reset day | ✅ Automated (`tests/plans.test.ts`, render test) — confirm with test charges on a development store |
+| 44 | Pickup locations checked against Shopify's Local pickup, with one-click fixes; same check in Help and on Home | ✅ Automated (`tests/pickup-check.test.ts`, render test) — confirm with real Shopify locations |
+| 45 | Reports (Pro) count orders, methods, locations, weekdays, slots, booking lead and month comparison in the store's zone | ✅ Automated (`tests/plans.test.ts`, render test) — check against a store with orders |
+| 46 | Reminder before the date sent once per open order at the store's hour; Day almost full sent once per day | ✅ Automated (`tests/db/reminders.db.test.ts`, payload tests) — confirm in Shopify Flow |
+| 47 | Orders with a date per item appear on each of their days; renewals and copied dates aren't booked | ✅ Automated (`tests/db/round9.db.test.ts`) — confirm with a subscription renewal |
+| 48 | Each store republished at its own midnight; Function never blocks a valid order in between | ✅ Automated (`tests/round9.test.ts`) — confirm in Render's log for an India or Nepal store |
 
 ## Automated checks (run `npm test`)
 
