@@ -57,4 +57,16 @@ describe("home", () => {
     const a = alerts({ settings: s, today: "2026-03-01", flags: { embedDetected: true }, embedChecked: true, busyDays: [], usagePct: null, warnings: [], plan: "starter" });
     expect(a).toContainEqual({ id: "planOff", tone: "warning", params: { keys: "surcharges" } });
   });
+  it("a downgrade names every paid setting it switched off, so nothing stops silently (D-76)", () => {
+    const s = defaultSettings("US");
+    s.dateMode = "item";
+    s.widget.customCss = ".pickday{}";
+    s.customerChanges.enabled = true;
+    s.notifications.reminders.enabled = true;
+    s.notifications.dayFull.enabled = true;
+    s.locations = ["a", "b"].map((id) => ({ id, shopifyLocationId: null, name: id, address: "", mapUrl: "", instructions: {}, timeZone: null, enabled: true, countries: "all" as const, custom: null }));
+    expect(settingsOffOnPlan(s, "free")).toEqual(["locations", "dateMode", "customCss", "customerChanges", "reminders"]);
+    expect(settingsOffOnPlan(s, "starter")).toEqual(["dateMode", "customCss", "reminders"]);
+    expect(settingsOffOnPlan(s, "pro")).toEqual([]);
+  });
 });

@@ -1,6 +1,6 @@
 /** Home page logic (pure, tested): setup checklist and alerts. */
 import { addDays } from "./civil";
-import { hasFeature } from "./publish";
+import { hasFeature, PLAN_LOCATION_LIMIT } from "./publish";
 import type { PlanId, Settings } from "./types";
 
 export type ChecklistId = "wizard" | "embed" | "pickupShopify" | "testOrder" | "snippet" | "checkout";
@@ -88,7 +88,15 @@ export function settingsOffOnPlan(s: Settings, plan: PlanId): string[] {
     ["surcharges", "surcharges", s.surcharges.length > 0],
     ["checkout", "checkoutMatching", s.checkoutMatching.enabled],
   ];
-  return [...new Set(checks.filter(([, f, used]) => used && !hasFeature(plan, f)).map(([page]) => page))];
+  const locLimit = PLAN_LOCATION_LIMIT[plan];
+  const extra: [string, boolean][] = [
+    ["locations", locLimit !== null && s.locations.filter((l) => l.enabled).length > locLimit],
+    ["dateMode", s.dateMode === "item" && !hasFeature(plan, "dateMode")],
+    ["customCss", !!s.widget.customCss.trim() && !hasFeature(plan, "customCss")],
+    ["customerChanges", s.customerChanges.enabled && !hasFeature(plan, "customerChanges")],
+    ["reminders", (s.notifications.reminders.enabled || s.notifications.dayFull.enabled) && !hasFeature(plan, "reminders")],
+  ];
+  return [...new Set([...checks.filter(([, f, used]) => used && !hasFeature(plan, f)).map(([page]) => page), ...extra.filter(([, off]) => off).map(([k]) => k)])];
 }
 
 /** Days at or above 80% of their limit within the next 7 days. */
