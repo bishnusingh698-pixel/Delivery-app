@@ -40,7 +40,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     return { ...base, month, days: await dayCounts(ctx.shop, config, month, end), rows: [], total: 0, pages: 1 };
   }
   const { rows, total, pages } = await listOrders(ctx.shop, f);
-  return { ...base, month: null, days: null, rows: rows.map((o) => orderRow(o, s)), total, pages };
+  return { ...base, month: null, days: null, rows: rows.map((o) => orderRow(o, s, { from: f.dateFrom, to: f.dateTo })), total, pages };
 };
 
 /** Bulk reschedule: preview (capacity impact) then commit. */
@@ -103,6 +103,7 @@ export default function OrdersPage() {
           <Button icon="list-bulleted" variant={data.view === "list" ? "primary" : "secondary"} onClick={() => set({ view: null })}>{t("orders.viewList")}</Button>
           <Button icon="calendar" variant={data.view === "calendar" ? "primary" : "secondary"} onClick={() => set({ view: "calendar" })}>{t("orders.viewCalendar")}</Button>
           <Button icon="product" href="/app/production">{t("nav.production")}</Button>
+          <Button icon="chart-vertical" href="/app/reports">{t("nav.reports")}</Button>
         </s-button-group>
       }
     >

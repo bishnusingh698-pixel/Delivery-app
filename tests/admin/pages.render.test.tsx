@@ -64,9 +64,55 @@ describe("admin pages render", () => {
   it("Pickup", async () => {
     const html = await render("/app/pickup", await import("../../app/routes/app.pickup"), {
       meta, ...preview, countries: ["US"], markets: [], timeZones: ["America/New_York"], daysOff: { loc_main: 1 }, full: settings, initial: { methods: settings.methods, locations: settings.locations },
+      shopifyLocations: [{ id: "1", name: "Main St", address: "", countryCode: "US", instructions: "", pickup: true }],
     });
     expect(html).toContain("Main Street");
+    // The step-by-step explanation and the check with Shopify (D-78), naming both sides of the mismatch.
+    expect(html).toContain("How pickup works");
+    expect(html).toContain("Settings → Shipping and delivery → Local pickup");
+    expect(html).toContain("isn&#x27;t offered for pickup in Shopify");
+    expect(html).toContain("Shopify offers pickup at");
     noRawKeys(html);
+  });
+
+  it("Pickup: all good, and Shopify not reachable", async () => {
+    const mod = await import("../../app/routes/app.pickup");
+    const base = { meta, ...preview, countries: ["US"], markets: [], timeZones: [], daysOff: {}, full: settings, initial: { methods: settings.methods, locations: settings.locations } };
+    const ok = await render("/app/pickup", mod, { ...base, shopifyLocations: [{ id: "1", name: "Main Street", address: "", countryCode: "US", instructions: "", pickup: true }] });
+    expect(ok).toContain("All good");
+    const unknown = await render("/app/pickup", mod, { ...base, shopifyLocations: null });
+    expect(unknown).toContain("couldn&#x27;t read your Shopify locations");
+  });
+
+  it("Plans: cards from the code, usage bar and trial", async () => {
+    const { planCards } = await import("../../core/plans");
+    const html = await render("/app/plans", await import("../../app/routes/app.plans"), {
+      plan: "starter", trialEndsOn: "2026-11-05", devStore: true, test: true, cards: planCards(), usage: { count: 412, limit: 500, pct: 82, over: false, monthStart: "2026-10-01", resetsOn: "2026-11-01" },
+    });
+    expect(html).toContain("412 of 500 scheduled orders");
+    expect(html).toContain("Free trial until");
+    expect(html).toContain("Reports: busiest days");
+    expect(html).toContain("Upgrade your plan");
+    noRawKeys(html);
+  });
+
+  it("Reports: Pro report and the locked page", async () => {
+    const mod = await import("../../app/routes/app.reports");
+    const { computeReport } = await import("../../core/reports");
+    const report = computeReport(
+      [{ date: "2026-10-23", method: "pickup", locationId: "loc_main", slotLabel: "10:00-12:00", status: "scheduled", createdAt: "2026-10-20T10:00:00Z", changes: [{ by: null }] }],
+      "America/New_York",
+      () => false,
+    );
+    const base = { range: "last90", from: "2026-07-26", to: "2026-10-23", today: "2026-10-23", locations: [{ id: "loc_main", name: "Main Street" }] };
+    const pro = await render("/app/reports", mod, { ...base, allowed: true, report, month: { thisMonth: 3, lastMonth: 10, lastMonthSoFar: 2, change: 50, thisStart: "2026-10-01", lastStart: "2026-09-01" }, truncated: false });
+    expect(pro).toContain("How far ahead customers book");
+    expect(pro).toContain("Main Street");
+    expect(pro).toContain("50% more than last month");
+    noRawKeys(pro);
+    const locked = await render("/app/reports", mod, { ...base, allowed: false, report: null, month: null, truncated: false });
+    expect(locked).toContain("Reports are part of the Pro plan.");
+    noRawKeys(locked);
   });
 
   it("Days off", async () => {
@@ -81,10 +127,18 @@ describe("admin pages render", () => {
 
   it("Settings", async () => {
     const html = await render("/app/settings", await import("../../app/routes/app.settings._index"), {
-      meta, countries: ["US", "DE", "SA"], shopifyCountry: "US",
+      meta, countries: ["US", "DE", "SA"], shopifyCountry: "US", adminLang: "auto", automatic: "de",
       initial: { country: "US", dateFormat: "auto", weekStart: 0, holidays: settings.holidays, methods: settings.methods, locations: settings.locations, methodOrder: settings.methodOrder, defaultMethod: null, dateMode: "order", tagging: settings.tagging, customerChanges: { ...settings.customerChanges, enabled: true } },
     });
     expect(html).toContain("Store and region");
+    // Admin language (D-82): Automatic first, then each language in its own name with a flag.
+    expect(html).toContain("Language of the Pickday admin");
+    expect(html).toContain("Each person sees their own Shopify admin language (now: Deutsch)");
+    for (const name of ["English", "Español", "Français", "Deutsch", "Português (Brasil)", "Italiano", "Nederlands", "日本語"]) expect(html).toContain(name);
+    expect((html.match(/<svg[^>]*aria-hidden="true"/g) ?? []).length).toBeGreaterThanOrEqual(8);
+    // Automatic is the selected choice, and only it.
+    const radios = html.match(/<input type="radio"[^>]*>/g) ?? [];
+    expect(radios.filter((r) => r.includes("checked")).map((r) => /value="(\w+)"/.exec(r)?.[1])).toEqual(["auto"]);
     expect(html).toContain("Let customers change their date");
     expect(html).toContain("Changes per order");
     noRawKeys(html);
@@ -96,6 +150,9 @@ describe("admin pages render", () => {
     expect(html).toContain("Daily summary email (free with Shopify Flow)");
     expect(html).toContain("{{ordersPage}}");
     expect(html).toContain("{{orders | round}}");
+    // Pro reminders and busy-day alerts (D-77).
+    expect(html).toContain("Remind customers before their date");
+    expect(html).toContain("Tell me when a day is almost full");
     noRawKeys(html);
   });
 
@@ -117,11 +174,24 @@ describe("admin pages render", () => {
     noRawKeys(wizard);
     const chart = Array.from({ length: 14 }, (_, i) => ({ date: `2026-10-${23 + i > 31 ? "0" + (i - 8) : 23 + i}`, orders: i, used: i, max: 10 }));
     const dash = await render("/app", mod, {
-      ...common, mode: "dashboard", checklist: [{ id: "embed", done: false }, { id: "testOrder", done: true }], checklistDismissed: false,
+      ...common, mode: "dashboard", checklist: [{ id: "wizard", done: true }, { id: "embed", done: false }, { id: "pickupShopify", done: false }, { id: "testOrder", done: true }], checklistDismissed: false,
+      trialEndsOn: null, usage: { count: 23, limit: 50, resetsOn: "2026-11-01" },
       overview: { today: { total: 2, methods: { delivery: 2 } }, tomorrow: { total: 0, methods: {} }, week: { total: 5, methods: {} } }, chart,
       alerts: [{ id: "holidays", tone: "info", params: { country: "US" } }], celebrate: false, methods: ["delivery", "pickup"], closedToday: true,
     });
     expect(dash).toContain("Next 14 days");
+    // Usage bar, always visible, and the setup path with its progress (D-76, D-79).
+    expect(dash).toContain("23 of 50 scheduled orders");
+    expect(dash).toContain("Get ready for your first order");
+    expect(dash).toContain("2 of 4 done");
+    expect(dash).toContain("Turn on Local pickup in Shopify");
     noRawKeys(dash);
+    const unlimited = await render("/app", mod, {
+      ...common, plan: "pro", mode: "dashboard", checklist: [{ id: "wizard", done: true }], checklistDismissed: false, trialEndsOn: "2026-11-01", usage: { count: 312, limit: null, resetsOn: "2026-11-01" },
+      overview: { today: { total: 0, methods: {} }, tomorrow: { total: 0, methods: {} }, week: { total: 0, methods: {} } }, chart, alerts: [], celebrate: false, methods: ["delivery"], closedToday: false,
+    });
+    expect(unlimited).toContain("312 orders this month, unlimited");
+    expect(unlimited).toContain("Free trial until");
+    noRawKeys(unlimited);
   });
 });

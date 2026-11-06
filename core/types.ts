@@ -279,6 +279,10 @@ export interface NotificationSettings {
   flowEnabled: boolean;
   /** Once a day, fire the "Daily schedule" Flow trigger (merchants send it as a staff email with Flow). */
   dailySummary: DailySummarySettings;
+  /** Pro: "Reminder before the date" Flow trigger, once per order, `daysBefore` days ahead at `hour` (store time). */
+  reminders: { enabled: boolean; hour: number; daysBefore: number };
+  /** Pro: "Day almost full" Flow trigger when a day's bookings reach `percent` of its limit. */
+  dayFull: { enabled: boolean; percent: number };
 }
 
 export interface DailySummarySettings {

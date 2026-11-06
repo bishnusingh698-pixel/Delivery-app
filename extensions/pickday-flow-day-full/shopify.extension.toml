@@ -1,0 +1,31 @@
+[[extensions]]
+name = "Day almost full"
+handle = "pickday-flow-day-full"
+type = "flow_trigger"
+description = "A day's bookings reached the share of its daily limit set in Pickday. Alert your staff or plan extra help."
+
+[settings]
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Day"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Booked"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Limit"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Percent"
+
+  [[settings.fields]]
+  type = "url"
+  key = "Orders page"

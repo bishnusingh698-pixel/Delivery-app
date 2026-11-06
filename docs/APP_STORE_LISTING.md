@@ -12,19 +12,21 @@ Copy these into Partner Dashboard → your app → Distribution → Shopify App 
 Let customers choose a delivery, pickup or shipping date and time slot, with daily limits that stop most overbooking.
 
 **App details** (500):
-Pickday adds a date and time-slot picker to your cart, cart drawer and product pages, in your shoppers' language. Set the days you work, preparation time, cut-off times, holidays and how many orders you can handle per day or slot. Full days close by themselves. Checkout only shows the method the customer chose and stops orders without a valid date. See every order by day, print sheets, get a free daily summary by email, and let customers change their own date.
+Pickday adds a date and time-slot picker to your cart, cart drawer and product pages, in your shoppers' language. Set your days, notice, cut-off times, holidays and how many orders you can take per day or slot; full days close by themselves. Checkout shows only the chosen method and stops orders without a valid date. See orders by day, print sheets, get a free daily summary, remind customers before their date and learn your busiest days from reports.
+
+(454 characters.)
 
 **Feature list** (up to 5 × 80):
 1. Date and time-slot picker for delivery, pickup and shipping, in 26 languages
 2. Daily and per-slot limits, cut-off times, yearly public holidays, vacation
 3. Checkout shows only the chosen method and blocks orders without a date
-4. Orders calendar, day sheets, daily summary email, customer date changes
+4. Orders calendar, day sheets, reports, reminders and customer date changes
 5. Works on every Shopify plan; no theme code changes
 
 **Pricing**
-- Free: 50 scheduled orders a month, delivery + pickup + shipping, time slots, public holidays, closed days, delivery instructions, daily summary email (with Shopify Flow), 1 pickup location.
-- Starter, $7.99/month: 500 orders a month, daily and per-slot limits, checkout matching, customers change their own date, 3 pickup locations. 14-day free trial.
-- Pro, $14.99/month: unlimited orders and locations, delivery areas and zones, product rules, delivery fees, date per item, production list, route sheets, calendar feed, Shopify Flow, settings import/export. 14-day free trial.
+- Free: 50 scheduled orders a month, delivery + pickup + shipping, time slots, public holidays, closed days and vacation, delivery instructions, daily summary email (with Shopify Flow), 1 pickup location.
+- Starter, $7.99/month: 500 orders a month, daily and per-slot limits, checkout shows only the chosen method, customers change their own date, 3 pickup locations. 14-day free trial.
+- Pro, $14.99/month: unlimited orders and pickup locations, reports (busiest days and slots, how far ahead customers book, this month against last), reminders before each order's date and "day almost full" alerts (sent with Shopify Flow by your email or SMS app), delivery areas and zones, product rules, a date per item, delivery fees, production list, route sheets, bulk date changes, calendar feed, Shopify Flow triggers, settings import/export, custom CSS. 14-day free trial.
 
 **Categories:** Orders and shipping → Delivery and pickup; secondary: Store design → Cart customization.
 
@@ -36,8 +38,8 @@ Pickday adds a date and time-slot picker to your cart, cart drawer and product p
 1. Cart page with the picker open (calendar + time slots), store theme Dawn.
 2. Cart drawer with the picker and a chosen date.
 3. Checkout with only "Store pickup – Fri 18 Oct" shown.
-4. Admin Orders calendar month view with capacity bars.
-5. Admin Delivery page with the live preview, and the 3-step setup wizard.
+4. Admin Orders calendar month view with capacity bars, and the Reports page.
+5. Admin Home with the setup steps and usage bar, the Delivery page with the live preview, and the 3-step setup wizard.
 6. Printed day sheet.
 Mobile: cart page at 390 px with the picker.
 

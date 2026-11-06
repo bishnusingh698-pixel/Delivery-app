@@ -11,6 +11,8 @@ export interface ShopifyLocation {
   address: string;
   countryCode: string | null;
   instructions: string;
+  /** Local pickup is on for this location in Shopify (Settings → Shipping and delivery → Local pickup). */
+  pickup: boolean;
 }
 
 const LOCATIONS_QUERY = `#graphql
@@ -52,10 +54,22 @@ export function toShopifyLocation(n: RawLocation): ShopifyLocation {
     address: address.slice(0, 300),
     countryCode: a.countryCode ?? null,
     instructions: (n.localPickupSettingsV2?.instructions ?? "").trim(),
+    // Shopify returns no local pickup settings for a location where Local pickup is off.
+    pickup: !!n.localPickupSettingsV2,
   };
 }
 
 export async function fetchShopifyLocations(admin: AdminGraphql): Promise<ShopifyLocation[]> {
   const data = await gql<{ locations: { nodes: RawLocation[] } }>(admin, LOCATIONS_QUERY);
   return (data.locations?.nodes ?? []).map(toShopifyLocation);
+}
+
+/** Shopify's locations for the pickup check, or null when Shopify couldn't be asked (the check is then skipped). */
+export async function shopifyPickupLocations(admin: AdminGraphql): Promise<ShopifyLocation[] | null> {
+  try {
+    return await fetchShopifyLocations(admin);
+  } catch (e) {
+    console.error("[locations] pickup check", (e as Error).message);
+    return null;
+  }
 }

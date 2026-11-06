@@ -7,7 +7,8 @@ import { CUSTOMER_ACTOR } from "../../core/customer-change";
 import { METHOD_IDS, type MethodId } from "../../core/types";
 import { Button, Checkbox, EmptyState, Modal, Page, Section, Select, Stack, closeModal, openModal } from "../components/polaris";
 import { useFormatDate, useMethodLabel } from "../components/shared";
-import { useT } from "../i18n/react";
+import { useI18n, useT } from "../i18n/react";
+import { formatStamp } from "../../core/dateformat";
 import { adminContext } from "../services/settings.server";
 import { adminCalendar, getOrderSchedule, setOrderSchedule } from "../services/reschedule.server";
 import { toLine, type StoredItem } from "../services/counts.server";
@@ -54,6 +55,7 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 export default function OrderDetail() {
   const data = useLoaderData<typeof loader>();
   const t = useT();
+  const { locale } = useI18n();
   const fmt = useFormatDate();
   const label = useMethodLabel();
   const [params] = useSearchParams();
@@ -111,7 +113,7 @@ export default function OrderDetail() {
           <Stack gap="small-200">
             {[...o.history].reverse().map((h, n) => (
               <s-text key={n}>
-                {new Date(h.at).toLocaleString()} · {h.by === CUSTOMER_ACTOR ? t("customerChanges.byCustomer") : h.by ?? t("order.staff")}: {h.from?.date ? fmt(h.from.date) : "—"} → {fmt(h.to.date)}{h.to.slot ? ` ${h.to.slot}` : ""}{h.forced ? ` (${t("order.override")})` : ""}
+                {formatStamp(h.at, locale, data.timeZone)} · {h.by === CUSTOMER_ACTOR ? t("customerChanges.byCustomer") : h.by ?? t("order.staff")}: {h.from?.date ? fmt(h.from.date) : "—"} → {fmt(h.to.date)}{h.to.slot ? ` ${h.to.slot}` : ""}{h.forced ? ` (${t("order.override")})` : ""}
               </s-text>
             ))}
           </Stack>

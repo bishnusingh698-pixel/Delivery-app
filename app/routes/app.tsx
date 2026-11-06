@@ -5,20 +5,22 @@ import { AppProvider } from "@shopify/shopify-app-react-router/react";
 
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
-import { loadMessages, resolveAdminLang } from "../i18n";
+import { chosenAdminLang, effectiveAdminLang, loadMessages, resolveAdminLang } from "../i18n";
 import { I18nProvider } from "../i18n/react";
-import { requireShop } from "../models/shop.server";
+import { flagsOf, requireShop } from "../models/shop.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const url = new URL(request.url);
   const shopRow = await requireShop(session.shop);
-  // Shopify adds ?locale= on the embedded app's first load; remember it.
-  let lang = resolveAdminLang(url.searchParams.get("locale") ?? shopRow.adminLocale);
-  if (url.searchParams.get("locale") && lang !== shopRow.adminLocale) {
-    await prisma.shop.update({ where: { shop: session.shop }, data: { adminLocale: lang } });
+  // Shopify adds ?locale= on the embedded app's first load; remember it (used on Automatic).
+  const shopifyLocale = url.searchParams.get("locale");
+  const fromShopify = shopifyLocale ? resolveAdminLang(shopifyLocale) : null;
+  if (fromShopify && fromShopify !== shopRow.adminLocale) {
+    await prisma.shop.update({ where: { shop: session.shop }, data: { adminLocale: fromShopify } });
   }
-  if (!url.searchParams.get("locale")) lang = resolveAdminLang(shopRow.adminLocale);
+  // A language chosen in Pickday (Settings) wins for everyone in the store (D-82).
+  const lang = effectiveAdminLang(chosenAdminLang(flagsOf(shopRow).adminLang), shopifyLocale, shopRow.adminLocale);
   const messages = await loadMessages(lang);
   return { apiKey: process.env.SHOPIFY_API_KEY || "", lang, messages };
 };
@@ -34,6 +36,7 @@ export default function App() {
             {t("nav.home")}
           </s-link>
           <s-link href="/app/orders">{t("nav.orders")}</s-link>
+          <s-link href="/app/reports">{t("nav.reports")}</s-link>
           <s-link href="/app/delivery">{t("nav.delivery")}</s-link>
           <s-link href="/app/pickup">{t("nav.pickup")}</s-link>
           <s-link href="/app/days-off">{t("nav.daysOff")}</s-link>

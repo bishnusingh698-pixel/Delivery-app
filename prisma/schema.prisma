@@ -62,6 +62,8 @@ model Shop {
   countsDirty     Boolean   @default(false)
   /// Store-local date the "Daily schedule" Flow trigger was last sent for (once a day).
   dailySummaryFor String?
+  /// Store-local date the "Reminder before the date" Flow triggers were last sent for (once a day, Pro).
+  reminderFor     String?
   validationId    String?
   deliveryCustomizationId String?
   surchargeProductId String?

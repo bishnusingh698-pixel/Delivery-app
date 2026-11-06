@@ -244,6 +244,8 @@ export const settingsSchema = z
       calendarFeed: z.object({ mode: z.enum(["order", "day"]), includeDetails: z.boolean() }),
       flowEnabled: z.boolean(),
       dailySummary: z.object({ enabled: z.boolean(), hour: z.number().int().min(0).max(23), day: z.enum(["today", "tomorrow"]) }),
+      reminders: z.object({ enabled: z.boolean(), hour: z.number().int().min(0).max(23), daysBefore: z.number().int().min(1).max(7) }),
+      dayFull: z.object({ enabled: z.boolean(), percent: z.number().int().min(50).max(100) }),
     }),
     tagging: z.object({ enabled: z.boolean(), prefix: z.string().max(20) }),
     productionPrepOffsetDays: z.number().int().min(0).max(30),

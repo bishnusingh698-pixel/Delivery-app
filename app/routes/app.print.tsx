@@ -4,7 +4,7 @@ import { isValidDate } from "../../core/civil";
 import { adminContext } from "../services/settings.server";
 import { adminT } from "../services/admin-t.server";
 import { daySheet, liveDetails, productionSheet, routeSheet } from "../services/print.server";
-import { parseFilters, production, whereFor } from "../services/orders-query.server";
+import { ordersWhere, parseFilters, production } from "../services/orders-query.server";
 import { hasFeature } from "../../core/publish";
 
 /**
@@ -14,7 +14,7 @@ import { hasFeature } from "../../core/publish";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const url = new URL(request.url);
-  const { t, lang, dateLabel } = await adminT(ctx.row);
+  const { t, lang, dateLabel } = await adminT(ctx.row, new URL(request.url).searchParams.get("lang"));
   const kind = url.searchParams.get("kind");
   const html = (s: string) => new Response(s, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 
@@ -31,11 +31,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // Day and route sheets use the Orders page filters, or explicit order ids (selection).
   const f = parseFilters(url, ctx.today, ctx.settings.weekStart);
   const ids = url.searchParams.get("ids")?.split(",").filter(Boolean).slice(0, 500);
-  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : whereFor(ctx.shop, f);
+  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : await ordersWhere(ctx.shop, f);
   const orders = await prisma.scheduledOrder.findMany({ where, orderBy: [{ date: "asc" }, { slotLabel: "asc" }, { orderName: "asc" }], take: 500 });
   const live = await liveDetails(ctx.admin, orders.map((o) => o.orderId));
-  const dates = [...new Set(orders.map((o) => o.date).filter(Boolean))] as string[];
+  // Orders with a date per item show only that range's items (B79).
+  const range = ids?.length ? undefined : { from: f.dateFrom, to: f.dateTo };
+  const dates = [...new Set(orders.map((o) => o.date).filter(Boolean))].sort() as string[];
   const label = dates.length === 1 ? dateLabel(dates[0]) : dates.length ? `${dateLabel(dates[0])} – ${dateLabel(dates[dates.length - 1])}` : f.dateFrom ? dateLabel(f.dateFrom) : "";
-  if (kind === "route") return html(routeSheet(t, lang, ctx.settings, label, orders, live));
-  return html(daySheet(t, lang, ctx.settings, dates[0] ?? ctx.today, label, orders, live));
+  if (kind === "route") return html(routeSheet(t, lang, ctx.settings, label, orders, live, range));
+  return html(daySheet(t, lang, ctx.settings, dates[0] ?? ctx.today, label, orders, live, range));
 };

@@ -9,7 +9,8 @@ import type { Prisma } from "@prisma/client";
 import prisma from "../db.server";
 import { loadSettings, logActivity } from "../models/settings.server";
 import { addWarning, flagsOf, planOf, requireShop, setFlags, shopToday } from "../models/shop.server";
-import { zonedToUtc } from "../../core/tz";
+import { nowInZone, zonedToUtc } from "../../core/tz";
+import { addDays } from "../../core/civil";
 import { PLAN_ORDER_LIMIT } from "../../core/publish";
 import type { Settings } from "../../core/types";
 import { recountDates } from "./counts.server";
@@ -18,6 +19,7 @@ import { methodMismatch, orderTags, parseOrder, type OrderPayload, type ParsedOr
 import { schedulePublish } from "./publish.server";
 import { monthlyUsage } from "./usage.server";
 import { flowTrigger } from "./flow.server";
+import { checkDayFull } from "./reminders.server";
 
 export type OrderTopic = "ORDERS_CREATE" | "ORDERS_UPDATED" | "ORDERS_EDITED" | "ORDERS_CANCELLED";
 
@@ -38,6 +40,20 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     await afterChange(shop, settings, [existing.date]);
     if (admin && !existing.limited) await flowTrigger(shop, admin, "cancelled", existing).catch(() => {});
     return "removed";
+  }
+
+  // A date copied from an older order (a subscription renewal, a duplicated or re-created order) is
+  // not a new booking: it's days in the past. Booking it would count capacity on a past day, tag the
+  // order with that day, announce it to Flow and use up the plan's monthly orders (B80).
+  if (!existing && topic !== "ADMIN") {
+    const row = await requireShop(shop);
+    const copied = copiedDate(parsed, payload.created_at, settings, row.timeZone, payload.source_name);
+    if (copied) {
+      const already = await prisma.activityLog.findFirst({ where: { shop, kind: "order", summary: { startsWith: `${parsed.orderName}:` } }, select: { id: true } });
+      if (!already)
+        await logActivity(shop, "order", `${parsed.orderName}: carries the date ${copied} copied from an earlier order (subscription renewal or a duplicated order), so Pickday didn't book it. Set its date from the order page if it needs one.`);
+      return "copiedDate";
+    }
   }
 
   // Admin reschedules (stored in history) win over the original cart choice until the order changes them again.
@@ -97,6 +113,8 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
   ]);
 
   await afterChange(shop, settings, [...oldDates, ...oldItems, saved.date, ...parsed.perItem.map((i) => i.date)]);
+  // Pro: "Day almost full" for the days this order now books (never fails the order).
+  await checkDayFull(shop, admin, settings, [saved.date, ...parsed.perItem.map((i) => i.date)]).catch((e) => console.error(`[day full] ${shop}`, (e as Error).message));
 
   if (!existing) {
     const row = await requireShop(shop);
@@ -117,6 +135,26 @@ export async function recordOrder(shop: string, payload: OrderPayload, admin: Ad
     }
   }
   return existing ? "updated" : "created";
+}
+
+/**
+ * The date an order carries when it was copied from an older order, or null. Copied = a subscription
+ * renewal, or every chosen date is more than a day before the day the order was placed (in the
+ * store's or pickup location's time zone). One day of grace keeps an order paid just after midnight
+ * for "today".
+ */
+export function copiedDate(o: Pick<ParsedOrder, "date" | "perItem" | "method" | "locationId">, createdAt: string | undefined, settings: Pick<Settings, "locations">, storeZone: string, source?: string | null): string | null {
+  const dates = o.date ? [o.date] : o.perItem.map((i) => i.date);
+  if (!dates.length) return null;
+  const latest = dates.reduce((a, b) => (a > b ? a : b));
+  // A subscription renewal carries the first order's attributes (Shopify copies them from the
+  // contract): its date was chosen for the first delivery, never for this one, even when still ahead.
+  if (/^subscription_contract/.test(source ?? "")) return latest;
+  if (!createdAt) return null;
+  const at = new Date(createdAt);
+  if (Number.isNaN(at.getTime())) return null;
+  const zone = (o.method === "pickup" && settings.locations.find((l) => l.id === o.locationId)?.timeZone) || storeZone || "UTC";
+  return latest < addDays(nowInZone(zone, at).date, -1) ? latest : null;
 }
 
 /** JSON with sorted keys (jsonb reorders keys and drops undefined). */

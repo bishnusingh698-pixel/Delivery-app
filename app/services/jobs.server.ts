@@ -15,6 +15,7 @@ import { collectionIdsIn, resolveCollectionProducts } from "./collections.server
 import { loadSettings, storeSettings } from "../models/settings.server";
 import { syncShopInfo } from "./install.server";
 import { sendDailySummaryIfDue } from "./daily-summary.server";
+import { sendRemindersIfDue } from "./reminders.server";
 
 const running = new Map<string, Promise<unknown>>();
 
@@ -30,10 +31,57 @@ export function runInBackground(name: string, fn: () => Promise<unknown>): boole
   return true;
 }
 
+/* ------------------------------------------------ each store's midnight */
+
+type Watched = { shop: string; timeZone: string; publishedFor: string | null };
+let watched: Watched[] = [];
+let watcher: NodeJS.Timeout | null = null;
+let ticking = false;
+
+/** Stores whose own date has moved past the day they were last published for. Pure; no database. */
+export function dueAtMidnight(list: Watched[], at = new Date()): string[] {
+  return list.filter((s) => s.publishedFor !== null && shopToday(s, at) !== s.publishedFor).map((s) => s.shop);
+}
+
+/**
+ * The hourly job runs at minute 2 (UTC). A store at +5:30 or +5:45 (India, Nepal, Chatham's +12:45/+13:45)
+ * reaches midnight 32–47 minutes before it, and until then checkout still asks about yesterday's
+ * cut-off times. While the server is awake, a one-minute timer compares each store's date with the day
+ * it was published for (in memory, no database) and republishes it within a minute of its midnight (B84).
+ */
+function watchMidnight(list: Watched[]) {
+  watched = list;
+  if (watcher) return;
+  watcher = setInterval(() => void midnightTick(), 60_000);
+  watcher.unref?.();
+}
+
+async function midnightTick() {
+  if (ticking) return;
+  ticking = true;
+  try {
+    for (const shop of dueAtMidnight(watched)) {
+      const w = watched.find((x) => x.shop === shop)!;
+      try {
+        await publishShop(shop, undefined, { functions: false });
+        w.publishedFor = shopToday(w);
+      } catch (e) {
+        // The hourly job tries again.
+        w.publishedFor = null;
+        console.error("[jobs] midnight publish", shop, (e as Error).message);
+      }
+    }
+  } finally {
+    ticking = false;
+  }
+}
+
 export async function hourly() {
   const shops = await prisma.shop.findMany({ where: { active: true } });
+  const fresh: Watched[] = [];
   let published = 0;
   let summaries = 0;
+  let reminders = 0;
   let errors = 0;
   for (const s of shops) {
     try {
@@ -44,6 +92,7 @@ export async function hourly() {
         await publishShop(s.shop, undefined, { functions: false });
         published++;
       }
+      fresh.push({ shop: s.shop, timeZone: s.timeZone, publishedFor: today });
     } catch (e) {
       errors++;
       console.error("[jobs] hourly", s.shop, (e as Error).message);
@@ -54,8 +103,15 @@ export async function hourly() {
       errors++;
       console.error("[jobs] daily summary", s.shop, (e as Error).message);
     }
+    try {
+      reminders += await sendRemindersIfDue(s, async () => (await unauthenticated.admin(s.shop)).admin);
+    } catch (e) {
+      errors++;
+      console.error("[jobs] reminders", s.shop, (e as Error).message);
+    }
   }
-  return { shops: shops.length, published, summaries, errors };
+  watchMidnight(fresh);
+  return { shops: shops.length, published, summaries, reminders, errors };
 }
 
 /**

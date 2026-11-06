@@ -1,12 +1,13 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useFetcher, useLoaderData } from "react-router";
-import { PLAN_LOCATION_LIMIT, PLAN_ORDER_LIMIT } from "../../core/publish";
+import { planCards } from "../../core/plans";
 import type { PlanId } from "../../core/types";
 import { Button, Page, Section, Stack } from "../components/polaris";
 import { useT } from "../i18n/react";
 import { logActivity } from "../models/settings.server";
 import { applySubscription, billingTest } from "../services/billing.server";
-import { releaseAfterUpgrade } from "../services/orders.server";
+import { planStatus } from "../services/plan-status.server";
+import { UsageBar } from "../components/usage";
 import { adminContext } from "../services/settings.server";
 import { monthlyUsage } from "../services/usage.server";
 import { authenticate, PLAN_PRO, PLAN_STARTER } from "../shopify.server";
@@ -15,22 +16,10 @@ const NAMES: Record<Exclude<PlanId, "free">, typeof PLAN_STARTER | typeof PLAN_P
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
-  const { billing } = await authenticate.admin(request);
   // Shopify is the source of truth: mirror the active subscription on every visit.
-  let plan = ctx.plan;
-  try {
-    const check = await billing.check({ plans: [PLAN_STARTER, PLAN_PRO], isTest: billingTest(ctx.row) });
-    const sub = check.appSubscriptions[0] ?? null;
-    const change = await applySubscription(ctx.shop, sub ? { id: sub.id, name: sub.name, status: sub.status } : null);
-    if (change) {
-      plan = change.to;
-      await releaseAfterUpgrade(ctx.shop, ctx.admin, change);
-    }
-  } catch (e) {
-    console.error("[plans] billing check", (e as Error).message);
-  }
-  const usage = await monthlyUsage(ctx.shop, { ...ctx.row, plan });
-  return { plan, devStore: ctx.row.isDevStore, usage, test: billingTest(ctx.row) };
+  const status = await planStatus(request, ctx);
+  const usage = await monthlyUsage(ctx.shop, { ...ctx.row, plan: status.plan });
+  return { plan: status.plan, trialEndsOn: status.trialEndsOn, devStore: ctx.row.isDevStore, usage, test: billingTest(ctx.row), cards: planCards() };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -58,19 +47,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   return null;
 };
 
-const PLANS: { id: PlanId; price: string; features: string[] }[] = [
-  { id: "free", price: "$0", features: ["allMethods", "datePicker", "slots", "closures", "notes", "languages", "checkoutBlock", "orders", "dailySummary"] },
-  { id: "starter", price: "$7.99", features: ["everythingFree", "capacity", "checkoutMatching", "customerChanges"] },
-  { id: "pro", price: "$14.99", features: ["everythingStarter", "areas", "productRules", "surcharges", "production", "routeSheet", "calendarFeed", "flow", "importExport"] },
-];
-
 export default function PlansPage() {
-  const { plan, devStore, usage, test } = useLoaderData<typeof loader>();
+  const { plan, trialEndsOn, devStore, usage, test, cards } = useLoaderData<typeof loader>();
   const t = useT();
   const fetcher = useFetcher();
   const busy = fetcher.state !== "idle" ? String(fetcher.formData?.get("intent")) : null;
   const choose = (id: PlanId) => {
-    if (id === "free" && !window.confirm(t("plans.downgradeConfirm"))) return;
+    // Going down a plan switches features off at once: say so first (settings are kept).
+    if (rankOf(id) < rankOf(plan) && !window.confirm(id === "free" ? t("plans.downgradeConfirm") : t("plans.switchDownConfirm", { plan: t(`plans.${id}.name`) }))) return;
     fetcher.submit({ intent: id }, { method: "post" });
   };
 
@@ -78,33 +62,26 @@ export default function PlansPage() {
     <Page title={t("plans.title")} subtitle={t("plans.subtitle")}>
       {devStore ? <s-banner tone="info">{t("plans.devStore")}</s-banner> : null}
       {test && !devStore ? <s-banner tone="warning">{t("plans.testMode")}</s-banner> : null}
-      {usage.limit !== null ? (
-        <Section heading={t("plans.usageHeading")}>
-          <Stack gap="small-200">
-            <s-text>{t("plans.usage", { count: usage.count, limit: usage.limit })}</s-text>
-            <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, usage.pct)} aria-label={t("plans.usageHeading")} style={{ height: 8, borderRadius: 4, background: "var(--s-color-bg-fill-secondary, #e3e3e3)", overflow: "hidden" }}>
-              <div style={{ width: `${Math.min(100, usage.pct)}%`, height: "100%", background: usage.pct >= 100 ? "#c70a24" : usage.pct >= 80 ? "#b28400" : "#2c6ecb" }} />
-            </div>
-            <s-text color="subdued">{usage.over ? t("plans.overLimit") : t("plans.usageHelp")}</s-text>
-          </Stack>
-        </Section>
-      ) : null}
+      <Section heading={t("plans.usageHeading")}>
+        <UsageBar usage={usage} plan={plan} trialEndsOn={trialEndsOn} showPlan />
+      </Section>
       <s-grid gridTemplateColumns="repeat(auto-fit, minmax(240px, 1fr))" gap="base">
-        {PLANS.map((p) => {
+        {cards.map((p) => {
           const current = p.id === plan;
           return (
             <s-section key={p.id} heading={t(`plans.${p.id}.name`)}>
               <Stack gap="base">
-                <Stack direction="inline" gap="small-200" alignItems="baseline">
+                <Stack direction="inline" gap="small-200" alignItems="baseline" wrap>
                   <s-heading>{p.price}</s-heading>
                   <s-text color="subdued">{t("plans.perMonth")}</s-text>
                   {current ? <s-badge tone="success">{t("plans.current")}</s-badge> : null}
+                  {p.id === "pro" && !current ? <s-badge tone="info">{t("plans.recommended")}</s-badge> : null}
                 </Stack>
-                <s-text>{t(`plans.${p.id}.orders`, { count: PLAN_ORDER_LIMIT[p.id] ?? 0 })}</s-text>
-                <s-text color="subdued">
-                  {PLAN_LOCATION_LIMIT[p.id] === null ? t("plans.unlimitedLocations") : t("plans.locations", { count: PLAN_LOCATION_LIMIT[p.id] ?? 1 })}
-                </s-text>
+                <s-text color="subdued">{t(`plans.${p.id}.for`)}</s-text>
+                <s-text type="strong">{p.orders === null ? t("plans.pro.orders") : t(`plans.${p.id}.orders`, { count: p.orders })}</s-text>
+                <s-text>{p.locations === null ? t("plans.unlimitedLocations") : t("plans.locations", { count: p.locations })}</s-text>
                 <s-unordered-list>
+                  {p.includes ? <s-list-item>{t(`plans.feature.${p.includes}`)}</s-list-item> : null}
                   {p.features.map((f) => (
                     <s-list-item key={f}>{t(`plans.feature.${f}`)}</s-list-item>
                   ))}
@@ -123,7 +100,10 @@ export default function PlansPage() {
         })}
       </s-grid>
       <Section>
-        <s-text color="subdued">{t("plans.footer")}</s-text>
+        <Stack gap="small-200">
+          <s-text color="subdued">{t("plans.keepData")}</s-text>
+          <s-text color="subdued">{t("plans.footer")}</s-text>
+        </Stack>
       </Section>
     </Page>
   );

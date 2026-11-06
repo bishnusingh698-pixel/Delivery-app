@@ -12,6 +12,9 @@ const today = nowInZone(tz).date;
 const s = defaultSettings("US");
 s.methods.delivery.enabled = true;
 s.methods.delivery.schedule.weekdays = [0, 1, 2, 3, 4, 5, 6];
+// No notice and no cut-off, so "tomorrow" is bookable at any time of day the test runs (it failed after 14:00 New York time).
+s.methods.delivery.schedule.lead = { amount: 0, unit: "days", workingDays: false };
+s.methods.delivery.schedule.cutoff = { time: null, perWeekday: null };
 s.methods.delivery.slotsEnabled = true;
 s.methods.delivery.capacity.slots = [{ id: "am", start: "09:00", end: "12:00", weekdays: [], max: null }];
 s.notes = { enabled: true, methods: "all", maxLength: 100 };

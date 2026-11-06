@@ -4,13 +4,13 @@ import prisma from "../db.server";
 import { adminContext } from "../services/settings.server";
 import { adminT } from "../services/admin-t.server";
 import { isValidDate } from "../../core/civil";
-import { orderRow, parseFilters, production, toCsv, whereFor } from "../services/orders-query.server";
+import { orderRow, ordersWhere, parseFilters, production, toCsv } from "../services/orders-query.server";
 
 /** CSV export of the filtered (or selected) orders, or of the production list (?kind=production). */
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const url = new URL(request.url);
-  const { t } = await adminT(ctx.row);
+  const { t } = await adminT(ctx.row, new URL(request.url).searchParams.get("lang"));
   const csv = (name: string, body: string) =>
     new Response(body, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}"`, "Cache-Control": "no-store" } });
 
@@ -28,9 +28,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const f = parseFilters(url, ctx.today, ctx.settings.weekStart);
   const ids = url.searchParams.get("ids")?.split(",").filter(Boolean).slice(0, 5000);
-  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : whereFor(ctx.shop, f);
+  const where = ids?.length ? { shop: ctx.shop, orderId: { in: ids } } : await ordersWhere(ctx.shop, f);
   const orders = await prisma.scheduledOrder.findMany({ where, orderBy: [{ date: "asc" }, { slotLabel: "asc" }], take: 5000 });
-  const rows = orders.map((o) => orderRow(o, ctx.settings));
+  const rows = orders.map((o) => orderRow(o, ctx.settings, ids?.length ? undefined : { from: f.dateFrom, to: f.dateTo }));
   return csv(`orders-${ctx.today}.csv`, toCsv(
     [t("orders.colOrder"), t("orders.colCustomer"), t("orders.colMethod"), t("orders.colDate"), t("orders.colSlot"), t("orders.colPlace"), t("orders.colItems"), t("orders.colStatus"), t("print.items")],
     rows.map((r) => [r.name, r.customer, t(`method.${r.method}`), r.date, r.slot, r.place, r.items, t(`orders.status.${r.status}`), r.lines.map((l) => `${l.qty} x ${l.title}${l.variant ? ` (${l.variant})` : ""}`).join("; ")]),

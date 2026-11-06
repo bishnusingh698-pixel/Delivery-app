@@ -89,3 +89,42 @@ export function dailyPayload(
     "Orders page": ordersUrl,
   };
 }
+
+/* ------------------------------------------------------------------ Pro */
+
+export const REMINDER_HANDLE = "pickday-flow-reminder";
+export const DAY_FULL_HANDLE = "pickday-flow-day-full";
+
+/** Every trigger this app declares, with a payload built in this file (checked by tests/deploy/rules.ts). */
+export const ALL_FLOW_HANDLES = [...Object.values(FLOW_HANDLES), DAILY_HANDLE, REMINDER_HANDLE, DAY_FULL_HANDLE];
+
+const oneLine = (s: string | null | undefined, max = 500) => {
+  const t = (s ?? "").replace(/\s*[\r\n]+\s*/g, " ").trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+};
+
+/**
+ * "Reminder before the date": one order, sent `daysBefore` days ahead (Pro). `dayLabel` is the date
+ * written in the store's language and date format, ready for a customer email or SMS.
+ */
+export function reminderPayload(o: FlowOrder, settings: Pick<Settings, "locations">, dayLabel: string, daysBefore: number) {
+  const loc = settings.locations.find((l) => l.id === o.locationId);
+  return {
+    ...orderPayload(o, settings),
+    Day: oneLine(dayLabel, 200),
+    "Pickup address": oneLine(loc?.address),
+    "Days before": daysBefore,
+  };
+}
+
+/** "Day almost full": a day's bookings reached the merchant's share of its limit (Pro). */
+export function dayFullPayload(date: string, dayLabel: string, booked: number, limit: number, ordersUrl: string) {
+  return {
+    Date: date,
+    Day: oneLine(dayLabel, 200),
+    Booked: booked,
+    Limit: limit,
+    Percent: limit ? Math.round((booked / limit) * 100) : 0,
+    "Orders page": ordersUrl,
+  };
+}

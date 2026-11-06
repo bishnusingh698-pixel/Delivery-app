@@ -4,9 +4,8 @@
  */
 import prisma from "../db.server";
 import { unauthenticated } from "../shopify.server";
-import { addDays } from "../../core/civil";
 import { nowInZone } from "../../core/tz";
-import { deliveryConfig, fitDeliveryConfig, fitFunctionConfig, ruleVariables, toStorefrontConfig, utf8Bytes } from "../../core/publish";
+import { deliveryConfig, fitDeliveryConfig, fitFunctionConfig, publishRange, ruleVariables, toStorefrontConfig, utf8Bytes } from "../../core/publish";
 
 export { deliveryConfig, fitDeliveryConfig, ruleVariables };
 import { cutoffTimeChecks, timeCheckVariables } from "../../core/checkout";
@@ -104,7 +103,8 @@ export async function storefrontConfigFor(shop: string) {
   const usage = await monthlyUsage(shop, row);
   // Public holidays for the whole booking window, renewed on every (at least daily) publish.
   const window = maxWindow({ methods: Object.values(settings.methods), locations: settings.locations });
-  const holidayClosures = holidayClosuresFor(settings.holidays, addDays(today, -1), addDays(today, window + 1), row.primaryLocale.split("-")[0] || "en");
+  const range = publishRange(today, window);
+  const holidayClosures = holidayClosuresFor(settings.holidays, range.from, range.to, row.primaryLocale.split("-")[0] || "en");
   const config = toStorefrontConfig(settings, {
     holidayClosures,
     version,
@@ -129,7 +129,8 @@ export async function storefrontConfigFor(shop: string) {
 export async function publishShop(shop: string, admin?: AdminGraphql, opts: { functions?: boolean } = {}): Promise<PublishResult> {
   const client = admin ?? (await unauthenticated.admin(shop)).admin;
   const { row, settings, config, today } = await storefrontConfigFor(shop);
-  const availability = await buildAvailability(shop, addDays(today, -1), addDays(today, maxWindow(config) + 1));
+  const range = publishRange(today, maxWindow(config));
+  const availability = await buildAvailability(shop, range.from, range.to);
   // The Function only knows the shop's local time; pickup locations in other zones get an offset (republished hourly, so DST is followed).
   const tzShift = locationTimeShifts(config);
   // The two "is it past HH:MM?" checks: today's cut-offs. The times go into the config and the
@@ -212,6 +213,8 @@ export function thankYouConfig(config: StorefrontConfig) {
     u: (process.env.SHOPIFY_APP_URL ?? "").replace(/\/$/, ""),
     dispatch: config.methods.find((m) => m.id === "shipping")?.dateMeaning === "dispatch",
     tz: config.tz,
+    // Pickup locations with their own time zone: their slot times are local to them (B81).
+    lz: Object.fromEntries(config.locations.filter((l) => l.timeZone && l.timeZone !== config.tz).map((l) => [l.id, l.timeZone as string])),
     // Pickup instructions per location and language.
     ins: Object.fromEntries(config.locations.filter((l) => Object.values(l.instructions).some(Boolean)).map((l) => [l.id, l.instructions])),
   };

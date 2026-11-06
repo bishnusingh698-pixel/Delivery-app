@@ -7,7 +7,7 @@ import { useT } from "../i18n/react";
 
 export const SECTIONS = [
   { key: "home", href: "/app", icon: "home", match: (p: string) => p === "/app" || p === "/app/" },
-  { key: "orders", href: "/app/orders", icon: "order", match: (p: string) => p.startsWith("/app/orders") || p.startsWith("/app/production") },
+  { key: "orders", href: "/app/orders", icon: "order", match: (p: string) => p.startsWith("/app/orders") || p.startsWith("/app/production") || p.startsWith("/app/reports") },
   { key: "delivery", href: "/app/delivery", icon: "delivery", match: (p: string) => p.startsWith("/app/delivery") },
   { key: "pickup", href: "/app/pickup", icon: "store", match: (p: string) => p.startsWith("/app/pickup") },
   { key: "daysOff", href: "/app/days-off", icon: "calendar-check", match: (p: string) => p.startsWith("/app/days-off") },

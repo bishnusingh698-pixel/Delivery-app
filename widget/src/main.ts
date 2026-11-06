@@ -146,13 +146,23 @@ async function main() {
       e.preventDefault();
       e.stopImmediatePropagation();
       void pd.flush().finally(() => {
-        if (e.type === "submit") (target as HTMLFormElement).requestSubmit((btn as HTMLElement | null) ?? undefined);
+        if (e.type === "submit") resubmit(target as HTMLFormElement, btn as HTMLElement | null);
         else (btn as HTMLElement).click();
       });
     }
   };
   document.addEventListener("click", gate, true);
   document.addEventListener("submit", gate, true);
+}
+
+/**
+ * Submit the form again as the shopper did. Safari before 16 (older iPhones) has no requestSubmit:
+ * clicking the same button sends its name (e.g. "checkout") along, as the browser would (B86).
+ */
+function resubmit(form: HTMLFormElement, btn: HTMLElement | null) {
+  if (typeof form.requestSubmit === "function") return form.requestSubmit(btn ?? undefined);
+  if (btn && form.contains(btn)) return btn.click();
+  form.submit();
 }
 
 const cartUrl = () => `${(window as any).Shopify?.routes?.root ?? "/"}cart`;

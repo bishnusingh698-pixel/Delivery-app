@@ -244,6 +244,27 @@ async function main() {
     assert(addCalls === 0 && !(await page.isVisible("dialog.pd-dialog")), "intercepted a product without a date");
   });
 
+  await check("Buy it now: variant and quantity inputs outside the form (form=\"…\") are added too", async () => {
+    const body = `<main><h1>Cake</h1><select name="id" form="pf"><option value="11" selected>Large</option></select><input name="quantity" value="2" form="pf"><form id="pf" action="/cart/add" method="post"><button type="submit">Add to cart</button><div class="shopify-payment-button"><button type="button" class="shopify-payment-button__button">Buy it now</button></div></form></main>`;
+    await open(page, "en", false, { body, path: "/", wait: false, product: cake, emptyCart: true });
+    await page.waitForFunction(() => !!(window as any).Pickday?.ready);
+    await page.click(".shopify-payment-button__button");
+    await page.waitForSelector("dialog.pd-dialog[open] .pd-root", { timeout: 5000 });
+    assert(addCalls === 1, `cart/add.js called ${addCalls} times`);
+  });
+
+  await check("old iPhone Safari (no requestSubmit): a checkout form submitted while the date is saving still continues (B86)", async () => {
+    const body = `<main><form action="/checkout" method="post"><div data-pickday-mount="block"></div><button type="submit" class="pay">Continue</button></form></main>`;
+    await page.addInitScript(() => {
+      if (location.pathname === "/") delete (HTMLFormElement.prototype as any).requestSubmit;
+    });
+    await open(page, "en", false, { body, path: "/" });
+    await page.click(".pd-day.is-available >> nth=0");
+    await page.click(".pd-chip:not(.is-full) >> nth=0");
+    // Submit straight away, while the choice is still being saved to the cart.
+    await Promise.all([page.waitForURL("**/checkout", { timeout: 5000 }), page.click("button.pay")]);
+  });
+
   const overflow = async () =>
     page.evaluate(() => {
       const root = document.querySelector(".pickday") as HTMLElement;

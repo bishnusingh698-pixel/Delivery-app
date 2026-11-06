@@ -343,6 +343,16 @@ export interface DeliveryInput {
 
 export type DeliveryOperation = { deliveryOptionHide: { deliveryOptionHandle: string } } | { deliveryOptionRename: { deliveryOptionHandle: string; title: string } };
 
+/**
+ * Does Shopify's pickup option `title` stand for the Pickday location `name`? Equal or containing it,
+ * ignoring case and spaces around. Checkout matching and the Pickup page's check both use this (D-78).
+ */
+export function pickupTitleMatches(title: string, name: string): boolean {
+  const t = title.trim().toLowerCase();
+  const n = name.trim().toLowerCase();
+  return !!n && (t === n || t.includes(n));
+}
+
 const TYPE_METHOD: Record<string, MethodId | undefined> = { LOCAL: "delivery", PICK_UP: "pickup", SHIPPING: "shipping", PICKUP_POINT: "shipping", RETAIL: "pickup" };
 
 export function optionMethod(cfg: DeliveryConfig, o: { title?: string | null; deliveryMethodType: string }): MethodId | "ignore" | null {
@@ -369,7 +379,7 @@ export function customizeDelivery(input: DeliveryInput, messages: Messages): Del
     if (sel.m === "pickup" && locName) {
       // An exact name match wins, so "Downtown" doesn't also keep "Downtown East".
       const exact = keep.filter((o) => (o.title ?? "").trim().toLowerCase() === locName);
-      const atLoc = exact.length ? exact : keep.filter((o) => (o.title ?? "").toLowerCase().includes(locName));
+      const atLoc = exact.length ? exact : keep.filter((o) => pickupTitleMatches(o.title ?? "", locName));
       if (atLoc.length) keep = atLoc;
     }
     if (!keep.length) continue;

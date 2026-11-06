@@ -554,6 +554,17 @@ export const flowRules: Record<string, Rule> = {
       }
       return out;
     }),
+  /**
+   * [DOCS] Flow rejects a payload whose keys or types don't match the trigger's fields, and only at run
+   * time: every trigger must have its payload built in flow-payload.ts, where tests compare it field by field.
+   */
+  "Flow triggers: every trigger's payload is built in app/services/flow-payload.ts": (root) => {
+    const file = join(root, "app/services/flow-payload.ts");
+    const src = existsSync(file) ? readFileSync(file, "utf8") : "";
+    return flows(root)
+      .filter((e) => !src.includes(`"${e.ext.handle}"`))
+      .map((e) => `${e.dir}: no payload for "${e.ext.handle}" in app/services/flow-payload.ts`);
+  },
 };
 
 /** The payload key Flow expects for each reference field ([DOCS] Flow trigger reference). */

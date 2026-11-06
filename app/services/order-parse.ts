@@ -13,6 +13,8 @@ export interface OrderPayload {
   updated_at?: string;
   created_at?: string;
   cancelled_at?: string | null;
+  /** How the order was made: "web", "pos", "shopify_draft_order", "subscription_contract…" (renewals). */
+  source_name?: string | null;
   fulfillment_status?: string | null;
   note_attributes?: { name: string; value: string }[];
   customer?: { id?: number | string | null; first_name?: string | null } | null;

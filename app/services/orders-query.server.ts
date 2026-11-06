@@ -92,10 +92,29 @@ export function whereFor(shop: string, f: ReturnType<typeof parseFilters>): Pris
   return where;
 }
 
+/**
+ * whereFor() plus orders with a date per item: an order whose items are on different days has no
+ * single date (`date` is null), so it's found through its items' dates instead (B79). Used by the
+ * Orders list, printouts and the CSV export.
+ */
+export async function ordersWhere(shop: string, f: ReturnType<typeof parseFilters>): Promise<Prisma.ScheduledOrderWhereInput> {
+  const where = whereFor(shop, f);
+  if (!where.date) return where;
+  const date = where.date as Prisma.StringNullableFilter;
+  const itemDate: Prisma.StringFilter = {};
+  if (date.gte) itemDate.gte = date.gte as string;
+  if (date.lte) itemDate.lte = date.lte as string;
+  const items = await prisma.scheduledItem.findMany({ where: { shop, date: itemDate }, select: { orderId: true }, distinct: ["orderId"], take: 5000 });
+  if (!items.length) return where;
+  delete where.date;
+  where.AND = [{ OR: [{ date }, { date: null, orderId: { in: items.map((i) => i.orderId) } }] }];
+  return where;
+}
+
 export const PAGE_SIZE = 50;
 
 export async function listOrders(shop: string, f: ReturnType<typeof parseFilters>) {
-  const where = whereFor(shop, f);
+  const where = await ordersWhere(shop, f);
   const [rows, total] = await Promise.all([
     prisma.scheduledOrder.findMany({ where, orderBy: [{ date: "asc" }, { slotLabel: "asc" }, { orderName: "asc" }], skip: (f.page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
     prisma.scheduledOrder.count({ where }),
@@ -103,8 +122,15 @@ export async function listOrders(shop: string, f: ReturnType<typeof parseFilters
   return { rows, total, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
 
-export function orderRow(o: ScheduledOrder, settings: Settings) {
-  const items = (o.items as unknown as StoredItem[]) ?? [];
+/**
+ * One order as the Orders list, printouts and CSV show it. With `range`, an order with a date per item
+ * (no single date) lists only the items on those days, and shows the first of them as its date.
+ */
+export function orderRow(o: ScheduledOrder, settings: Settings, range?: { from: string | null; to: string | null }) {
+  const all = (o.items as unknown as StoredItem[]) ?? [];
+  const inRange = (d: string | null | undefined) => !!d && (!range?.from || d >= range.from) && (!range?.to || d <= range.to);
+  const perDay = !o.date && !!range && all.some((i) => inRange(i.date));
+  const items = perDay ? all.filter((i) => inRange(i.date)) : all;
   const loc = settings.locations.find((l) => l.id === o.locationId)?.name ?? null;
   const zone = settings.zones.find((z) => z.id === o.zoneId)?.name ?? null;
   return {
@@ -112,10 +138,10 @@ export function orderRow(o: ScheduledOrder, settings: Settings) {
     name: o.orderName,
     customer: o.customerFirst,
     method: o.method as MethodId,
-    date: o.date,
+    date: o.date ?? (perDay ? items.map((i) => i.date!).sort()[0] : null),
     slot: o.slotLabel,
     place: loc ?? zone ?? o.area ?? null,
-    items: o.itemCount,
+    items: perDay ? items.filter((i) => i.needsDate !== false).reduce((n, i) => n + i.qty, 0) : o.itemCount,
     lines: items.filter((i) => i.needsDate !== false).map((i) => ({ title: i.title, variant: i.variant ?? null, qty: i.qty })),
     status: o.status,
     limited: o.limited,
@@ -138,6 +164,23 @@ export async function dayCounts(shop: string, config: StorefrontConfig, from: st
   for (const g of grouped) {
     if (!g.date || !out[g.date]) continue;
     out[g.date].methods[g.method as MethodId] = { orders: g._count._all, items: g._sum.itemCount ?? 0 };
+  }
+  // Orders with a date per item on different days have no single date: count them on each of their days (B79).
+  const perItem = await prisma.scheduledItem.findMany({ where: { shop, date: { gte: from, lte: to } }, select: { orderId: true, date: true, qty: true, method: true } });
+  if (perItem.length) {
+    const open = new Set(
+      (await prisma.scheduledOrder.findMany({ where: { shop, date: null, status: { not: "cancelled" }, orderId: { in: [...new Set(perItem.map((i) => i.orderId))] } }, select: { orderId: true } })).map((o) => o.orderId),
+    );
+    const seen = new Set<string>();
+    for (const it of perItem) {
+      if (!open.has(it.orderId) || !out[it.date]) continue;
+      const m = (out[it.date].methods[it.method as MethodId] ??= { orders: 0, items: 0 });
+      m.items += it.qty;
+      if (!seen.has(`${it.orderId}|${it.date}`)) {
+        seen.add(`${it.orderId}|${it.date}`);
+        m.orders += 1;
+      }
+    }
   }
   for (const m of config.methods) {
     if (!m.enabled) continue;

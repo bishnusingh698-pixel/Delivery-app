@@ -1,0 +1,38 @@
+[[extensions]]
+name = "Reminder before the date"
+handle = "pickday-flow-reminder"
+type = "flow_trigger"
+description = "Once per order, a few days before its delivery, pickup or shipping date (set in Pickday). Add an email or SMS action."
+
+[settings]
+
+  [[settings.fields]]
+  type = "order_reference"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Method"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Date"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Day"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Time slot"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Pickup location"
+
+  [[settings.fields]]
+  type = "single_line_text_field"
+  key = "Pickup address"
+
+  [[settings.fields]]
+  type = "number_decimal"
+  key = "Days before"

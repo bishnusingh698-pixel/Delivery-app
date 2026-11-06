@@ -17,6 +17,10 @@ import { CountrySelect, countryName, useMethodLabel, useWeekdays } from "../comp
 import { useI18n, useT } from "../i18n/react";
 import { holidayCountries } from "../services/holidays.server";
 import { adminContext, patchSettingsAction, shopMeta } from "../services/settings.server";
+import { ADMIN_LANGUAGE_NAMES, chosenAdminLang, effectiveAdminLang } from "../i18n";
+import { flagsOf, setFlags } from "../models/shop.server";
+import { logActivity } from "../models/settings.server";
+import { AdminLanguagePicker } from "../components/admin-language";
 
 type Edited = Pick<Settings, "country" | "dateFormat" | "weekStart" | "holidays" | "methods" | "locations" | "methodOrder" | "defaultMethod" | "dateMode" | "tagging" | "customerChanges">;
 
@@ -28,6 +32,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   if (s.country) countries.add(s.country);
   return {
     meta: shopMeta(ctx),
+    /** "auto" or the language chosen in Pickday; `automatic` is what Automatic gives this person now. */
+    adminLang: chosenAdminLang(flagsOf(ctx.row).adminLang) ?? ("auto" as const),
+    automatic: effectiveAdminLang(null, new URL(request.url).searchParams.get("locale"), ctx.row.adminLocale),
     countries: [...countries],
     holidayCountries: holidayCountries("en").map((c) => c.code),
     shopifyCountry: ctx.row.country,
@@ -47,7 +54,19 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   };
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => patchSettingsAction(request);
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const body = (await request.clone().json().catch(() => ({}))) as { intent?: string; lang?: unknown };
+  if (body.intent === "adminLang") {
+    // Saved at once (not with the settings form): the whole admin switches language on save (D-82).
+    const ctx = await adminContext(request);
+    const lang = body.lang === "auto" ? null : chosenAdminLang(body.lang);
+    if (body.lang !== "auto" && !lang) return { ok: false as const, intent: "adminLang" as const };
+    await setFlags(ctx.shop, { adminLang: lang ?? undefined });
+    await logActivity(ctx.shop, "settings", `Admin language: ${lang ? ADMIN_LANGUAGE_NAMES[lang] : "Automatic"}`, ctx.actor);
+    return { ok: true as const, intent: "adminLang" as const };
+  }
+  return patchSettingsAction(request);
+};
 
 const LINKS: { key: string; href: string; icon: string; plan?: string; feature?: string }[] = [
   { key: "products", href: "/app/settings/products", icon: "product", plan: "Pro", feature: "productRules" },
@@ -159,6 +178,8 @@ export default function SettingsPage() {
           <s-text color="subdued">{t("settingsPage.timeZone", { zone: d.meta.timeZone })}</s-text>
         </s-stack>
       </Section>
+
+      <AdminLanguagePicker value={d.adminLang} automatic={d.automatic} />
 
       <Section heading={t("settingsPage.choiceHeading")}>
         <s-stack gap="base">
