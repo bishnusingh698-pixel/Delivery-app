@@ -7,9 +7,10 @@
  */
 import { join } from "node:path";
 import { themeCheckRun } from "@shopify/theme-check-node";
+import { readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { ALL_RULES, flowFields, payloadProblems, supportedVersion } from "./deploy/rules";
-import { DAILY_HANDLE, FLOW_HANDLES, FLOW_PAYLOAD_MAX_BYTES, dailyPayload, orderPayload } from "../app/services/flow-payload";
+import { ALL_FLOW_HANDLES, DAILY_HANDLE, DAY_FULL_HANDLE, FLOW_HANDLES, FLOW_PAYLOAD_MAX_BYTES, REMINDER_HANDLE, dailyPayload, dayFullPayload, orderPayload, reminderPayload } from "../app/services/flow-payload";
 import { FUNCTION_CONFIG_BUDGET, FUNCTION_LIST_MAX, FUNCTION_METAFIELD_MAX_BYTES, deliveryConfig, fitDeliveryConfig, fitFunctionConfig, ruleVariables, utf8Bytes } from "../core/publish";
 import { timeCheckVariables } from "../core/checkout";
 import type { Availability, Settings } from "../core/types";
@@ -42,6 +43,21 @@ describe("Shopify Flow payloads match the trigger definitions", () => {
       expect(payloadProblems(flowFields(root, handle), orderPayload({ ...order, date: null, slotLabel: null, locationId: null }, s))).toEqual([]);
     });
   }
+
+  it(`${REMINDER_HANDLE}: every field, right types, one line even with a two-line address`, () => {
+    const withAddress = settings((x) => x.locations.push({ id: "l1", shopifyLocationId: null, name: "Bakery", address: "1 Main St\n10115 Berlin", mapUrl: "", instructions: {}, timeZone: null, enabled: true, countries: "all", custom: null }));
+    expect(payloadProblems(flowFields(root, REMINDER_HANDLE), reminderPayload(order, withAddress, "Friday, 6 November", 1))).toEqual([]);
+    expect(payloadProblems(flowFields(root, REMINDER_HANDLE), reminderPayload({ ...order, slotLabel: null, locationId: null }, s, "", 3))).toEqual([]);
+  });
+
+  it(`${DAY_FULL_HANDLE}: every field, right types`, () => {
+    expect(payloadProblems(flowFields(root, DAY_FULL_HANDLE), dayFullPayload("2026-11-06", "Friday, 6 November", 17, 20, "https://admin.shopify.com/store/x/apps/pickday/app/orders"))).toEqual([]);
+  });
+
+  it("every Flow trigger in extensions/ has a payload here, and nothing else", () => {
+    const declared = readdirSync(join(root, "extensions")).filter((d) => d.startsWith("pickday-flow-"));
+    expect(new Set(declared)).toEqual(new Set(ALL_FLOW_HANDLES));
+  });
 
   it(`${DAILY_HANDLE}: every field, right types, under Flow's 50 KB`, () => {
     const names = { delivery: "Local delivery", pickup: "Pickup", shipping: "Shipping" };

@@ -107,6 +107,8 @@ export function defaultSettings(country: string | null = null): Settings {
       calendarFeed: { mode: "order", includeDetails: false },
       flowEnabled: true,
       dailySummary: { enabled: false, hour: 7, day: "tomorrow" },
+      reminders: { enabled: false, hour: 10, daysBefore: 1 },
+      dayFull: { enabled: false, percent: 80 },
     },
     tagging: { enabled: true, prefix: "" },
     productionPrepOffsetDays: 0,

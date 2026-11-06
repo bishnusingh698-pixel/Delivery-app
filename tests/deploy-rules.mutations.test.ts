@@ -23,7 +23,8 @@ function copyApp(name: string): string {
   const dir = join(scratch, name.replace(/[^a-z0-9]+/gi, "-").slice(0, 60));
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(join(dir, "app"), { recursive: true });
-  for (const f of ["shopify.app.toml", "render.yaml", "app/shopify.server.ts"]) cpSync(join(root, f), join(dir, f));
+  mkdirSync(join(dir, "app/services"), { recursive: true });
+  for (const f of ["shopify.app.toml", "render.yaml", "app/shopify.server.ts", "app/services/flow-payload.ts"]) cpSync(join(root, f), join(dir, f));
   cpSync(join(root, "app/routes"), join(dir, "app/routes"), { recursive: true });
   // Extensions import the shared date engine and texts.
   for (const d of ["core", "locales"]) cpSync(join(root, d), join(dir, d), { recursive: true });
@@ -93,6 +94,10 @@ const CASES: [string, (dir: string) => void][] = [
   ["Flow triggers: name, and a description of at most 140 characters", (d) => edit(d, "extensions/pickday-flow-daily/shopify.extension.toml", (s) => s.replace(/description = ".*"/, 'description = "Once a day at the time set in Pickday: the orders scheduled for today or tomorrow. Add a Send internal email action to get a free daily summary."'))],
   ["Flow triggers: field types and keys Flow accepts", (d) => edit(d, "extensions/pickday-flow-daily/shopify.extension.toml", (s) => s.replace('type = "number_decimal"\n  key = "Orders"', 'type = "number_integer"\n  key = "Orders"'))],
   ["Flow triggers: field types and keys Flow accepts", (d) => edit(d, "extensions/pickday-flow-scheduled/shopify.extension.toml", (s) => s.replace('key = "Time slot"', 'key = "Time_slot"'))],
+  ["Flow triggers: every trigger's payload is built in app/services/flow-payload.ts", (d) => {
+    mkdirSync(join(d, "extensions/pickday-flow-extra"), { recursive: true });
+    writeFileSync(join(d, "extensions/pickday-flow-extra/shopify.extension.toml"), readFileSync(join(d, "extensions/pickday-flow-day-full/shopify.extension.toml"), "utf8").replace(/pickday-flow-day-full/g, "pickday-flow-extra").replace('name = "Day almost full"', 'name = "Extra"'));
+  }],
   // theme app extension
   ["theme extension: only supported folders and file types", (d) => writeFileSync(join(d, "extensions/pickday-theme/assets/notes.txt"), "x")],
   ["theme extension: under 10 MB, Liquid under 500 KB", (d) => writeFileSync(join(d, "extensions/pickday-theme/snippets/huge.liquid"), "x".repeat(520 * 1024))],

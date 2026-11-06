@@ -115,6 +115,27 @@ describe.skipIf(!hasDb)("round 9 (database)", async () => {
     expect(log?.summary).toMatch(/2026-10-01/);
   });
 
+  it("B80: a subscription renewal isn't booked on the first order's date, even when that date is still ahead", async () => {
+    for (const [id, source] of [[905, "subscription_contract"], [906, "subscription_contract_checkout_one"]] as const) {
+      const r = await recordOrder(
+        SHOP,
+        {
+          id,
+          name: `#${id}`,
+          source_name: source,
+          created_at: "2026-11-05T09:00:00+01:00",
+          updated_at: "2026-11-05T09:00:00+01:00",
+          note_attributes: [{ name: "_pickday", value: JSON.stringify({ v: 1, m: "shipping", d: "2026-11-09", lbl: "9 Nov" }) }],
+          line_items: [{ id: id * 10, product_id: 1, variant_id: 11, title: "Weekly bread", quantity: 1 }],
+        },
+        null,
+        "ORDERS_CREATE",
+      );
+      expect(r).toBe("copiedDate");
+    }
+    expect(await prisma.scheduledOrder.count({ where: { shop: SHOP, orderId: { in: ["905", "906"] } } })).toBe(0);
+  });
+
   it("B80: an order finished just after midnight for the day before is still recorded", async () => {
     // Checkout started at 23:58 for today, paid at 00:01: the date is one day before the order. Keep it.
     const r = await recordOrder(

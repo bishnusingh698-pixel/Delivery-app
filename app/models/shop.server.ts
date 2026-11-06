@@ -17,6 +17,8 @@ export type ShopFlags = {
   checkoutTested?: boolean;
   holidayYearOffered?: number;
   usageWarnedMonth?: string;
+  /** "Day almost full" Flow trigger: the days it was sent for, with the share they had reached (Pro). */
+  dayFullSent?: Record<string, number>;
 };
 
 export type ShopWarning = { code: string; at: string; detail?: string };

@@ -15,6 +15,7 @@ import { flowTrigger } from "./flow.server";
 import { assertNoUserErrors, gid, gql, numericId, type AdminGraphql } from "./graphql.server";
 import { writeToShopify } from "./orders.server";
 import { withLock } from "./lock.server";
+import { checkDayFull } from "./reminders.server";
 import { storefrontConfigFor, schedulePublish } from "./publish.server";
 import { engineTimeZone, findSlot } from "../../core/engine";
 import { attributeDate } from "../../core/dateformat";
@@ -160,6 +161,7 @@ async function applyOrderSchedule(shop: string, admin: AdminGraphql, orderId: st
   const { settings } = await storefrontConfigFor(shop);
   await recountDates(shop, settings, [existing?.date ?? "", ...oldItemDates, choice.date]);
   schedulePublish(shop);
+  await checkDayFull(shop, admin, settings, [choice.date]).catch((e) => console.error(`[day full] ${shop}`, (e as Error).message));
 
   // Keep the order's own attributes in step so packing slips and other apps see the new date.
   const sel: Selection = { v: 1, m: choice.method, d: choice.date, s: saved.slotId, t: slotLabel, l: saved.locationId, z: saved.zoneId, a: saved.area, c: null, lbl: null, lc: config.primaryLocale, f: null };

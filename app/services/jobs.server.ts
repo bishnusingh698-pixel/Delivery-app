@@ -15,6 +15,7 @@ import { collectionIdsIn, resolveCollectionProducts } from "./collections.server
 import { loadSettings, storeSettings } from "../models/settings.server";
 import { syncShopInfo } from "./install.server";
 import { sendDailySummaryIfDue } from "./daily-summary.server";
+import { sendRemindersIfDue } from "./reminders.server";
 
 const running = new Map<string, Promise<unknown>>();
 
@@ -80,6 +81,7 @@ export async function hourly() {
   const fresh: Watched[] = [];
   let published = 0;
   let summaries = 0;
+  let reminders = 0;
   let errors = 0;
   for (const s of shops) {
     try {
@@ -101,9 +103,15 @@ export async function hourly() {
       errors++;
       console.error("[jobs] daily summary", s.shop, (e as Error).message);
     }
+    try {
+      reminders += await sendRemindersIfDue(s, async () => (await unauthenticated.admin(s.shop)).admin);
+    } catch (e) {
+      errors++;
+      console.error("[jobs] reminders", s.shop, (e as Error).message);
+    }
   }
   watchMidnight(fresh);
-  return { shops: shops.length, published, summaries, errors };
+  return { shops: shops.length, published, summaries, reminders, errors };
 }
 
 /**
