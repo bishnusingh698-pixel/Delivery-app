@@ -103,6 +103,7 @@ export default function OrdersPage() {
           <Button icon="list-bulleted" variant={data.view === "list" ? "primary" : "secondary"} onClick={() => set({ view: null })}>{t("orders.viewList")}</Button>
           <Button icon="calendar" variant={data.view === "calendar" ? "primary" : "secondary"} onClick={() => set({ view: "calendar" })}>{t("orders.viewCalendar")}</Button>
           <Button icon="product" href="/app/production">{t("nav.production")}</Button>
+          <Button icon="chart-vertical" href="/app/reports">{t("nav.reports")}</Button>
         </s-button-group>
       }
     >

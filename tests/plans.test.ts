@@ -109,3 +109,25 @@ describe("reports", () => {
     expect(rangeDates("next30", "2026-11-06").to).toBe("2026-12-05");
   });
 });
+
+describe("usage bar", async () => {
+  const { trialEndsOn, usageMonth, usageTone } = await import("../core/usage");
+  it("the month and its reset day are the store's (Sydney: 1 Dec starts while it's still November in UTC)", () => {
+    expect(usageMonth("2026-12-01")).toEqual({ monthStart: "2026-12-01", resetsOn: "2027-01-01" });
+    expect(usageMonth("2026-02-28").resetsOn).toBe("2026-03-01");
+  });
+  it("is near from 80% and over at the limit; unlimited plans are never near", () => {
+    expect(usageTone({ count: 39, limit: 50 })).toBe("ok");
+    expect(usageTone({ count: 40, limit: 50 })).toBe("near");
+    expect(usageTone({ count: 50, limit: 50 })).toBe("over");
+    expect(usageTone({ count: 5000, limit: null })).toBe("ok");
+  });
+  it("the trial ends 14 days after the subscription started, on the store's calendar", () => {
+    // Started 1 Nov 20:00 UTC: ends 15 Nov 20:00 UTC = 16 Nov in Sydney.
+    const sub = { createdAt: "2026-11-01T20:00:00Z", trialDays: 14 };
+    expect(trialEndsOn(sub, "Australia/Sydney", new Date("2026-11-06T00:00:00Z"))).toBe("2026-11-16");
+    expect(trialEndsOn(sub, "America/New_York", new Date("2026-11-06T00:00:00Z"))).toBe("2026-11-15");
+    expect(trialEndsOn(sub, "UTC", new Date("2026-11-16T00:00:00Z"))).toBeNull();
+    expect(trialEndsOn({ createdAt: "2026-11-01T20:00:00Z", trialDays: 0 }, "UTC")).toBeNull();
+  });
+});

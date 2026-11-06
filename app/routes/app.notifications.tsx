@@ -150,6 +150,17 @@ export default function NotificationsPage() {
         </Stack>
       </Section>
 
+      <RemindersSection
+        reminders={n.reminders}
+        dayFull={n.dayFull}
+        allowed={hasFeature(meta.plan, "reminders")}
+        flowOn={n.flowEnabled}
+        timeZone={meta.timeZone}
+        locale={locale}
+        onReminders={(fn) => update((d) => fn(d.notifications.reminders))}
+        onDayFull={(fn) => update((d) => fn(d.notifications.dayFull))}
+      />
+
       <Section heading={t("notifications.flowHeading")}>
         {!flowAllowed ? <Locked plan="Pro" label={t("notifications.flowLocked")} upgradeLabel={t("common.upgrade")} /> : null}
         <Stack gap="base">
@@ -158,6 +169,81 @@ export default function NotificationsPage() {
         </Stack>
       </Section>
     </Page>
+  );
+}
+
+const hourText = (locale: string, h: number) => {
+  try {
+    return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2000, 0, 1, h)));
+  } catch {
+    return `${String(h).padStart(2, "0")}:00`;
+  }
+};
+
+/** Pro (D-77): "Reminder before the date" per order and "Day almost full", both as Shopify Flow triggers. */
+function RemindersSection(p: {
+  reminders: Settings["notifications"]["reminders"];
+  dayFull: Settings["notifications"]["dayFull"];
+  allowed: boolean;
+  flowOn: boolean;
+  timeZone: string;
+  locale: string;
+  onReminders: (fn: (v: Settings["notifications"]["reminders"]) => void) => void;
+  onDayFull: (fn: (v: Settings["notifications"]["dayFull"]) => void) => void;
+}) {
+  const t = useT();
+  return (
+    <Section heading={t("reminders.heading")}>
+      {!p.allowed ? <Locked plan="Pro" label={t("reminders.locked")} upgradeLabel={t("common.upgrade")} /> : null}
+      <Stack gap="base">
+        <s-text color="subdued">{t("reminders.help")}</s-text>
+        {p.allowed && !p.flowOn && (p.reminders.enabled || p.dayFull.enabled) ? <s-banner tone="warning">{t("reminders.flowOff")}</s-banner> : null}
+        <Switch label={t("reminders.enabled")} details={t("reminders.enabledHelp")} checked={p.reminders.enabled} disabled={!p.allowed} onChange={(v) => p.onReminders((x) => (x.enabled = v))} />
+        {p.reminders.enabled ? (
+          <>
+            <Stack direction="inline" gap="base" wrap>
+              <Select
+                label={t("reminders.daysBefore")}
+                value={String(p.reminders.daysBefore)}
+                disabled={!p.allowed}
+                options={Array.from({ length: 7 }, (_, i) => ({ value: String(i + 1), label: t("reminders.daysBeforeOption", { count: i + 1 }) }))}
+                onChange={(v) => p.onReminders((x) => (x.daysBefore = Number(v)))}
+              />
+              <Select
+                label={t("reminders.hour")}
+                details={t("summary.hourHelp", { zone: p.timeZone })}
+                value={String(p.reminders.hour)}
+                disabled={!p.allowed}
+                options={Array.from({ length: 24 }, (_, h) => ({ value: String(h), label: hourText(p.locale, h) }))}
+                onChange={(v) => p.onReminders((x) => (x.hour = Number(v)))}
+              />
+            </Stack>
+            <s-box border="base" borderRadius="base" padding="base">
+              <Stack gap="small-200">
+                <s-heading>{t("summary.stepsHeading")}</s-heading>
+                <s-ordered-list>
+                  <s-list-item>{t("reminders.step1")}</s-list-item>
+                  <s-list-item>{t("reminders.step2")}</s-list-item>
+                  <s-list-item>{t("reminders.step3")}</s-list-item>
+                </s-ordered-list>
+                <Button href="shopify://admin/apps/flow" target="_top" icon="external">{t("summary.openFlow")}</Button>
+              </Stack>
+            </s-box>
+          </>
+        ) : null}
+        <s-divider />
+        <Switch label={t("reminders.dayFull")} details={t("reminders.dayFullHelp")} checked={p.dayFull.enabled} disabled={!p.allowed} onChange={(v) => p.onDayFull((x) => (x.enabled = v))} />
+        {p.dayFull.enabled ? (
+          <Select
+            label={t("reminders.dayFullPercent")}
+            value={String(p.dayFull.percent)}
+            disabled={!p.allowed}
+            options={[50, 60, 70, 80, 90, 100].map((n) => ({ value: String(n), label: `${n}%` }))}
+            onChange={(v) => p.onDayFull((x) => (x.percent = Number(v)))}
+          />
+        ) : null}
+      </Stack>
+    </Section>
   );
 }
 
@@ -176,13 +262,7 @@ function DailySummarySection({
   onChange: (fn: (v: Settings["notifications"]["dailySummary"]) => void) => void;
 }) {
   const t = useT();
-  const hourLabel = (h: number) => {
-    try {
-      return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone: "UTC" }).format(new Date(Date.UTC(2000, 0, 1, h)));
-    } catch {
-      return `${String(h).padStart(2, "0")}:00`;
-    }
-  };
+  const hourLabel = (h: number) => hourText(locale, h);
   // Flow turns each trigger field into a camelCase Liquid variable ("Orders page" → ordersPage).
   const subject = t("summary.mailSubject", { day: "{{day}}" });
   const message = [

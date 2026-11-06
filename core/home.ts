@@ -3,7 +3,7 @@ import { addDays } from "./civil";
 import { hasFeature } from "./publish";
 import type { PlanId, Settings } from "./types";
 
-export type ChecklistId = "embed" | "checkout" | "snippet" | "testOrder";
+export type ChecklistId = "wizard" | "embed" | "pickupShopify" | "testOrder" | "snippet" | "checkout";
 
 export interface HomeFlags {
   embedDetected?: boolean;
@@ -13,16 +13,22 @@ export interface HomeFlags {
   holidayYearOffered?: number;
 }
 
-/** What's left after the setup wizard (which covers methods, days and holidays). */
-export function checklist(s: Settings, flags: HomeFlags, checkoutAllowed: boolean): { id: ChecklistId; done: boolean }[] {
+/**
+ * The setup path from install to the first dated order, in the order a merchant does it (D-79):
+ * answer the setup questions → turn on the app embed → (pickup) Local pickup on in Shopify for the
+ * same places → place a test order → the date in order emails → (paid) checkout matching.
+ * `pickupOk` is the pickup check's result (null or undefined: not known, so the step isn't shown).
+ */
+export function checklist(s: Settings, flags: HomeFlags, checkoutAllowed: boolean, extra: { pickupOk?: boolean | null } = {}): { id: ChecklistId; done: boolean }[] {
   const items: { id: ChecklistId; done: boolean }[] = [
+    { id: "wizard", done: !!flags.welcomeDone },
     { id: "embed", done: !!flags.embedDetected },
-    { id: "testOrder", done: !!flags.firstOrderAt || !!flags.checkoutTested },
-    { id: "checkout", done: s.checkoutMatching.enabled },
-    { id: "snippet", done: s.notifications.emailSnippetConfirmed },
   ];
+  if (s.methods.pickup.enabled && typeof extra.pickupOk === "boolean") items.push({ id: "pickupShopify", done: extra.pickupOk });
+  items.push({ id: "testOrder", done: !!flags.firstOrderAt || !!flags.checkoutTested }, { id: "snippet", done: s.notifications.emailSnippetConfirmed });
   // Checkout matching is a paid feature: only listed when the plan has it.
-  return items.filter((i) => i.id !== "checkout" || checkoutAllowed);
+  if (checkoutAllowed) items.push({ id: "checkout", done: s.checkoutMatching.enabled });
+  return items;
 }
 
 export type AlertId = "busy" | "vacation" | "embedOff" | "usage" | "holidays" | "checkoutMismatch" | "configLarge" | "checkoutLimited" | "functionsMissing" | "planOff";

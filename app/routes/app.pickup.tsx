@@ -9,17 +9,18 @@ import { hasFeature, PLAN_LOCATION_LIMIT } from "../../core/publish";
 import type { Location, MethodSettings, Settings } from "../../core/types";
 import { CapacityEditor, ScheduleEditor } from "../components/editors";
 import { MethodPreview } from "../components/live-preview";
-import { Button, Checkbox, closeModal, Locked, Modal, MoneyField, openModal, Page, Section, Select, Switch, TextField } from "../components/polaris";
+import { Button, Checkbox, closeModal, Locked, Modal, MoneyField, openModal, Page, Section, Select, Stack, Switch, TextField } from "../components/polaris";
 import { SettingsChrome, fieldId, useSettingsForm } from "../components/settings-form";
 import { CountryPicker, newId, useMethodLabel } from "../components/shared";
 import { useI18n, useT } from "../i18n/react";
 import { shopCountries } from "../services/countries.server";
-import { fetchShopifyLocations, type ShopifyLocation } from "../services/locations.server";
+import { fetchShopifyLocations, shopifyPickupLocations, type ShopifyLocation } from "../services/locations.server";
+import { pickupCheck, type PickupIssue } from "../../core/pickup-check";
 import { adminContext, patchSettingsAction, previewData, shopMeta } from "../services/settings.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
-  const { countries, markets } = await shopCountries(ctx.admin);
+  const [{ countries, markets }, shopifyLocations] = await Promise.all([shopCountries(ctx.admin), shopifyPickupLocations(ctx.admin)]);
   let timeZones: string[] = [];
   try {
     timeZones = Intl.supportedValuesOf("timeZone");
@@ -36,6 +37,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     markets,
     timeZones,
     daysOff,
+    /** Shopify's locations and whether Local pickup is on, for the check (null: Shopify couldn't be asked). */
+    shopifyLocations,
     full: s,
     initial: { methods: s.methods, locations: s.locations } as Pick<Settings, "methods" | "locations">,
   };
@@ -133,8 +136,25 @@ export default function PickupPage() {
         <Switch label={t("methods.offer", { method: label("pickup") })} details={t("pickup.switchHelp")} checked={m.enabled} onChange={(v) => set((x) => (x.enabled = v))} />
       </Section>
 
+      <Section heading={t("pickup.howHeading")}>
+        <s-ordered-list>
+          <s-list-item>{t("pickup.how1")}</s-list-item>
+          <s-list-item>{t("pickup.how2")}</s-list-item>
+          <s-list-item>{t("pickup.how3")}</s-list-item>
+          <s-list-item>{t("pickup.how4")}</s-list-item>
+        </s-ordered-list>
+      </Section>
+
       {m.enabled ? (
         <>
+          <ShopifyCheck
+            issues={d.shopifyLocations ? pickupCheck(draft.locations, d.shopifyLocations).issues : null}
+            shopify={d.shopifyLocations ?? []}
+            locations={draft.locations}
+            atLimit={atLimit}
+            onRename={(id, name) => update((x) => void (x.locations.find((l) => l.id === id)!.name = name.slice(0, 100)))}
+            onImport={(s) => add(fromShopify(s))}
+          />
           <Section heading={t("pickup.locationsHeading")}>
             <s-stack gap="base">
               <s-text color="subdued">{draft.locations.length ? t("pickup.locationsHelp") : t("pickup.noLocationsHelp")}</s-text>
@@ -289,6 +309,66 @@ export default function PickupPage() {
         )}
       </Modal>
     </Page>
+  );
+}
+
+const SHOPIFY_SHIPPING = "shopify://admin/settings/shipping";
+
+/**
+ * Pickday's pickup locations against Shopify's Local pickup (D-78), on the unsaved changes: each
+ * mismatch says what's wrong in plain words, with a one-click fix where Pickday can make it.
+ */
+function ShopifyCheck(p: {
+  issues: PickupIssue[] | null;
+  shopify: ShopifyLocation[];
+  locations: Location[];
+  atLimit: boolean;
+  onRename: (locationId: string, name: string) => void;
+  onImport: (s: ShopifyLocation) => void;
+}) {
+  const t = useT();
+  const openShopify = (
+    <Button href={SHOPIFY_SHIPPING} target="_top" icon="external">
+      {t("pickup.check.openShopify")}
+    </Button>
+  );
+  return (
+    <Section heading={t("pickup.check.heading")} id="shopify-check">
+      <Stack gap="base">
+        <s-text color="subdued">{t("pickup.check.help")}</s-text>
+        {p.issues === null ? (
+          <s-banner tone="warning">{t("pickup.check.unavailable")}</s-banner>
+        ) : !p.issues.length ? (
+          <s-banner tone="success">{p.locations.some((l) => l.enabled) ? t("pickup.check.ok") : t("pickup.check.okStore")}</s-banner>
+        ) : (
+          p.issues.map((i, n) => {
+            const s = "shopifyId" in i ? p.shopify.find((x) => x.id === i.shopifyId) : undefined;
+            return (
+              <s-banner key={n} tone="warning" heading={t(`pickup.check.${i.kind}`, { name: "name" in i ? i.name : "", shopifyName: i.kind === "renamed" ? i.shopifyName : "" })}>
+                {t(`pickup.check.${i.kind}Fix`, { name: "name" in i ? i.name : "", shopifyName: i.kind === "renamed" ? i.shopifyName : "" })}
+                {i.kind === "renamed" ? (
+                  <s-button slot="secondary-actions" onClick={() => p.onRename(i.locationId, i.shopifyName)}>
+                    {t("pickup.check.rename", { shopifyName: i.shopifyName })}
+                  </s-button>
+                ) : null}
+                {i.kind === "notInPickday" && s ? (
+                  <s-button slot="secondary-actions" disabled={p.atLimit} onClick={() => p.onImport(s)}>
+                    {t("pickup.check.import", { name: i.name })}
+                  </s-button>
+                ) : null}
+                {i.kind !== "renamed" && i.kind !== "notInPickday" ? (
+                  <s-button slot="secondary-actions" href={SHOPIFY_SHIPPING} target="_top">
+                    {t("pickup.check.openShopify")}
+                  </s-button>
+                ) : null}
+              </s-banner>
+            );
+          })
+        )}
+        {p.issues?.length ? <s-text color="subdued">{t("pickup.check.afterFix")}</s-text> : null}
+        <s-box>{openShopify}</s-box>
+      </Stack>
+    </Section>
   );
 }
 

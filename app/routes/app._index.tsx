@@ -24,6 +24,10 @@ import { dayCounts } from "../services/orders-query.server";
 import { storefrontConfigFor } from "../services/publish.server";
 import { adminContext, previewData, saveSettings } from "../services/settings.server";
 import { monthlyUsage } from "../services/usage.server";
+import { planStatus } from "../services/plan-status.server";
+import { shopifyPickupLocations } from "../services/locations.server";
+import { pickupCheck } from "../../core/pickup-check";
+import { UsageBar } from "../components/usage";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
@@ -53,8 +57,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
 
   const { config } = await storefrontConfigFor(ctx.shop);
-  const counts = await dayCounts(ctx.shop, config, ctx.today, addDays(ctx.today, 13));
-  const usage = await monthlyUsage(ctx.shop, ctx.row);
+  // Independent reads in parallel: the first admin load after the server slept is slow enough already.
+  const [counts, status, shopifyLocs] = await Promise.all([
+    dayCounts(ctx.shop, config, ctx.today, addDays(ctx.today, 13)),
+    planStatus(request, ctx),
+    ctx.settings.methods.pickup.enabled ? shopifyPickupLocations(ctx.admin) : Promise.resolve(null),
+  ]);
+  const usage = await monthlyUsage(ctx.shop, { ...ctx.row, plan: status.plan });
+  const pickupOk = shopifyLocs ? pickupCheck(ctx.settings.locations, shopifyLocs).ok : null;
   const sum = (days: string[]) => {
     const m: Partial<Record<MethodId, number>> = {};
     let total = 0;
@@ -70,7 +80,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return {
     ...common,
     mode: "dashboard" as const,
-    checklist: checklist(ctx.settings, flags, hasFeature(ctx.plan, "checkoutMatching")),
+    checklist: checklist(ctx.settings, flags, hasFeature(status.plan, "checkoutMatching"), { pickupOk }),
+    plan: status.plan,
+    trialEndsOn: status.trialEndsOn,
+    usage: { count: usage.count, limit: usage.limit, resetsOn: usage.resetsOn },
     checklistDismissed: !!flags.checklistDismissed,
     overview: { today: sum([ctx.today]), tomorrow: sum([addDays(ctx.today, 1)]), week: sum(week) },
     chart: Object.entries(counts).map(([date, c]) => ({ date, orders: Object.values(c.methods).reduce((n, v) => n + (v?.orders ?? 0), 0), used: c.used, max: c.max })),
@@ -80,9 +93,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       flags,
       embedChecked: !!flags.embedCheckedAt,
       busyDays: busy,
-      usagePct: usage.limit === null ? null : usage.pct,
+      // The plan card below shows the month's orders with an upgrade link when it's near or over the limit.
+      usagePct: null,
       warnings: warningsOf(ctx.row),
-      plan: ctx.plan,
+      plan: status.plan,
       holidayData: !!ctx.settings.country && hasHolidayData(ctx.settings.country),
     }),
     celebrate: !!flags.firstOrderAt && !flags.firstOrderCelebrated,
@@ -358,7 +372,7 @@ function Wizard({ d }: { d: WizardData }) {
 
 /* ============================================================= dashboard */
 
-const CHECK_LINKS: Record<ChecklistId, string> = { embed: "", testOrder: "", checkout: "/app/settings/checkout", snippet: "/app/notifications" };
+const CHECK_LINKS: Record<ChecklistId, string> = { wizard: "", embed: "", pickupShopify: "/app/pickup#shopify-check", testOrder: "", checkout: "/app/settings/checkout", snippet: "/app/notifications" };
 
 function Dashboard({ d }: { d: DashData }) {
   const t = useT();
@@ -369,6 +383,14 @@ function Dashboard({ d }: { d: DashData }) {
       <Alerts d={d} />
       <Checklist d={d} />
       <Overview d={d} />
+      <Section heading={t("home.planHeading")}>
+        <Stack gap="base">
+          <UsageBar usage={d.usage} plan={d.plan} trialEndsOn={d.trialEndsOn} showPlan />
+          <s-box>
+            <Button variant="tertiary" href="/app/plans">{t("home.comparePlans")}</Button>
+          </s-box>
+        </Stack>
+      </Section>
       <Chart d={d} />
       <Section heading={t("home.quickActions")}>
         <Stack direction="inline" gap="small-200" wrap>
@@ -378,6 +400,7 @@ function Dashboard({ d }: { d: DashData }) {
           <Button href="/app/orders?range=today" icon="order">{t("home.qaToday")}</Button>
           <Button href="/app/orders?range=tomorrow" icon="calendar">{t("home.qaTomorrow")}</Button>
           <Button href="/app/production" icon="product">{t("home.qaProduction")}</Button>
+          <Button href="/app/reports" icon="chart-vertical">{t("nav.reports")}</Button>
           <Button href="/app/appearance" icon="paint-brush-flat">{t("home.qaWidget")}</Button>
           <Button variant="tertiary" icon="wand" onClick={() => fetcher.submit({ intent: "showWizard" }, { method: "post" })}>
             {t("home.rerunSetup")}
@@ -511,7 +534,11 @@ function Checklist({ d }: { d: DashData }) {
   return (
     <Section heading={t("home.checklistHeading")}>
       <Stack gap="base">
-        <s-text color="subdued">{t("home.checklistProgress", { done, total: d.checklist.length })}</s-text>
+        <s-text color="subdued">{t("home.checklistIntro")}</s-text>
+        <s-text>{t("home.checklistProgress", { done, total: d.checklist.length })}</s-text>
+        <div role="progressbar" aria-valuemin={0} aria-valuemax={d.checklist.length} aria-valuenow={done} aria-label={t("home.checklistProgress", { done, total: d.checklist.length })} style={{ height: 6, borderRadius: 3, background: "#e3e3e3", overflow: "hidden" }}>
+          <div style={{ width: `${Math.round((done / d.checklist.length) * 100)}%`, height: "100%", background: "#29845a" }} />
+        </div>
         {d.checklist.map((c, i) => (
           <s-box key={c.id} padding="small-200" borderRadius="base" background={c.done ? "subdued" : "base"} border="base">
             <Stack direction="inline" gap="base" alignItems="center" justifyContent="space-between" wrap>
@@ -522,7 +549,9 @@ function Checklist({ d }: { d: DashData }) {
                   {!c.done ? <s-text color="subdued">{t(`home.check.${c.id}Help`)}</s-text> : null}
                 </Stack>
               </Stack>
-              {!c.done ? (
+              {c.id === "wizard" ? (
+                <Button variant="tertiary" onClick={() => post("showWizard")}>{t("home.check.wizardAction")}</Button>
+              ) : !c.done ? (
                 c.id === "embed" ? (
                   <Stack direction="inline" gap="small-200">
                     <Button variant="primary" href={d.themeLink} target="_top">{t("home.check.embedAction")}</Button>

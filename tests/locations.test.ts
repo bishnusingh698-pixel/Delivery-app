@@ -9,7 +9,7 @@ describe("toShopifyLocation", () => {
       address: { address1: "1 High St", city: "Leeds", zip: "LS1 1AA", countryCode: "GB", formatted: ["1 High St", "Leeds LS1 1AA", "United Kingdom"] },
       localPickupSettingsV2: { instructions: " Ring the bell " },
     });
-    expect(l).toEqual({ id: "123456", name: "Main shop", address: "1 High St, Leeds LS1 1AA, United Kingdom", countryCode: "GB", instructions: "Ring the bell" });
+    expect(l).toEqual({ id: "123456", name: "Main shop", address: "1 High St, Leeds LS1 1AA, United Kingdom", countryCode: "GB", instructions: "Ring the bell", pickup: true });
   });
 
   it("builds an address from parts and handles missing pickup settings", () => {
@@ -21,5 +21,7 @@ describe("toShopifyLocation", () => {
     });
     expect(l.address).toBe("Rue 2, 75001 Paris, FR");
     expect(l.instructions).toBe("");
+    // No pickup settings = Local pickup is off for this location in Shopify (D-78).
+    expect(l.pickup).toBe(false);
   });
 });

@@ -6,12 +6,23 @@ describe("home", () => {
   it("checklist reflects setup state", () => {
     const s = defaultSettings("US");
     const c = checklist(s, {}, true);
-    expect(c.map((x) => x.id)).toEqual(["embed", "testOrder", "checkout", "snippet"]);
+    // The setup path in the order a merchant does it: questions, app embed, test order, emails, checkout (D-79).
+    expect(c.map((x) => x.id)).toEqual(["wizard", "embed", "testOrder", "snippet", "checkout"]);
     expect(c.every((x) => !x.done)).toBe(true);
     // Without checkout matching on the plan, that step isn't listed.
-    const done = checklist({ ...s, notifications: { ...s.notifications, emailSnippetConfirmed: true } }, { embedDetected: true, firstOrderAt: "x" }, false);
-    expect(done.map((x) => x.id)).toEqual(["embed", "testOrder", "snippet"]);
+    const done = checklist({ ...s, notifications: { ...s.notifications, emailSnippetConfirmed: true } }, { welcomeDone: true, embedDetected: true, firstOrderAt: "x" }, false);
+    expect(done.map((x) => x.id)).toEqual(["wizard", "embed", "testOrder", "snippet"]);
     expect(done.every((x) => x.done)).toBe(true);
+  });
+  it("with pickup on, Local pickup in Shopify is a step before the test order (D-78)", () => {
+    const s = defaultSettings("US");
+    s.methods.pickup.enabled = true;
+    expect(checklist(s, {}, false, { pickupOk: false }).map((x) => x.id)).toEqual(["wizard", "embed", "pickupShopify", "testOrder", "snippet"]);
+    expect(checklist(s, {}, false, { pickupOk: true }).find((x) => x.id === "pickupShopify")?.done).toBe(true);
+    // Not known (Shopify couldn't be asked) or pickup off: not listed.
+    expect(checklist(s, {}, false, { pickupOk: null }).some((x) => x.id === "pickupShopify")).toBe(false);
+    s.methods.pickup.enabled = false;
+    expect(checklist(s, {}, false, { pickupOk: false }).some((x) => x.id === "pickupShopify")).toBe(false);
   });
   it("busy days are those at 80% or more", () => {
     expect(busyDays({ "2026-10-16": { used: 8, max: 10 }, "2026-10-17": { used: 7, max: 10 }, "2026-10-18": { used: 3, max: null } }, "2026-10-16")).toEqual([{ date: "2026-10-16", pct: 80 }]);

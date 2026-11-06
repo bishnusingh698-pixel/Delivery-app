@@ -6,6 +6,8 @@ import { Button, Page, Section, Stack, TextField } from "../components/polaris";
 import { BRAND } from "../config/brand";
 import { useI18n, useT } from "../i18n/react";
 import { formatStamp } from "../../core/dateformat";
+import { pickupCheck } from "../../core/pickup-check";
+import { shopifyPickupLocations } from "../services/locations.server";
 import prisma from "../db.server";
 import { logActivity } from "../models/settings.server";
 import { flagsOf, warningsOf } from "../models/shop.server";
@@ -21,6 +23,10 @@ export const FAQ_IDS = [
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const ctx = await adminContext(request);
   const r = ctx.row;
+  // Pickup locations against Shopify's Local pickup (same check as the Pickup page, on the saved settings).
+  const pickupOn = ctx.settings.methods.pickup.enabled;
+  const shopifyLocs = pickupOn ? await shopifyPickupLocations(ctx.admin) : null;
+  const pickup = pickupOn ? (shopifyLocs ? pickupCheck(ctx.settings.locations, shopifyLocs).issues.length : -1) : null;
   const lastOrder = await prisma.scheduledOrder.findFirst({ where: { shop: ctx.shop }, orderBy: { createdAt: "desc" }, select: { createdAt: true, orderName: true } });
   return {
     support: BRAND.supportEmail,
@@ -39,6 +45,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       delivery: !!r.deliveryCustomizationId,
       lastOrder: lastOrder ? { name: lastOrder.orderName, at: lastOrder.createdAt.toISOString() } : null,
       warnings: warningsOf(r).map((w) => w.code),
+      /** Pickup problems found (0 = all good, -1 = Shopify couldn't be asked, null = pickup off). */
+      pickup,
       debugUntil: r.debugUntil && r.debugUntil > new Date() ? r.debugUntil.toISOString() : null,
     },
   };
@@ -126,6 +134,15 @@ export default function HelpPage() {
               <s-table-row><s-table-cell>{t("help.diag.published")}</s-table-cell><s-table-cell>{diag.publishedAt ? formatStamp(diag.publishedAt, locale, diag.timeZone) : t("help.never")}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.lastOrder")}</s-table-cell><s-table-cell>{diag.lastOrder ? `${diag.lastOrder.name} (${formatStamp(diag.lastOrder.at, locale, diag.timeZone)})` : t("help.never")}</s-table-cell></s-table-row>
               <s-table-row><s-table-cell>{t("help.diag.timeZone")}</s-table-cell><s-table-cell>{diag.timeZone}</s-table-cell></s-table-row>
+              {diag.pickup !== null ? (
+                <s-table-row>
+                  <s-table-cell>{t("help.diag.pickup")}</s-table-cell>
+                  <s-table-cell>
+                    {diag.pickup === 0 ? t("help.diag.pickupOk") : diag.pickup < 0 ? t("help.diag.pickupUnknown") : t("help.diag.pickupProblems", { count: diag.pickup })}{" "}
+                    {diag.pickup !== 0 ? <s-link href="/app/pickup#shopify-check">{t("help.diag.pickupOpen")}</s-link> : null}
+                  </s-table-cell>
+                </s-table-row>
+              ) : null}
             </s-table-body>
           </s-table>
           {fetcher.data?.intent === "republish" ? (

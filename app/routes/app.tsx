@@ -34,6 +34,7 @@ export default function App() {
             {t("nav.home")}
           </s-link>
           <s-link href="/app/orders">{t("nav.orders")}</s-link>
+          <s-link href="/app/reports">{t("nav.reports")}</s-link>
           <s-link href="/app/delivery">{t("nav.delivery")}</s-link>
           <s-link href="/app/pickup">{t("nav.pickup")}</s-link>
           <s-link href="/app/days-off">{t("nav.daysOff")}</s-link>
